@@ -1,0 +1,7 @@
+README.md
+setup.cfg
+setup.py
+deeptorch/deeptorch.egg-info/PKG-INFO
+deeptorch/deeptorch.egg-info/SOURCES.txt
+deeptorch/deeptorch.egg-info/dependency_links.txt
+deeptorch/deeptorch.egg-info/top_level.txt
