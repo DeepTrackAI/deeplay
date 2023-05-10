@@ -1,5 +1,5 @@
-from .selection import Query
-from ..parser.parsequery import parse_query
+from .selection import Selection
+from .queries import Query
 import pytorch_lightning as pl
 from typing import List
 
@@ -112,14 +112,16 @@ class Template(pl.LightningModule):
     #                           MATCH METHODS
     # =======================================================================
 
-    def matches(self, query: Query) -> bool:
-        query = parse_query(query)
-        return query.matches(self)
+    def matches(self, query) -> bool:
+        query = Query(query)
+        return query.matches([[self]])
 
-    def select(self, query: Query) -> List["Template"]:
-        query = parse_query(query)
-        return query.select(self)
+    def select(self, query) -> Selection:
+        selection = Selection([[self]])
+        query = Query(query)
+        return selection.select(query)
 
-    def select_all(self, query: Query) -> List["Template"]:
-        query = parse_query(query)
-        return query.select_all(self)
+    def select_first(self, query) -> Selection:
+        selection = Selection([[self]])
+        query = Query(query)
+        return selection.select_first(query)

@@ -1,9 +1,10 @@
 from .groups import Group
+from .queries import Query
+from .template import Template
 from typing import List, Union, Tuple, Dict, Any, Callable, Optional
 
 # Query is a string or a function that takes an element and an index and
 # returns a boolean.
-Query = Union[str, Callable[[Any, int], bool]]
 
 
 class Selection(list):
@@ -11,9 +12,10 @@ class Selection(list):
 
     A selection is a list of groups. Each group is a list of elements that"""
 
-    def __init__(self, groups: list = None):
+    def __init__(self, module, groups: list = None):
+        self.module = module
         if groups is None:
-            groups = []
+            groups = [("", module)]
         super().__init__(groups)
 
     def __getitem__(self, key):
@@ -22,7 +24,7 @@ class Selection(list):
         if isinstance(key, int):
             return super().__getitem__(key)
         elif isinstance(key, slice):
-            return Selection(super().__getitem__(key))
+            return Selection(self.module, super().__getitem__(key))
         else:
             raise ValueError(f"Invalid key: {key}")
 
@@ -40,18 +42,17 @@ class Selection(list):
             A new selection.
 
         """
+        query = Query(query)
         groups = []
-        for group in self:
+        for name, module in self:
             new_group = []
-            for element in group:
-                new_element = element.select(query)
-                new_group.append(new_element)
+            tree = module.named_modules()
+            subtree = query.filter(tree)
+            groups.extend(subtree)
 
-            groups.append(new_group)
+        return Selection(self.module, groups)
 
-        return Selection(groups)
-
-    def select_all(self, query: Query) -> "Selection":
+    def select_first(self, query: Query) -> "Selection":
         """Returns a new selection that matches the query.
 
         In case of multiple matches, all matches are returned.
@@ -69,48 +70,57 @@ class Selection(list):
             A new selection.
 
         """
+        query = Query(query)
+
         groups = []
-        for group in self:
-            for element in group:
-                new_group = element.select_all(query)
-                groups.append(new_group)
-        return Selection(groups)
+        for name, module in self:
+            new_group = []
+            tree = module.named_modules()
+            subtree = query.filter(tree)
+            groups.extend(subtree)
+        return Selection(self.module, groups)
 
     def set(self, **kwargs):
         """Sets the attributes of the elements in the selection.
 
         Parameters
         ----------
-            kwargs: The attributes to set.
+            kwargs: The attributes to set.  
 
         """
-        for group in self:
-            for element in group:
-                element.set(**kwargs)
+        for name, module in self:     
+            if isinstance(module, Template):
+                module.set(**kwargs)
+            else:
+                new_module = self._create_module(module, **kwargs)
+                self._set_module(name, new_module)
 
-    def filter(self, query: Query) -> "Selection":
-        """Returns a new selection that matches the query.
+    @staticmethod
+    def _create_module(module, **kwargs):
+        import inspect
 
-        In case of multiple matches, only the first match is returned.
+        # Get the arguments of the constructor.
+        signature = inspect.signature(module.__init__)
 
-        Parameters
-        ----------
-            query: A query string.
+        # Get the arguments that are in the signature.
+        kwargs = {k: v for k, v in kwargs.items() if k in signature.parameters}
+        
+        # take rest of arguments from the original module
+        for k, v in module.__dict__.items():
+            if k in signature.parameters and k not in kwargs:
+                kwargs[k] = v
+        
+        # Create a new module with the new arguments.
+        new_module = module.__class__(**kwargs)
+        return new_module
+    
+    def _set_module(self, name, module):
+        """Sets the module at the given name."""
+        # Get the parent module.
+        parent_module = self.module
+        parts = name.split(".")
+        for part in parts[:-1]:
+            parent_module = getattr(parent_module, part)
 
-        Returns
-        -------
-            A new selection.
-
-        """
-        groups = []
-        for group in self:
-            new_group = []
-            for element in group:
-                if element.matches(query):
-                    new_group.append(element)
-                new_element = element.filter(query)
-                new_group.append(new_element)
-
-            groups.append(new_group)
-
-        return Selection(groups)
+        # Set the module.
+        setattr(parent_module, parts[-1], module)
