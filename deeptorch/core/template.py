@@ -4,8 +4,8 @@ import pytorch_lightning as pl
 from typing import List
 
 
-class Template(pl.LightningModule):
-    """Base element for all templates"""
+class Element:
+    """Base element"""
 
     def __init__(self, children=[], class_name: str = "", id: str = None, **kwargs):
 
