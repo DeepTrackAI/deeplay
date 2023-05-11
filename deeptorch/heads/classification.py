@@ -1,14 +1,16 @@
 import torch.nn as nn
 
-from ..layers import Default
+from .. import Default, LazyModule, default
 
-class CategoricalClassificationHead:
 
-    def __init__(self, classifier=None, activation=None):
+class CategoricalClassificationHead(LazyModule):
+    def __init__(self, num_classes, classifier=default, activation=default):
         """Classification head.
 
         Parameters
         ----------
+        num_classes : int
+            Number of classes.
         classifier : None, Dict, nn.Module, optional
             Classifier config. If None, a default nn.Linear layer is used.
             If Dict, it is used as kwargs for nn.Linear. Note that `in_features` and
@@ -18,11 +20,11 @@ class CategoricalClassificationHead:
             Activation function config. If None, a default nn.Softmax layer is used.
         """
         super().__init__()
+        self.num_classes = num_classes
+        self.classifier = Default(classifier, nn.LazyLinear, num_classes)
+        self.activation = Default(activation, nn.Softmax, dim=-1)
 
-        self.classifier = Default(classifier, nn.Linear)
-        self.activation = Default(activation, nn.Softmax)
-
-    def build(self, in_features, out_features):
+    def build(self):
         """Build the head.
 
         Parameters
@@ -34,13 +36,13 @@ class CategoricalClassificationHead:
             Number of output features.
         """
         return nn.Sequential(
-            self.classifier.build(in_features, out_features),
-            self.activation.build(out_features, out_features),
+            self.classifier.build(),
+            self.activation.build(),
         )
-    
-class BinaryClassificationHead:
 
-    def __init__(self, classifier=None, activation=None):
+
+class BinaryClassificationHead(LazyModule):
+    def __init__(self, classifier=default, activation=default):
         """Classification head.
 
         Parameters
@@ -55,22 +57,12 @@ class BinaryClassificationHead:
         """
         super().__init__()
 
-        self.classifier = Default(classifier, nn.Linear)
+        self.classifier = Default(classifier, nn.LazyLinear, 1)
         self.activation = Default(activation, nn.Sigmoid)
 
-    def build(self, in_features, out_features):
-        """Build the head.
-
-        Parameters
-        ----------
-        in_features : int
-            Number of input features.
-
-        out_features : int
-            Number of output features.
-        """
+    def build(self):
+        """Build the head."""
         return nn.Sequential(
-            self.classifier.build(in_features, out_features),
-            self.activation.build(out_features, out_features),
+            self.classifier.build(),
+            self.activation.build(),
         )
-    

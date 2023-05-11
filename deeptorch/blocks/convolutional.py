@@ -1,18 +1,17 @@
 import torch
 import torch.nn as nn
 from . import Block
-from ..layers import Default
+from .. import Default, default
 
-_default = object()
-
-@
 
 class ConvActBlock(Block):
-    def __init__(self, conv=_default, activation=_default):
+    def __init__(self, channels_out, conv=default, activation=default):
         """Convolutional block with activation function.
 
         Parameters
         ----------
+        output_channels : int
+            Number of output channels.
         conv : None, Dict, nn.Module, optional
             Convolutional layer config. If None, a default nn.Conv2d layer is used.
             If Dict, it is used as kwargs for nn.Conv2d. Note that `in_channels` and
@@ -26,19 +25,21 @@ class ConvActBlock(Block):
         self.assert_valid(conv)
         self.assert_valid(activation)
 
-        self.conv = Default(conv, nn.Conv2d, kernel_size=3, padding=1)
+        self.conv = Default(conv, nn.LazyConv2d, channels_out, kernel_size=3, padding=1)
         self.activation = Default(activation, nn.ReLU)
 
-    def build(self, channels_in, channels_out):
+    def build(self):
 
         return nn.Sequential(
-            self.conv.build(channels_in, channels_out),
-            self.activation.build(channels_out, channels_out),
+            self.conv.build(),
+            self.activation.build(),
         )
 
 
 class ConvActNormBlock(Block):
-    def __init__(self, conv=_default, activation=_default, normalization=_default):
+    def __init__(
+        self, channels_out, conv=default, activation=default, normalization=default
+    ):
         """Convolutional block with activation function and normalization.
 
         Parameters
@@ -59,21 +60,23 @@ class ConvActNormBlock(Block):
         self.assert_valid(activation)
         self.assert_valid(normalization)
 
-        self.conv = Default(conv, nn.Conv2d, kernel_size=3, padding=1)
+        self.conv = Default(conv, nn.LazyConv2d, channels_out, kernel_size=3, padding=1)
         self.activation = Default(activation, nn.ReLU)
-        self.normalization = Default(normalization, nn.BatchNorm2d)
+        self.normalization = Default(normalization, nn.LazyBatchNorm2d)
 
-    def build(self, channels_in, channels_out):
+    def build(self):
 
         return nn.Sequential(
-            self.conv.build(channels_in, channels_out),
-            self.activation.build(channels_out, channels_out),
-            self.normalization.build(channels_out, channels_out),
+            self.conv.build(),
+            self.activation.build(),
+            self.normalization.build(),
         )
 
 
 class ConvNormActBlock(Block):
-    def __init__(self, conv=_default, activation=_default, normalization=_default):
+    def __init__(
+        self, channels_out, conv=default, activation=default, normalization=default
+    ):
         """Convolutional block with activation function and normalization.
 
         Parameters
@@ -94,16 +97,16 @@ class ConvNormActBlock(Block):
         self.assert_valid(activation)
         self.assert_valid(normalization)
 
-        self.conv = Default(conv, nn.Conv2d, kernel_size=3, padding=1)
+        self.conv = Default(conv, nn.LazyConv2d, channels_out, kernel_size=3, padding=1)
         self.activation = Default(activation, nn.ReLU)
-        self.normalization = Default(normalization, nn.BatchNorm2d)
+        self.normalization = Default(normalization, nn.LazyBatchNorm2d)
 
-    def build(self, channels_in, channels_out):
+    def build(self):
 
         return nn.Sequential(
-            self.conv.build(channels_in, channels_out),
-            self.normalization.build(channels_out, channels_out),
-            self.activation.build(channels_out, channels_out),
+            self.conv.build(),
+            self.normalization.build(),
+            self.activation.build(),
         )
 
 
@@ -113,7 +116,7 @@ class ConvNormActBlock(Block):
 
 
 class ConvPoolBlock(Block):
-    def __init__(self, conv=_default, pool=_default):
+    def __init__(self, channels_out, conv=default, pool=default):
         """Convolutional block with pooling.
 
         Parameters
@@ -131,19 +134,19 @@ class ConvPoolBlock(Block):
         self.assert_valid(conv)
         self.assert_valid(pool)
 
-        self.conv = Default(conv, ConvActBlock)
+        self.conv = Default(conv, ConvActBlock, channels_out)
         self.pool = Default(pool, nn.MaxPool2d, kernel_size=2, stride=2)
 
-    def build(self, channels_in, channels_out):
+    def build(self):
 
         return nn.Sequential(
-            self.conv.build(channels_in, channels_out),
-            self.pool.build(channels_out, channels_out),
+            self.conv.build(),
+            self.pool.build(),
         )
 
 
 class StridedConvPoolBlock(Block):
-    def __init__(self, conv=_default, stride=2):
+    def __init__(self, channels_out, conv=default, stride=2):
         """Convolutional block that uses strided convolution instead of pooling.
 
         Parameters
@@ -160,11 +163,8 @@ class StridedConvPoolBlock(Block):
 
         self.assert_valid(conv)
 
-        self.conv = Default(conv, ConvActBlock, conv=dict(stride=stride))
+        self.conv = Default(conv, ConvActBlock, channels_out, conv=dict(stride=stride))
 
-    def build(self, channels_in, channels_out):
+    def build(self):
 
-        return nn.Sequential(
-            self.conv.build(channels_in, channels_out),
-        )
-
+        return self.conv.build()
