@@ -5,6 +5,7 @@ from ..layers import Default
 
 _default = object()
 
+@
 
 class ConvActBlock(Block):
     def __init__(self, conv=_default, activation=_default):
@@ -167,7 +168,3 @@ class StridedConvPoolBlock(Block):
             self.conv.build(channels_in, channels_out),
         )
 
-
-# ==================================================================================================== #
-# TRANSPOSE CONVOLUTIONAL BLOCKS
-# ==================================================================================================== #
