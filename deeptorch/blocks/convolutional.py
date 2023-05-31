@@ -168,3 +168,47 @@ class StridedConvPoolBlock(Block):
     def build(self):
 
         return self.conv.build()
+
+
+# ==================================================================================================== #
+# TRANSPOSE CONVOLUTIONAL BLOCKS
+# ==================================================================================================== #
+
+
+class ConvTransposeActBlock(Block):
+    def __init__(self, channels_out, conv=default, activation=default, stride=2):
+        """Transpose convolutional block with activation function.
+
+        Parameters
+        ----------
+        output_channels : int
+            Number of output channels.
+        conv : None, Dict, nn.Module, optional
+            Convolutional layer config. If None, a default nn.ConvTranspose2d layer is used.
+            If Dict, it is used as kwargs for nn.ConvTranspose2d. Note that `in_channels` and
+            `out_channels` should not be specified.
+            If nn.Module, it is used as the convolutional layer.
+        activation : None, Dict, nn.Module, optional
+            Activation function config. If None, a default nn.ReLU layer is used.
+        """
+        super().__init__()
+
+        self.assert_valid(conv)
+        self.assert_valid(activation)
+
+        self.conv = Default(
+            conv,
+            nn.LazyConvTranspose2d,
+            channels_out,
+            kernel_size=3,
+            stride=stride,
+            padding=1,
+        )
+        self.activation = Default(activation, nn.ReLU)
+
+    def build(self):
+
+        return nn.Sequential(
+            self.conv.build(),
+            self.activation.build(),
+        )
