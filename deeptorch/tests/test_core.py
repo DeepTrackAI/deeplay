@@ -1,0 +1,88 @@
+import unittest
+from ..core import DeepTorchModule
+from ..templates import Node
+from ..config import Config
+
+class TestCore(unittest.TestCase):
+
+    class MockDTModule(DeepTorchModule):
+        defaults = {
+            "bias": 0,
+            "block": Node("layer"),
+            "block.layer.module": lambda scale: lambda x: x * scale,
+            "block.layer.scale": 1,
+        }
+
+        def __init__(self, bias=0, block=None, **kwargs):
+            super().__init__(bias=bias, block=block, **kwargs)
+            self.bias = self.attr("bias")
+            self.layer = self.create("block")
+
+        def forward(self, x):
+            return self.layer(x) + self.bias
+
+
+
+    def test_no_input(self):
+        module = self.MockDTModule()
+        self.assertEqual(module.bias, 0)
+        self.assertEqual(module(1), 1)
+        self.assertEqual(module(2), 2)
+        self.assertEqual(module(3), 3)
+
+    def test_set_bias_direct(self):
+        module = self.MockDTModule(bias=1)
+        self.assertEqual(module.bias, 1)
+        self.assertEqual(module(1), 2)
+        self.assertEqual(module(2), 3)
+        self.assertEqual(module(3), 4)
+
+    def test_set_scale(self):
+        module = self.MockDTModule(
+            block=Config().layer.scale(2)
+        )
+        self.assertEqual(module.bias, 0)
+        self.assertEqual(module(1), 2)
+        self.assertEqual(module(2), 4)
+        self.assertEqual(module(3), 6)
+
+    def test_set_scale_inhereted(self):
+        module = self.MockDTModule(
+            block=Config().scale(2, True)
+        )
+        self.assertEqual(module.bias, 0)
+        self.assertEqual(module(1), 2)
+        self.assertEqual(module(2), 4)
+        self.assertEqual(module(3), 6)
+
+    def test_set_scale_and_bias(self):
+        module = self.MockDTModule(
+            bias=1,
+            block=Config().scale(2, True)
+        )
+        self.assertEqual(module.bias, 1)
+        self.assertEqual(module(1), 3)
+        self.assertEqual(module(2), 5)
+        self.assertEqual(module(3), 7)
+
+    def test_from_config(self):
+        config = Config().bias(1).scale(2, True)
+        module = self.MockDTModule.from_config(config)
+        self.assertEqual(module.bias, 1)
+        self.assertEqual(module(1), 3)
+        self.assertEqual(module(2), 5)
+        self.assertEqual(module(3), 7)
+
+    def test_nested_structure(self):
+
+        module = self.MockDTModule(
+            bias=1,
+            block=Config()
+                .layer.module(self.MockDTModule)
+                .layer.block.layer.scale(3)
+        )
+
+        self.assertEqual(module.bias, 1)
+        self.assertEqual(module(1), 4)
+        self.assertEqual(module(2), 7)
+        self.assertEqual(module(3), 10)

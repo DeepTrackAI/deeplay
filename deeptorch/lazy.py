@@ -1,17 +1,82 @@
+from typing import Any
 import torch.nn as nn
 
+CLASS_LAYER = "layer"
+CLASS_ACTIVATION = "activation"
+CLASS_NORMALIZATION = "normalization"
 default = object()
+# class Lazy:
+    
+#     def __init__(self, module):
+#         self.module = module
+#         self.inlined_styles = []
+#         self.styles = []
+#         self.className = []
+#         self.id = None
+
+#     def inline(self, **kwargs):
+#         self.inlined_styles.append(kwargs)
+#         return self
+
+#     def classed(self, className, replace_current=False):
+#         """Add class names to the module. 
+#         If replace_current is True, the current class names are replaced.
+#         Multiple class names can be added by separating them with a space.
+        
+#         Parameters
+#         ----------
+#         className : str
+#             Class name(s) to add. Example: "class1 class2"
+#         replace_current : bool, optional
+#             Whether to replace the current class names, by default False."""
+#         names = className.split(" ")
+#         if replace_current:
+#             self.className = names
+#         else:
+#             self.className.extend(names)
+#         return self
+
+# class LazyLayer(Lazy):
+#     def __init__(self, module, **kwargs):
+#         super().__init__(module)
+#         self.classed(CLASS_LAYER)
 
 
-class LazyModule:
-    def __init__(*args, **kwargs):
-        ...
+# class LazyActivation(Lazy):
+#     def __init__(self, module, **kwargs):
+#         super().__init__(module)
+#         self.classed(CLASS_ACTIVATION)
 
-    def build(self, *args, **kwargs):
-        raise NotImplementedError
+# class LazyNormalization(nn.Module):
+#     def __init__(self, module, **kwargs):
+#         super().__init__(module)
+#         self.classed(CLASS_NORMALIZATION)
 
 
-class Default(LazyModule):
+
+# class Element:
+
+#     layer = LazyLayer(nn.Conv2d).inline(kernel_size=3, padding=1)
+#     activation = LazyActivation(nn.ReLU)
+#     normalization = LazyNormalization(None)
+
+#     def __init__(*args, **kwargs):
+        
+#         self.register_argument("layer", nn.Identity)
+
+#     def build(self, layer, activation, normalization):
+#         return nn.Sequential(
+#             layer,
+#             activation,
+#             normalization,
+#         )
+
+
+class LazyModule(nn.Module):
+    ...
+
+
+class Default:
     """Layer node with default value.
 
     For example, if you want to use a default nn.Conv2d layer, you can use

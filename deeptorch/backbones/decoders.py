@@ -5,7 +5,7 @@ from .. import blocks as bl
 from .. import Default, LazyModule, default
 
 class Decoder2d:
-    def __init__(self, blocks=_default, depth=4):
+    def __init__(self, blocks=default, depth=4):
         """Convolutional decoder for 2D images.
 
         Parameters
@@ -19,12 +19,12 @@ class Decoder2d:
         """
         super().__init__()
 
-        if blocks is _default:
-            self.blocks = [bl.
-        else:
-            self.blocks = [
-                layers.Default(block, blocks.ConvPoolBlock) for block in blocks
-            ]
+        # if blocks is _default:
+        #     # self.blocks = [bl.
+        # else:
+        #     self.blocks = [
+        #         layers.Default(block, blocks.ConvPoolBlock) for block in blocks
+        #     ]
 
     def build(self):
         """Build the decoder.
