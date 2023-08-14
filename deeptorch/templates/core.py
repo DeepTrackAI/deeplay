@@ -2,7 +2,7 @@ import torch.nn as nn
 from ..config import Config
 from ..utils import safe_call
 
-__all__ = ["Node"]
+__all__ = ["Node", "InputNode", "NodeSequence", "NodeAdd", "NodeSub", "NodeMul", "NodeDiv", "Template"]
 
 class Node:
     def __init__(self, className="", **kwargs):
@@ -39,7 +39,13 @@ class Node:
     
     def from_config(self, config):
         return self.build(config)
+
+class InputNode(Node):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
     
+    def build(self, config):
+        return nn.Identity()
 
 class NodeSequence(Node):
 
@@ -52,9 +58,18 @@ class NodeSequence(Node):
 
     def build(self, config):
         
-        return Template(
-            **{node.className: node.build(config) for node in self.nodes}
-        )
+        modules = {}
+        for node in self.nodes:
+            name = node.className or node.__class__.__name__
+            module = node.build(config)
+            idx = 0
+            while name in modules:
+                name = f"{node.className}({idx})"
+                idx += 1
+            
+            modules[name] = module
+
+        return Template(modules)
 
 
 class NodeAdd(Node):
@@ -101,7 +116,9 @@ class NodeDiv(Node):
 
 class Template(nn.ModuleDict):
 
-    def __init__(self, **kwargs):
+    
+    def __init__(self, kwargs):
+        # print("Template", kwargs)
         super().__init__(kwargs)
         
     def forward(self, x):
