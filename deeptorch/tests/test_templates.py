@@ -21,12 +21,7 @@ class TestTemplates(unittest.TestCase):
 
         node = Node("foo")
 
-        config = (
-            Config()
-                .foo.module(MockModule)
-                .foo.a(1)
-                .foo.b(2)
-        )
+        config = Config().foo(MockModule, a=1, b=2)
 
         built_node = node.build(config)
 
@@ -41,22 +36,17 @@ class TestTemplates(unittest.TestCase):
         
         template = Node("foo") >> Node("bar")
 
-        config = (
-            Config()
-                .a(1, True) # default values
-                .b(2, True)
-                .foo.module(MockModule)
-                .foo.b(3)
-                .bar.module(MockModule)
-                .bar.b(4)
-        )
+        config = Config() \
+                    ._(a=1, b=2) \
+                    .foo(MockModule, b=3) \
+                    .bar(MockModule)
 
         built_node = template.build(config)
 
-        self.assertEqual(built_node[0].a, 1)
-        self.assertEqual(built_node[0].b, 3)
-        self.assertEqual(built_node[1].a, 1)
-        self.assertEqual(built_node[1].b, 4)
+        self.assertEqual(built_node["foo"].a, 1)
+        self.assertEqual(built_node["foo"].b, 3)
+        self.assertEqual(built_node["bar"].a, 1)
+        self.assertEqual(built_node["bar"].b, 2)
 
         y = built_node(5)
-        self.assertEqual(y, 14) # 5 + 1 + 3 + 1 + 4
+        self.assertEqual(y, 12) # 5 + 1 + 3 + 1 + 2

@@ -1,6 +1,6 @@
 import unittest
 import re
-from ..config import Config, selector_matches, ClassSelector, IndexSelector, WildcardSelector, DoubleWildcardSelector, ParentalRelation
+from ..config import Config, ClassSelector, IndexSelector, WildcardSelector, DoubleWildcardSelector, ParentalRelation, Ref
 
 class TestConfig(unittest.TestCase):
     
@@ -216,7 +216,7 @@ class TestConfig(unittest.TestCase):
             self.assertEqual(re.match(regex, test) is not None, expected, msg=f"Test: {test} with regex {regex}")
 
     def test_selector_regex_9(self):
-        rule = IndexSelector(ClassSelector("foo"), slice(0, 2)) + ClassSelector("bar")
+        rule = ClassSelector("foo")[slice(0, 2)] + ClassSelector("bar")
         tests = [
             ("foo[0].bar", True),
             ("foo[0].bar[0]", True),
@@ -235,7 +235,7 @@ class TestConfig(unittest.TestCase):
 
 
     def test_selector_regex_10(self):
-        rule = IndexSelector(ClassSelector("foo"), slice(0, -2, 1)) + ClassSelector("bar")
+        rule = ClassSelector("foo")[slice(0, -2, 1), 4] + ClassSelector("bar")
         tests = [
             ("foo[0].bar", True),
             ("foo[0].bar[0]", True),
@@ -243,14 +243,23 @@ class TestConfig(unittest.TestCase):
             ("foo[2].bar", False),
         ]
         for test, expected in tests:
-            regex = rule.regex(length=4)
+            regex = rule.regex()
+            self.assertEqual(re.match(regex, test) is not None, expected, msg=f"Test: {test} with regex {regex}")
+
+    def test_selector_regex_11(self):
+        rule = WildcardSelector() + ClassSelector("bar")
+        tests = [
+            ("foo[0].bar", True),
+        ]
+        for test, expected in tests:
+            regex = rule.regex()
             self.assertEqual(re.match(regex, test) is not None, expected, msg=f"Test: {test} with regex {regex}")
 
     def test_config(self):
         # Example usage:
         config = (
             Config()
-                .my_attr_1("foo", True)
+                .__.my_attr_1("foo")
                 .my_attr_1.attr_1("bar")
                 .my_subconfig.attr_1("baz")
         
@@ -272,22 +281,17 @@ class TestConfig(unittest.TestCase):
 
         config = (
             Config()
-                .my_attr_1("foo", inheritable=True)
-                .my_attr_1.attr_1("bar")
-                .my_subconfig.attr_1("baz")
-                .my_subconfig.attr_2("bix")
-                .my_subconfig.sub_config_2.attr_2("qux")
+                .__(my_attr_1="foo")
+                .my_attr_1(attr_1="bar")
+                .my_subconfig(attr_1="baz")
+                .my_subconfig(attr_2="bix")
+                .my_subconfig.sub_config_2(attr_2="qux")
         
         )
 
-        config_with_selector = config.with_selector("my_subconfig")
 
-        self.assertEqual(config_with_selector._selector, ("my_subconfig",))
+        config_with_selector = config.with_selector("my_subconfig.sub_config_2")
 
-        config_with_selector = config_with_selector.with_selector("sub_config_2")
-        self.assertEqual(config_with_selector._selector, ("my_subconfig", "sub_config_2"))
-
-        
         parameters = config_with_selector.get_parameters()
         self.assertEqual(parameters.get("attr_1"), None)
         self.assertEqual(parameters.get("attr_2"), "qux") 
@@ -310,3 +314,106 @@ class TestConfig(unittest.TestCase):
 
         parameters = config.with_selector("block.layer.block.layer").get_parameters()
         self.assertEqual(parameters.get("value"), "baz")
+
+    def test_populate(self):
+        config = (
+            Config()
+                .foo(value=1)
+                .foo[0:2].populate("value", [2, 3])
+                .bar.populate("value", [4, 5])
+                .baz.populate("value", lambda i: i, 2)
+                .bix[:-2].populate("value", lambda i: i, 4)
+                .bix[-2:].populate("value", lambda i: i + 2, 4)
+
+        )
+        
+        self.assertEqual(config.foo[0].get("value"), 2)
+        self.assertEqual(config.foo[1].get("value"), 3)
+        self.assertEqual(config.foo[2].get("value"), 1)
+        self.assertEqual(config.bar[0].get("value"), 4)
+        self.assertEqual(config.bar[1].get("value"), 5)
+        self.assertEqual(config.baz[0].get("value"), 0)
+        self.assertEqual(config.baz[1].get("value"), 1)
+        self.assertEqual(config.bix[0].get("value"), 0)
+        self.assertEqual(config.bix[1].get("value"), 1)
+        self.assertEqual(config.bix[2].get("value"), 4)
+        self.assertEqual(config.bix[3].get("value"), 5)
+
+    def test_indexed_selector_key(self):
+        config = (
+            Config()
+            .value[0](1)
+        )
+        # And not value[0]
+        self.assertEqual(config._rules[0].key, "value")
+
+    def test_Ref_1(self):
+
+        config = (
+            Config()
+            .foo(value=1)
+            .bar(value=Ref("foo.value"))
+        )
+
+        self.assertEqual(config.foo.get("value"), 1)
+        self.assertEqual(config.bar.get("value"), 1)
+
+    def test_Ref_2(self):
+
+        config = (
+            Config()
+            .foo(1)
+            .bar(value=Ref("foo"))
+        )
+
+        self.assertEqual(config.get("foo"), 1)
+        self.assertEqual(config.get("bar.value"), 1)
+        self.assertEqual(config.bar.get("value"), 1)
+
+    def test_Ref_3(self):
+
+        config_1 = (
+            Config()
+            .foo(1)
+            .bar(value=Ref("foo"))
+        )
+
+        config_2 = (
+            Config()
+            .merge("baz", config_1)
+        )
+
+        self.assertEqual(config_2.get("baz.foo"), 1)
+        self.assertEqual(config_2.get("baz.bar.value"), 1)
+        self.assertEqual(config_2.baz.get("bar.value"), 1)
+        self.assertEqual(config_2.baz.bar.get("value"), 1)
+
+    def test_merge_default(self):
+
+        config_1 = (
+            Config()
+            .foo(1)
+            .bar(2)
+        )
+
+        config_2 = (
+            Config()
+            .foo(2)
+            .bar(3)
+        )
+
+        config_prepend_false = (
+            Config()
+            .merge("baz", config_1, prepend=False)
+            .merge("baz", config_2, prepend=False)
+        )
+        config_prepend_true = (
+            Config()
+            .merge("baz", config_1, prepend=True)
+            .merge("baz", config_2, prepend=True)
+        )
+
+        self.assertEqual(config_prepend_false.get("baz.foo"), 2)
+        self.assertEqual(config_prepend_false.get("baz.bar"), 3)
+        self.assertEqual(config_prepend_true.get("baz.foo"), 1)
+        self.assertEqual(config_prepend_true.get("baz.bar"), 2)
