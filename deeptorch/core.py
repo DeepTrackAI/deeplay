@@ -1,6 +1,8 @@
 import torch.nn as nn
 import inspect
-from .config import Config
+from .config import Config, ClassSelector, NoneSelector
+from .templates import Node
+from .utils import safe_call
 
 def _match_signature(func, args, kwargs):
     """Returns a dictionary of arguments that match the signature of func.
@@ -9,6 +11,11 @@ def _match_signature(func, args, kwargs):
     sig = inspect.signature(func)
     # remove 'self' from the signature
     sig = sig.replace(parameters=list(sig.parameters.values())[1:])
+
+    # remove arguments in kwargs that are not in the signature
+    for name in list(kwargs.keys()):
+        if name not in sig.parameters:
+            del kwargs[name]
 
     bound = sig.bind(*args, **kwargs)
     return bound.arguments
@@ -35,14 +42,32 @@ class DeepTorchModule(nn.Module):
         """
         return self.config.get(key)
     
-    def create(self, key):
+    def create(self, key, i=None, length=None):
         """ Create a module from the config.
         """
         subconfig = self.config.with_selector(key)
-        template = self.config.get(key)
-        return template.from_config(subconfig)
+        if i is not None:
+            subconfig = subconfig[i]
+
+        template = subconfig.get(NoneSelector())
+
+        if isinstance(template, Node) or inspect.isclass(template) and issubclass(template, DeepTorchModule):
+            return template.from_config(subconfig)
+        elif isinstance(template, nn.Module):
+            return template
+        elif callable(template):
+            return safe_call(template, subconfig.get_parameters())
+        else:
+            return template
+            
+    
+    def create_many(self, key, n):
+        """ Create many modules from the config.
+        """
+
+        return nn.ModuleList([self.create(key, i, length=n) for i in range(n)])
         
-    def set_config(self, config):
+    def set_config(self, config: Config):
         self.config = config
 
     @classmethod
@@ -51,13 +76,21 @@ class DeepTorchModule(nn.Module):
         
         obj = object.__new__(cls)
         obj.set_config(config)
-        obj.__init__()
+
+        # if obj.__init__ has any required positional arguments, we need to pass them. 
+        __init__args = _match_signature(cls.__init__, [], config.get_parameters())
+        obj.__init__(**__init__args)
         return obj
     
     @classmethod
-    def _add_defaults(cls, config):
-        for key, value in cls.defaults.items():
-            config.default(key, value)
+    def _add_defaults(cls, config: Config):
+        if isinstance(cls.defaults, dict):
+            for key, value in cls.defaults.items():
+                config.default(key, value)
+        elif isinstance(cls.defaults, Config):
+            # We set prepend to true to allow the caller to override the defaults.
+            config.merge(NoneSelector(), cls.defaults, as_default=True, prepend=True)
+
         return config
 
     @classmethod
