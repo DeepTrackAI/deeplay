@@ -1,1 +1,1 @@
-from .classification import ImageClassifier
+from .classification import *

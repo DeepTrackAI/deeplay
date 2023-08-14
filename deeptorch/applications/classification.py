@@ -4,45 +4,55 @@ import torch.nn.functional as F
 import pytorch_lightning as pl
 
 from torchmetrics import Accuracy
+from ..core import DeepTorchModule
+from ..config import Config, Ref
+from ..templates import Node
+from ..components import ConvolutionalEncoder, DenseEncoder, CategoricalClassificationHead
 
-from .. import Default, default
-from ..backbones.encoders import Encoder2d
-from ..heads.classification import CategoricalClassificationHead
-from ..connectors import FlattenDense
+nn.AdaptiveAvgPool2d
 
 
-class ImageClassifier(pl.LightningModule):
-    def __init__(self, num_classes, backbone=default, connector=default, head=default):
+class ImageClassifier(DeepTorchModule, pl.LightningModule):
+
+    defaults = (
+        Config()
+        .num_classes(2)
+        .backbone(ConvolutionalEncoder)
+        .connector(nn.Flatten)
+        .head(CategoricalClassificationHead, num_classes=Ref("num_classes"))
+    )
+
+    def __init__(self, num_classes, backbone=None, connector=None, head=None):
         """Image classifier.
 
         Parameters
         ----------
         num_classes : int
             Number of classes.
-        backbone : None, Dict, nn.Module, optional
-            Backbone config. If None, a default Encoder2d backbone is used.
-            If Dict, it is used as kwargs for the backbone class.
+        backbone : None, Config, nn.Module, optional
+            Backbone config. If None, a default Encoder backbone is used.
             If nn.Module, it is used as the backbone.
         connector : None, Dict, nn.Module, optional
             Connector config. Connects the backbone to the head by reducing the
-            dimensionality of the output of the backbone from 3D (width, height, channels)
             to 1D (channels).
         head : None, Dict, nn.Module, optional
             Head config. If None, a default CategoricalClassificationHead head is used.
             If Dict, it is used as kwargs for the head class.
             If nn.Module, it is used as the head.
         """
-        super().__init__()
-        self.num_classes = num_classes
-
-        self.backbone = Default(backbone, Encoder2d, channels_out=[16, 32, 64])
-        self.connector = Default(connector, FlattenDense, out_features=128)
-        self.head = Default(
-            head, CategoricalClassificationHead, num_classes=num_classes
+        super().__init__(
+            num_classes=num_classes,
+            backbone=backbone,
+            connector=connector,
+            head=head,
         )
 
-        self.val_accuracy = Accuracy(task="multiclass", num_classes=10, top_k=1)
-        self.test_accuracy = Accuracy(task="multiclass", num_classes=10, top_k=1)
+        self.num_classes = self.attr("num_classes")
+        self.backbone = self.create("backbone")
+        self.connector = self.create("connector")
+        self.head = self.create("head")
+
+        self.val_accuracy = Accuracy()
 
     def build(self, *args):
         """Build the image classifier.
@@ -94,7 +104,10 @@ class ImageClassifier(pl.LightningModule):
         torch.Tensor
             Output tensor.
         """
-        return self.classifier(x)
+        x = self.backbone(x)
+        x = self.connector(x)
+        x = self.head(x)
+        return x
 
     def classify(self, x):
         """Classify input tensor.
