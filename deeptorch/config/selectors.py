@@ -170,8 +170,14 @@ class ParentalRelation(Selector):
         return self.parent, self.child
     
 class Ref:
-    def __init__(self, selectors):
+    def __init__(self, selectors, func=None):
+        """A reference to a node in the config tree."""
+        self.func = func or (lambda x: x)
         self.selectors = parse_selectors(selectors)
+
+    def __call__(self, x):
+        return self.func(x)
+    
 
 def parse_selectors(x) -> Selector:
     """Parses a string into a Selector object.

@@ -11,6 +11,7 @@ from . import (
     DoubleWildcardSelector,
     IndexSelector,
     NoneSelector,
+    Ref,
     parse_selectors,
 )
 
@@ -72,8 +73,10 @@ class ConfigRule:
             # Create a new config with the root context of the rule
             new_config = Config(config._rules, self.scope_root)
             # Get the value of the ref, should be a unique selector
-            return new_config.get(self.value.selectors, return_dict_if_multiple=False)
-        
+            referenced_value = new_config.get(self.value.selectors, return_dict_if_multiple=False)
+            # Evaluate the ref function
+            return self.value(referenced_value)
+            
         return self.value
 
     def __repr__(self):
@@ -97,12 +100,6 @@ class ConfigRuleWrapper(ConfigRule):
         self.key = value.key
         self.head = value.head
         self.value = value.value
-
-
-class Ref:
-    def __init__(self, selectors):
-        self.selectors = parse_selectors(selectors)
-
 
 
 class Config:
