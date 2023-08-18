@@ -22,7 +22,7 @@ class TestComponentsEncoders(unittest.TestCase):
     def test_encoder_shallow(self):
 
         encoder = ConvolutionalEncoder(depth=2)
-        print(encoder.config)
+        
         self.assertEqual(encoder.depth, 2)
         self.assertEqual(len(encoder.blocks), 2)
         self.assertListEqual(

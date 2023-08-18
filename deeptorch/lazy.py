@@ -136,7 +136,6 @@ class Default:
         elif isinstance(self.value, LazyModule):
             return self.value.build()
         else:
-            print(self.value, self.default, self.args, self.kwargs)
             raise ValueError(f"Invalid value: {self.value}")
 
     def _try_build(self, default, *args, **kwargs):
