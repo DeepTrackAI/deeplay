@@ -388,6 +388,17 @@ class TestConfig(unittest.TestCase):
         self.assertEqual(config_2.baz.get("bar.value"), 1)
         self.assertEqual(config_2.baz.bar.get("value"), 1)
 
+    def test_Ref_4(self):
+
+        config = (
+            Config()
+            .foo(1)
+            .bar(value=Ref("foo", lambda x: x + 1))
+        )
+
+        self.assertEqual(config.get("foo"), 1)
+        self.assertEqual(config.get("bar.value"), 2)
+
     def test_merge_default(self):
 
         config_1 = (
@@ -417,3 +428,4 @@ class TestConfig(unittest.TestCase):
         self.assertEqual(config_prepend_false.get("baz.bar"), 3)
         self.assertEqual(config_prepend_true.get("baz.foo"), 1)
         self.assertEqual(config_prepend_true.get("baz.bar"), 2)
+
