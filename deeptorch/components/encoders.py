@@ -1,4 +1,4 @@
-from ..templates import Node
+from ..templates import Layer
 from ..core import DeepTorchModule
 from ..config import Config, Ref
 
@@ -9,13 +9,13 @@ class Encoder(DeepTorchModule):
     defaults = (
         Config()
         .depth(4)
-        .blocks(Node("layer") >> Node("activation") >> Node("pool"))
+        .blocks(Layer("layer") >> Layer("activation") >> Layer("pool"))
     )
 
     def __init__(self, depth=4, blocks=None):
         """Encoder module.
         blocks:
-            Default: Node("layer") >> Node("activation") >> Node("pool")
+            Default: Layer("layer") >> Layer("activation") >> Layer("pool")
             Specification for the blocks of the encoder.
         depth:
             Default: 4
@@ -24,7 +24,7 @@ class Encoder(DeepTorchModule):
         super().__init__(depth=depth, blocks=blocks)
 
         self.depth = self.attr("depth")
-        self.blocks = self.create_many("blocks", self.depth)
+        self.blocks = nn.ModuleList(self.create_many("blocks", self.depth))
 
     def forward(self, x):
         for block in self.blocks:

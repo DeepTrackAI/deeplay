@@ -6,11 +6,8 @@ import pytorch_lightning as pl
 from torchmetrics import Accuracy
 from ..core import DeepTorchModule
 from ..config import Config, Ref
-from ..templates import Node
+from ..templates import Layer
 from ..components import ConvolutionalEncoder, DenseEncoder, CategoricalClassificationHead
-
-nn.AdaptiveAvgPool2d
-
 
 class ImageClassifier(DeepTorchModule, pl.LightningModule):
 
@@ -53,43 +50,6 @@ class ImageClassifier(DeepTorchModule, pl.LightningModule):
         self.head = self.create("head")
 
         self.val_accuracy = Accuracy()
-
-    def build(self, *args):
-        """Build the image classifier.
-
-
-        Parameters
-        ----------
-        args : torch.Tensor or tuple
-            Example input. Should contain batch dimension.
-            If tuple, it's interpreted as the shape of the input tensor and
-            a random tensor is generated.
-            Can be multiple arguments if the backbone requires multiple inputs.
-
-        """
-        backbone = self.backbone.build()
-        connector = self.connector.build()
-        head = self.head.build()
-
-        self.classifier = nn.Sequential(backbone, connector, head)
-
-        # Conduct a dry run to initialize the model
-        model_inputs = []
-        for arg in args:
-            if isinstance(arg, torch.Tensor):
-                arg = arg.to(self.device).to(self.dtype)
-
-            elif isinstance(arg, tuple):
-                arg = torch.rand(*arg).to(self.device).to(self.dtype)
-
-            else:
-                raise ValueError(f"Invalid input type {type(arg)}")
-
-            model_inputs.append(arg)
-
-        self.classifier(*model_inputs)
-
-        return self
 
     def forward(self, x):
         """Forward pass.

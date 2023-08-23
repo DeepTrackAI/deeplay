@@ -1,7 +1,7 @@
 import unittest
 import torch
 import torch.nn as nn
-from .. import Config, Node, ConvolutionalEncoder
+from .. import Config, Layer, ConvolutionalEncoder
 
 
 class TestComponentsEncoders(unittest.TestCase):
@@ -22,12 +22,13 @@ class TestComponentsEncoders(unittest.TestCase):
     def test_encoder_shallow(self):
 
         encoder = ConvolutionalEncoder(depth=2)
-        
+
         self.assertEqual(encoder.depth, 2)
         self.assertEqual(len(encoder.blocks), 2)
         self.assertListEqual(
             [encoder.blocks[i]["layer"].out_channels for i in range(encoder.depth)],
-            [8, 16]
+            [8, 16],
+
         )
 
         y = encoder(torch.randn(1, 1, 28, 28))

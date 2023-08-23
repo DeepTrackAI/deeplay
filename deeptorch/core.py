@@ -1,7 +1,7 @@
 import torch.nn as nn
 import inspect
-from .config import Config, ClassSelector, NoneSelector
-from .templates import Node
+from .config import Config, ClassSelector, NoneSelector, IndexSelector
+from .templates import Layer
 from .utils import safe_call
 
 def _match_signature(func, args, kwargs):
@@ -51,7 +51,7 @@ class DeepTorchModule(nn.Module):
 
         template = subconfig.get(NoneSelector())
 
-        if isinstance(template, Node) or inspect.isclass(template) and issubclass(template, DeepTorchModule):
+        if isinstance(template, Layer) or inspect.isclass(template) and issubclass(template, DeepTorchModule):
             return template.from_config(subconfig)
         elif isinstance(template, nn.Module):
             return template
@@ -65,8 +65,30 @@ class DeepTorchModule(nn.Module):
         """ Create many modules from the config.
         """
 
-        return nn.ModuleList([self.create(key, i, length=n) for i in range(n)])
+        return [self.create(key, i, length=n) for i in range(n)]
+    
+    def create_all(self, key):
+        """ Create all modules from the config.
+        """
+        subconfig:Config = self.config.with_selector(key)
+        rules = subconfig._get_all_matching_rules(NoneSelector(), match_key=True, allow_indexed=True)
+        print(rules)
+        rules_that_are_indexed = []
+        for rule in rules:
+            body, head = rule.pop()
+            if isinstance(head, IndexSelector):
+                rules_that_are_indexed.append(rule)
+
+        indexes = set()
+        for rule in rules_that_are_indexed:
+            body, head = rule.pop()
+            rule_indexes = head.get_list_of_indices()
+            indexes.update(*rule_indexes)
         
+        indexes = sorted(indexes)
+        max_index = indexes[-1] if indexes else 0
+
+        return self.create_many(key, max_index + 1)
     def set_config(self, config: Config):
         self.config = config
 

@@ -1,4 +1,4 @@
-from ... import Node, DeepTorchModule, Config, Ref
+from ... import Layer, DeepTorchModule, Config, Ref
 
 import torch.nn as nn
 
@@ -7,7 +7,7 @@ class CategoricalClassificationHead(DeepTorchModule):
     defaults = (
         Config()
         .num_classes(2)
-        .output(Node("layer") >> Node("activation"))
+        .output(Layer("layer") >> Layer("activation"))
         .output.layer(nn.LazyLinear, out_features=Ref("num_classes"))
         .output.activation(nn.Softmax, dim=-1)
     )

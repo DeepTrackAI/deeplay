@@ -1,6 +1,6 @@
 import unittest
 from ..core import DeepTorchModule
-from ..templates import Node
+from ..templates import Layer
 from ..config import Config
 
 class TestCore(unittest.TestCase):
@@ -8,7 +8,7 @@ class TestCore(unittest.TestCase):
     class MockDTModule(DeepTorchModule):
         defaults = {
             "bias": 0,
-            "block": Node("layer"),
+            "block": Layer("layer"),
             "block.layer": lambda scale: lambda x: x * scale,
             "block.layer.scale": 1,
         }
@@ -96,3 +96,51 @@ class TestCore(unittest.TestCase):
         self.assertEqual(module(1), 4)
         self.assertEqual(module(2), 7)
         self.assertEqual(module(3), 10)
+
+    def test_create_all(self):
+
+        class MockDTModule2(DeepTorchModule):
+            defaults = (
+                Config()
+            )
+
+            def __init__(self, foo):
+                self.foo = self.create_all("foo")
+
+        module = MockDTModule2.from_config(
+            Config().foo[0](1)
+        )
+        self.assertEqual(len(module.foo), 1)
+        self.assertEqual(module.foo[0], 1)
+
+        module = MockDTModule2.from_config(
+            Config()
+            .foo[0](1)
+            .foo[1](2)
+        )
+        self.assertEqual(len(module.foo), 2)
+        self.assertEqual(module.foo[0], 1)
+        self.assertEqual(module.foo[1], 2)
+
+        module = MockDTModule2.from_config(
+            Config()
+            .foo(None)
+            .foo[2](3)
+        )
+        self.assertEqual(len(module.foo), 3)
+        self.assertEqual(module.foo[0], None)
+        self.assertEqual(module.foo[1], None)
+        self.assertEqual(module.foo[2], 3)
+
+        module = MockDTModule2.from_config(
+            Config()
+            .foo[0:4](1)
+            .foo[0:4:2](2)
+        )
+        self.assertEqual(len(module.foo), 4)
+        self.assertEqual(module.foo[0], 2)
+        self.assertEqual(module.foo[1], 1)
+        self.assertEqual(module.foo[2], 2)
+        self.assertEqual(module.foo[3], 1)
+
+

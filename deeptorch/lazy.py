@@ -77,7 +77,7 @@ class LazyModule(nn.Module):
 
 
 class Default:
-    """Layer node with default value.
+    """Layer Layer with default value.
 
     For example, if you want to use a default nn.Conv2d layer, you can use
     `Default(config, nn.Conv2d)`. If `config` is None, a default nn.Conv2d

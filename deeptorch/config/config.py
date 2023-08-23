@@ -173,7 +173,7 @@ class Config:
 
         if isinstance(head, IndexSelector):
             new_head = IndexSelector(head.selector, head.index, length)
-            integers_to_populate = new_head._get_list_of_indices()
+            integers_to_populate = new_head.get_list_of_indices()
             
             if callable(generator):
                 generator = [generator(i) for i in integers_to_populate]
@@ -261,10 +261,11 @@ To populate more, specify the length with .populate(..., length=desired_length)"
     def __repr__(self):
         return "Config(\n" + "\n".join([str(rule) for rule in self._rules]) + "\n)"
 
-    def _get_all_matching_rules(self, selectors, match_key=True):
+    def _get_all_matching_rules(self, selectors, match_key=True, allow_indexed=False):
         contextualized_selectors = self._context + selectors
         return [
-            rule for rule in self._rules if rule.matches(contextualized_selectors, match_key=match_key)
+            rule for rule in self._rules 
+                 if rule.matches(contextualized_selectors, match_key=match_key)
         ]
     
     def _is_last_selector_a(self, type):

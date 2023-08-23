@@ -99,7 +99,7 @@ class IndexSelector(Selector):
         self.length = length
 
 
-    def _get_list_of_indices(self):
+    def get_list_of_indices(self):
         if isinstance(self.index, int):
             return [self.index]
 
@@ -122,7 +122,7 @@ class IndexSelector(Selector):
     def _regex(self):
         # length is the number of elements in the list being indexed
 
-        integers = self._get_list_of_indices()
+        integers = self.get_list_of_indices()
         integers = "|".join([str(i) for i in integers])
         return self.selector._regex() + f"\\[({integers})\\]"
 
@@ -131,7 +131,7 @@ class IndexSelector(Selector):
 
     def __iter__(self):
         for selector in self.selector:
-            for i in self._get_list_of_indices():
+            for i in self.get_list_of_indices():
                 yield f"{selector}[{i}]"
 
     def key(self):
@@ -171,7 +171,7 @@ class ParentalRelation(Selector):
     
 class Ref:
     def __init__(self, selectors, func=None):
-        """A reference to a node in the config tree."""
+        """A reference to a Layer in the config tree."""
         self.func = func or (lambda x: x)
         self.selectors = parse_selectors(selectors)
 

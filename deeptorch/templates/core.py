@@ -2,26 +2,26 @@ import torch.nn as nn
 from ..config import Config
 from ..utils import safe_call
 
-__all__ = ["Node", "InputNode", "NodeSequence", "NodeAdd", "NodeSub", "NodeMul", "NodeDiv", "Template"]
+__all__ = ["Layer", "InputLayer", "LayerSequence", "LayerAdd", "LayerSub", "LayerMul", "LayerDiv", "Template"]
 
-class Node:
+class Layer:
     def __init__(self, className="", **kwargs):
         self.className = className
     
     def __rshift__(self, other):
-        return NodeSequence(self, other)
+        return LayerSequence(self, other)
     
     def __add__(self, other):
-        return NodeAdd(self, other)
+        return LayerAdd(self, other)
     
     def __sub__(self, other):
-        return NodeSub(self, other)
+        return LayerSub(self, other)
     
     def __mul__(self, other):
-        return NodeMul(self, other)
+        return LayerMul(self, other)
     
     def __div__(self, other):
-        return NodeDiv(self, other)
+        return LayerDiv(self, other)
     
     def build(self, config: Config):
         subconfig = config.with_selector(self.className)
@@ -40,31 +40,31 @@ class Node:
     def from_config(self, config):
         return self.build(config)
 
-class InputNode(Node):
+class InputLayer(Layer):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
     
     def build(self, config):
         return nn.Identity()
 
-class NodeSequence(Node):
+class LayerSequence(Layer):
 
-    def __init__(self, *nodes, **kwargs):
+    def __init__(self, *Layers, **kwargs):
         super().__init__(**kwargs)
-        self.nodes = nodes
+        self.Layers = Layers
 
     def __rshift__(self, other):
-        return NodeSequence(*self.nodes, other)
+        return LayerSequence(*self.Layers, other)
 
     def build(self, config):
         
         modules = {}
-        for node in self.nodes:
-            name = node.className or node.__class__.__name__
-            module = node.build(config)
+        for Layer in self.Layers:
+            name = Layer.className or Layer.__class__.__name__
+            module = Layer.build(config)
             idx = 0
             while name in modules:
-                name = f"{node.className}({idx})"
+                name = f"{Layer.className}({idx})"
                 idx += 1
             
             modules[name] = module
@@ -72,7 +72,7 @@ class NodeSequence(Node):
         return Template(modules)
 
 
-class NodeAdd(Node):
+class LayerAdd(Layer):
 
     def __init__(self, a, b, **kwargs):
         super().__init__(**kwargs)
@@ -83,7 +83,7 @@ class NodeAdd(Node):
         return _TorchAdd(self.a.build(config), self.b.build(config))
 
 
-class NodeSub(Node):
+class LayerSub(Layer):
 
     def __init__(self, a, b, **kwargs):
         super().__init__(**kwargs)
@@ -94,7 +94,7 @@ class NodeSub(Node):
         return _TorchSub(self.a.build(config), self.b.build(config))
 
 
-class NodeMul(Node):
+class LayerMul(Layer):
 
     def __init__(self, a, b, **kwargs):
         super().__init__(**kwargs)
@@ -104,7 +104,7 @@ class NodeMul(Node):
     def build(self, config):
         return _TorchMul(self.a.build(config), self.b.build(config))
 
-class NodeDiv(Node):
+class LayerDiv(Layer):
 
     def __init__(self, a, b, **kwargs):
         super().__init__(**kwargs)
