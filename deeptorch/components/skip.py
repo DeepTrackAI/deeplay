@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 
 
+
 class Skip(DeepTorchModule):
 
     defaults = (
@@ -30,15 +31,15 @@ class Skip(DeepTorchModule):
         self.inputs = self.create_all("inputs")
 
     def forward(self, x):
-        inputs = [inp(x) for inp in self.inputs]
+        inputs = [inp(x) if inp is not None else x for inp in self.inputs]
         return self.func(*inputs)
 
 
-class Concatenate(Skip):
+class Concatenate(DeepTorchModule):
 
     defaults = (
         Config()
-        .merge(Skip.defaults)
+        .merge(None, Skip.defaults)
         .dim(1)
     )
 
@@ -60,7 +61,7 @@ class Concatenate(Skip):
         self.inputs = self.create_all("inputs")
 
     def forward(self, x):
-        inputs = [inp(x) for inp in self.inputs]
+        inputs = [inp(x) if inp is not None else x for inp in self.inputs]
         return torch.cat(inputs, dim=self.dim)
     
 
@@ -68,7 +69,7 @@ class Add(Skip):
 
     defaults = (
         Config()
-        .merge(Skip.defaults)
+        .merge(None, Skip.defaults)
     )
 
     def __init__(self, inputs):

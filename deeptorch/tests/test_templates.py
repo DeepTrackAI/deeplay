@@ -19,11 +19,11 @@ class TestTemplates(unittest.TestCase):
     def test_Layer(self):
         # Example usage:
 
-        Layer = Layer("foo")
+        layer = Layer("foo")
 
         config = Config().foo(MockModule, a=1, b=2)
 
-        built_Layer = Layer.build(config)
+        built_Layer = layer.build(config)
 
         self.assertEqual(built_Layer.a, 1)
         self.assertEqual(built_Layer.b, 2)

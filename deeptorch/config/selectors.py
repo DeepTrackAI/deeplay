@@ -137,6 +137,9 @@ class IndexSelector(Selector):
     def key(self):
         return self.selector.key()
 
+    def pop(self):
+        body, head = self.selector.pop()
+        return body, IndexSelector(head, self.index, self.length)
 class ParentalRelation(Selector):
 
     def __init__(self, parent: Selector, child: Selector):

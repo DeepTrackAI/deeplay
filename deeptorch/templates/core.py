@@ -2,11 +2,12 @@ import torch.nn as nn
 from ..config import Config
 from ..utils import safe_call
 
-__all__ = ["Layer", "InputLayer", "LayerSequence", "LayerAdd", "LayerSub", "LayerMul", "LayerDiv", "Template"]
+__all__ = ["Layer", "LayerInput", "OutputOf", "LayerSequence", "LayerAdd", "LayerSub", "LayerMul", "LayerDiv", "Template"]
 
 class Layer:
-    def __init__(self, className="", **kwargs):
+    def __init__(self, className="", uid=None, **kwargs):
         self.className = className
+        self.uid = uid
     
     def __rshift__(self, other):
         return LayerSequence(self, other)
@@ -35,17 +36,52 @@ class Layer:
             return module.from_config(subconfig)
         
         parameters = subconfig.get_parameters()
-        return safe_call(module, parameters)
+        module = safe_call(module, parameters)
+
+        uid = parameters.get("uid", None) or self.uid
+        if uid:
+            config.add_ref(uid, module)
+
+        return module
     
     def from_config(self, config):
         return self.build(config)
 
-class InputLayer(Layer):
+class LayerInput(Layer):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
     
     def build(self, config):
         return nn.Identity()
+    
+class OutputOf(Layer):
+    """ A layer that references a specific module in the config.
+    """
+    def __init__(self, selector, **kwargs):
+        super().__init__(**kwargs)
+        self.selector = selector
+
+    def build(self, config: Config):
+        module = config.get_ref(self.selector)
+        if module is None:
+            raise ValueError(f"Module not found for selector {self.selector}. Make sure the module is created before it is referenced.")
+        return RemoteModule(module)
+    
+class RemoteModule(nn.Module):
+    """ A module that references a module in another module."""
+    def __init__(self, module):
+        super().__init__()
+        self.remote = module
+        self._x = None
+        module.register_forward_hook(self._hook)
+    
+    def _hook(self, module, input, output):
+        self._x = output
+
+    def forward(self, x):
+        return self._x
+
+
 
 class LayerSequence(Layer):
 

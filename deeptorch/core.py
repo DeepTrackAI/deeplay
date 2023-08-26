@@ -50,15 +50,26 @@ class DeepTorchModule(nn.Module):
             subconfig = subconfig[i]
 
         template = subconfig.get(NoneSelector())
+        uid = subconfig.get("uid", None)
 
-        if isinstance(template, Layer) or inspect.isclass(template) and issubclass(template, DeepTorchModule):
+        # uid is set in Layer
+        if isinstance(template, Layer):
             return template.from_config(subconfig)
+        
+        # Here we need to add uid
+        if inspect.isclass(template) and issubclass(template, DeepTorchModule):
+            module = template.from_config(subconfig)
         elif isinstance(template, nn.Module):
-            return template
+            module = template
         elif callable(template):
-            return safe_call(template, subconfig.get_parameters())
+            module = safe_call(template, subconfig.get_parameters())
         else:
-            return template
+            module = template
+
+        if uid is not None:
+            self.config.add_ref(uid, module)
+        
+        return module
             
     
     def create_many(self, key, n):
@@ -72,23 +83,22 @@ class DeepTorchModule(nn.Module):
         """
         subconfig:Config = self.config.with_selector(key)
         rules = subconfig._get_all_matching_rules(NoneSelector(), match_key=True, allow_indexed=True)
-        print(rules)
+        indexes = set()
         rules_that_are_indexed = []
         for rule in rules:
-            body, head = rule.pop()
-            if isinstance(head, IndexSelector):
-                rules_that_are_indexed.append(rule)
+            if isinstance(rule.head, IndexSelector):
+                rule_indexes = rule.head.get_list_of_indices()
+                if not isinstance(rule_indexes, list):
+                    rule_indexes = [rule_indexes]
+                indexes.update(rule_indexes)
 
-        indexes = set()
-        for rule in rules_that_are_indexed:
-            body, head = rule.pop()
-            rule_indexes = head.get_list_of_indices()
-            indexes.update(*rule_indexes)
         
         indexes = sorted(indexes)
         max_index = indexes[-1] if indexes else 0
 
         return self.create_many(key, max_index + 1)
+    
+    
     def set_config(self, config: Config):
         self.config = config
 

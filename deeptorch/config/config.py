@@ -45,12 +45,15 @@ class ConfigRule:
         # In the future, we should consider wildcard selectors as less specific
         return True
     
-    def matches(self, context, match_key=False):
+    def matches(self, context, match_key=False, allow_indexed=False):
+        
+        head = ClassSelector(self.key) if allow_indexed else self.head
         if match_key:
-            full_selector = self.selector + self.head
+            full_selector = self.selector + head
         else:
             full_selector = self.selector
 
+        
         # Handle the case where either or both the full selector and the context are None
         full_selector_is_none = isinstance(full_selector, NoneSelector)
         context_is_none = isinstance(context, NoneSelector)
@@ -60,6 +63,8 @@ class ConfigRule:
             return False
 
         regex = full_selector.regex()
+
+
 
         for selector in context:
             if re.match(regex, selector):
@@ -71,7 +76,7 @@ class ConfigRule:
 
         if isinstance(self.value, Ref):
             # Create a new config with the root context of the rule
-            new_config = Config(config._rules, self.scope_root)
+            new_config = Config(config._rules, config._refs, self.scope_root)
             # Get the value of the ref, should be a unique selector
             referenced_value = new_config.get(self.value.selectors, return_dict_if_multiple=False)
             # Evaluate the ref function
@@ -103,11 +108,13 @@ class ConfigRuleWrapper(ConfigRule):
 
 
 class Config:
-    def __init__(self, rules=[], context=NoneSelector()):
+    
+    
+    def __init__(self, rules=[], refs=None, context=NoneSelector()):
 
         self._rules = rules.copy()
+        self._refs = {} if refs is None else refs.copy()
         self._context = context
-
 
     def __getattr__(self, name):
         match name:
@@ -117,7 +124,7 @@ class Config:
                 selector = DoubleWildcardSelector()
             case _:
                 selector = ClassSelector(name)
-        return Config(self._rules, self._context + selector)
+        return Config(self._rules, self._refs, self._context + selector)
     
     def __getitem__(self, index):
         if isinstance(self._context, NoneSelector):
@@ -127,7 +134,7 @@ class Config:
             index, length = index
         else:
             length = None
-        return Config(self._rules, self._context[index, length])
+        return Config(self._rules, self._refs, self._context[index, length])
     
     def __call__(self, *x, **kwargs):
         
@@ -137,6 +144,7 @@ class Config:
         if len(x) == 1:
             x = x[0]
             selector, key = self._context.pop()
+
             self._rules.append(ConfigRule(selector, key, x))
 
         for key, value in kwargs.items():
@@ -146,7 +154,7 @@ class Config:
         # When you call a config, it should reset the selector
         # This is what allows the chained syntax
         # Config().a.b.c(1).d.e.f(2)
-        return Config(self._rules)
+        return Config(self._rules, self._refs)
     
     
 
@@ -210,7 +218,7 @@ To populate more, specify the length with .populate(..., length=desired_length)"
                     )
                 )
         
-        return Config(self._rules)
+        return Config(self._rules, self._refs)
 
     def default(self, selectors, value):
         return self.set(selectors, value, default=True)
@@ -229,7 +237,7 @@ To populate more, specify the length with .populate(..., length=desired_length)"
         else:
             self._rules = self._rules + additional_rules
 
-        return Config(self._rules)
+        return Config(self._rules, self._refs)
     
     def get(self, selectors, default=None, return_dict_if_multiple=False):
         
@@ -249,6 +257,14 @@ To populate more, specify the length with .populate(..., length=desired_length)"
     def get_module(self):
         return self.get(NoneSelector())
     
+    def add_ref(self, name, config):
+        if name in self._refs:
+            warnings.warn(f"UID {name} already exists with value {self._refs[name]}. It will be overwritten.")
+        self._refs[name] = config
+
+    def get_ref(self, name):
+        return self._refs[name]
+
     def get_parameters(self):
         rules = self._get_all_matching_rules(NoneSelector(), match_key=False)
         most_specific = self._take_most_specific_per_key(rules)
@@ -256,7 +272,7 @@ To populate more, specify the length with .populate(..., length=desired_length)"
 
     def with_selector(self, selectors):
         selectors = parse_selectors(selectors)
-        return Config(self._rules, self._context + selectors)
+        return Config(self._rules, self._refs, self._context + selectors)
     
     def __repr__(self):
         return "Config(\n" + "\n".join([str(rule) for rule in self._rules]) + "\n)"
@@ -265,7 +281,7 @@ To populate more, specify the length with .populate(..., length=desired_length)"
         contextualized_selectors = self._context + selectors
         return [
             rule for rule in self._rules 
-                 if rule.matches(contextualized_selectors, match_key=match_key)
+                 if rule.matches(contextualized_selectors, match_key=match_key, allow_indexed=allow_indexed)
         ]
     
     def _is_last_selector_a(self, type):
