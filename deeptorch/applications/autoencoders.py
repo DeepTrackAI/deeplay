@@ -1,62 +1,82 @@
-# import torch
-# import torch.nn as nn
-# import torch.nn.functional as F
-# import pytorch_lightning as pl
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import pytorch_lightning as pl
 
-# from .. import Default, default
+from .. import Config, Ref, DeepTorchModule, Layer, ConvolutionalEncoder, ConvolutionalDecoder
 # from ..backbones.encoders import Encoder2d
 # from ..backbones.decoders import Decoder2d
-# from ..connectors import FlattenDense
+# from ..connectors import FlattenDenseq
 
+class EncoderDecoder(DeepTorchModule):
 
-# class ImageAutoEncoder(pl.LightningModule):
-#     def __init__(
-#         self,
-#         latent_dim=32,
-#         encoder=default,
-#         encoder_connector=default,
-#         decoder_connector=default,
-#         decoder=default,
-#     ):
-#         """
-#         Image autoencoder.
-#         Evaluated as:
-#            encoder -> encoder_connector -> decoder_connector -> decoder
-#         Where encoder transforms the image to a downsampled representation,
-#         encoder_connector transforms the representation to a latent space,
-#         decoder_connector transforms the latent space to a spatial representation,
-#         and decoder transforms the spatial representation to a reconstructed image.
+    defaults = (
+        Config()
+        .depth(4)
+        .encoder.depth(Ref("depth"))
+        .encoder.layer.padding(1)
+        .decoder.depth(Ref("depth"))
+        .bottleneck(nn.Identity)
+    )
 
-#         Parameters
-#         ----------
-#         latent_dim : int
-#             Dimensionality of the latent space.
-#         encoder : None, Dict, nn.Module, optional
-#             Encoder config. If None, a default Encoder2d backbone is used.
-#             If Dict, it is used as kwargs for the backbone class.
-#             If nn.Module, it is used as the backbone.
-#         encoder_connector : None, Dict, nn.Module, optional
-#             Encoder connector config. If None, a default FlattenDense connector is used.
-#             If Dict, it is used as kwargs for the connector class.
-#             If nn.Module, it is used as the connector.
-#         decoder_connector : None, Dict, nn.Module, optional
-#             Decoder connector config. If None, a default DenseUnflatten connector is used.
-#             If Dict, it is used as kwargs for the connector class.
-#             If nn.Module, it is used as the connector.
-#         decoder : None, Dict, nn.Module, optional
-#             Decoder config. If None, a default Decoder2d backbone is used.
-#             If Dict, it is used as kwargs for the backbone class.
-#             If nn.Module, it is used as the backbone.
-#         """
+    def __init__(self, depth=4, encoder=None, bottleneck=None, decoder=None):
+        super().__init__(depth=depth, encoder=encoder, bottleneck=bottleneck, decoder=decoder)
 
-#         super().__init__()
-#         self.latent_dim = latent_dim
+        self.encoder = self.create("encoder")
+        self.decoder = self.create("decoder")
 
-#         self.encoder = Default(encoder, Encoder2d, channels_out=[16, 32, 64])
-#         self.encoder_connector = Default(
-#             encoder_connector, FlattenDense, out_features=128
-#         )
-#         self.decoder_connector = Default(
-#             decoder_connector, DenseUnflatten, out_features=128
-#         )
-#         self.decoder = Default(decoder, Decoder2d, channels_in=[64, 32, 16])
+    def forward(self, x):
+        return self.decoder(self.encoder(x))
+
+class ConvolutionalEncoderDecoder(EncoderDecoder):
+    defaults = (
+        Config()
+        .merge(None, EncoderDecoder.defaults)
+        .encoder(ConvolutionalEncoder)
+        .decoder(ConvolutionalDecoder)
+    )
+
+class Autoencoder(DeepTorchModule, pl.LightningModule):
+
+    defaults = (
+        Config()
+        .backbone(EncoderDecoder)
+        .head(nn.LazyConv2d, out_channels=1, kernel_size=1, stride=1)
+    )
+
+    def __init__(self, backbone=None, head=None):
+        super().__init__(backbone=backbone, head=head)
+
+        self.backbone = self.create("backbone")
+        self.head = self.create("head")
+
+    def forward(self, x):
+        return self.head(self.backbone(x))
+    
+    def training_step(self, batch, batch_idx):
+        x, y = batch
+        y_hat = self(x)
+        loss = F.mse_loss(y_hat, x)
+        self.log("train_loss", loss)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        x, y = batch
+        y_hat = self(x)
+        loss = F.mse_loss(y_hat, x)
+        self.log("val_loss", loss)
+        return loss
+
+    def test_step(self, batch, batch_idx):
+        x, y = batch
+        y_hat = self(x)
+        loss = F.mse_loss(y_hat, x)
+        self.log("test_loss", loss)
+        return loss
+
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+        return optimizer
+
+    
+
