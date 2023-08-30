@@ -140,6 +140,8 @@ class IndexSelector(Selector):
     def pop(self):
         body, head = self.selector.pop()
         return body, IndexSelector(head, self.index, self.length)
+
+
 class ParentalRelation(Selector):
 
     def __init__(self, parent: Selector, child: Selector):
@@ -180,6 +182,35 @@ class Ref:
 
     def __call__(self, x):
         return self.func(x)
+    
+
+class ForwardHook:
+    def __init__(self, func):
+        """Defers the evaluation of a config parameter until the forward pass.
+
+        This is useful for layers that need to be created after the input is known,
+        such as bottleneck layers.
+
+        Parameters
+        ----------
+        func : callable
+            A function that takes 
+            - module: nn.Module
+            - input: Tensor
+            and returns the desired value.
+        """
+        self.func = func
+        self.value = None
+        self.has_been_initialized = False
+
+    def __call__(self, module, x):
+        if self.has_been_initialized:
+            return self.value
+        self.has_been_initialized = True
+        self.value = self.func(module, x)
+        return self.value
+)
+
     
 
 def parse_selectors(x) -> Selector:

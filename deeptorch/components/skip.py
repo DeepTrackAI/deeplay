@@ -88,5 +88,3 @@ class Add(Skip):
     def forward(self, x):
         inputs = [inp(x) for inp in self.inputs]
         return sum(inputs)
-    
-

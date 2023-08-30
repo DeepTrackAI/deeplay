@@ -1,6 +1,6 @@
 import torch.nn as nn
 import inspect
-from .config import Config, ClassSelector, NoneSelector, IndexSelector
+from .config import Config, ClassSelector, NoneSelector, IndexSelector, ForwardHook
 from .templates import Layer
 from .utils import safe_call
 
@@ -19,6 +19,7 @@ def _match_signature(func, args, kwargs):
 
     bound = sig.bind(*args, **kwargs)
     return bound.arguments
+
 
 class DeepTorchModule(nn.Module):
 
@@ -50,9 +51,15 @@ class DeepTorchModule(nn.Module):
             subconfig = subconfig[i]
 
         template = subconfig.get(NoneSelector())
-        uid = subconfig.get("uid", None)
+        parameters = subconfig.get_parameters()
+        uid = parameters.get("uid", None)
 
-        # uid is set in Layer
+        # If the template or any of its arguments are a ForwardHook, we
+        # defer the creation of the module until the forward pass.
+        if self._has_any_uninitialized_forward_hooks(template, parameters):
+            return self._register_forward_hook(key, i, length)
+         
+        # uid is set in Layer   
         if isinstance(template, Layer):
             return template.from_config(subconfig)
         
@@ -98,6 +105,33 @@ class DeepTorchModule(nn.Module):
 
         return self.create_many(key, max_index + 1)
     
+    def __setattr__(self, key, value):
+        if isinstance(value, UninitializedModule):
+            self.register_forward_pre_hook(value.create_hook(key))
+        return super().__setattr__(key, value) 
+
+    def _has_any_uninitialized_forward_hooks(self, template, parameters):
+        ...
+    
+    def _register_forward_hook(self):
+        """ Register a forward hook to create a module on the fly.
+        """
+        is_first_pass = True
+        def hook(module, input):
+            if not is_first_pass:
+                return
+            
+            if isinstance(template, ForwardHook):
+                template = template(module, input)
+            
+            parameters = {
+                key: value if not isinstance(value, ForwardHook) else value(module, input)
+                for key, value in parameters.items()
+            }
+            
+            module_type = safe_call(template, parameters)
+            module.add_module("module", module_type)
+        return hook
     
     def set_config(self, config: Config):
         self.config = config
@@ -141,3 +175,15 @@ class DeepTorchModule(nn.Module):
         config = cls._add_defaults(config)
 
         return config
+
+class UninitializedModule:
+
+    def __init__(self, factory):
+        self.factory = factory
+
+    def create_hook(self, key):
+        def hook(module, input):
+            module_type = self.factory(module, input)
+            module.__setattr__(key, module)
+            return None
+        return hook

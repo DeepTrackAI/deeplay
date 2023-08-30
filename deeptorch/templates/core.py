@@ -53,7 +53,20 @@ class LayerInput(Layer):
     
     def build(self, config):
         return nn.Identity()
-    
+
+class InputOf(Layer):
+    """ A layer that references a specific module in the config.
+    """
+    def __init__(self, selector, **kwargs):
+        super().__init__(**kwargs)
+        self.selector = selector
+
+    def build(self, config: Config):
+        module = config.get_ref(self.selector)
+        if module is None:
+            raise ValueError(f"Module not found for selector {self.selector}. Make sure the module is created before it is referenced.")
+        return RemoteModule(module)
+
 class OutputOf(Layer):
     """ A layer that references a specific module in the config.
     """
@@ -69,14 +82,22 @@ class OutputOf(Layer):
     
 class RemoteModule(nn.Module):
     """ A module that references a module in another module."""
-    def __init__(self, module):
+
+
+    def __init__(self, module:nn.Module, take_output=True):
         super().__init__()
         self.remote = module
         self._x = None
-        module.register_forward_hook(self._hook)
-    
-    def _hook(self, module, input, output):
+        if take_output:
+            module.register_forward_hook(self._take_output)
+        else:
+            module.register_forward_pre_hook(self._hook)
+
+    def _take_output(self, module, input, output):
         self._x = output
+    
+    def _take_input(self, module, input):
+        self._x = input
 
     def forward(self, x):
         return self._x

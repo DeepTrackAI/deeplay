@@ -10,6 +10,7 @@ class Encoder(DeepTorchModule):
         Config()
         .depth(4)
         .blocks(Layer("layer") >> Layer("activation") >> Layer("pool"))
+        
     )
 
     def __init__(self, depth=4, blocks=None):
