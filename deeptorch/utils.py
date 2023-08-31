@@ -1,5 +1,7 @@
 import inspect
 
+__all__ = ["safe_call"]
+
 
 def safe_call(cls, kwargs):
     """Safely call a callable object.

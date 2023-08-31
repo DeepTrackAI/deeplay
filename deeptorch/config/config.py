@@ -1,11 +1,7 @@
-__all__ = ["Config", "Ref"]
-
 import re
 import warnings
 
 from . import (
-    KEY_BLOCK_TEMPLATE,
-    KEY_LAYER_CLASS,
     ClassSelector,
     WildcardSelector,
     DoubleWildcardSelector,
@@ -14,6 +10,8 @@ from . import (
     Ref,
     parse_selectors,
 )
+
+__all__ = ["Config", "ForwardHook"]
 
 
 class ConfigRule:

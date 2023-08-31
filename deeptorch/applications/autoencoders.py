@@ -16,6 +16,8 @@ from .. import (
 # from ..backbones.decoders import Decoder2d
 # from ..connectors import FlattenDenseq
 
+__all__ = ["Autoencoder", "EncoderDecoder", "ConvolutionalEncoderDecoder"]
+
 
 class EncoderDecoder(DeepTorchModule):
     defaults = (

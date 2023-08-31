@@ -5,6 +5,8 @@ from ..config import Config, Ref
 import torch
 import torch.nn as nn
 
+__all__ = ["Bottleneck"]
+
 
 class Bottleneck:
     defaults = (

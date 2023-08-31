@@ -4,6 +4,8 @@ from ..config import Config, Ref
 
 import torch.nn as nn
 
+__all__ = ["Decoder", "ConvolutionalDecoder"]
+
 
 class Decoder(DeepTorchModule):
     defaults = (

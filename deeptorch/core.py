@@ -4,6 +4,8 @@ from .config import Config, NoneSelector, IndexSelector
 
 from .utils import safe_call
 
+__all__ = ["DeepTorchModule", "UninitializedModule"]
+
 
 def _match_signature(func, args, kwargs):
     """Returns a dictionary of arguments that match the signature of func.
@@ -62,6 +64,9 @@ class DeepTorchModule(nn.Module):
 
     def __call__(self, *args, **kwargs):
         y = super().__call__(*args, **kwargs)
+        # TODO: we could consider dynamically replacing the __call__ overload to avoid
+        # the overhead of this check.
+        # Should be benchmarked.
         self._replace_uninitialized_modules()
         return y
 
@@ -88,8 +93,8 @@ class DeepTorchModule(nn.Module):
         obj.set_config(config)
 
         # if obj.__init__ has any required positional arguments, we need to pass them.
-        __init__args = _match_signature(cls.__init__, [], config.get_parameters())
-        obj.__init__(**__init__args)
+        _factory_kwargs = _match_signature(cls.__init__, [], config.get_parameters())
+        obj.__init__(**_factory_kwargs)
         return obj
 
     @classmethod

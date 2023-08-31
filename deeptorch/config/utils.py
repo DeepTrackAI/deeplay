@@ -1,3 +1,6 @@
+__all__ = ["selector_matches"]
+
+
 def selector_matches(selector, query):
     if len(query) == 0:
         return True

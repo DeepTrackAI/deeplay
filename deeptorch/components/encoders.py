@@ -4,6 +4,8 @@ from ..config import Config, Ref
 
 import torch.nn as nn
 
+__all__ = ["Encoder", "ConvolutionalEncoder", "DenseEncoder"]
+
 
 class Encoder(DeepTorchModule):
     defaults = (

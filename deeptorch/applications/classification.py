@@ -13,6 +13,8 @@ from ..components import (
     CategoricalClassificationHead,
 )
 
+__all__ = ["ImageClassifier"]
+
 
 class ImageClassifier(DeepTorchModule, pl.LightningModule):
     defaults = (

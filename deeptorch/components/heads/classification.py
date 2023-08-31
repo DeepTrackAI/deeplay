@@ -2,6 +2,8 @@ from ... import Layer, DeepTorchModule, Config, Ref
 
 import torch.nn as nn
 
+__all__ = ["CategoricalClassificationHead"]
+
 
 class CategoricalClassificationHead(DeepTorchModule):
     defaults = (

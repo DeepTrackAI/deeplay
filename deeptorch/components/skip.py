@@ -5,6 +5,8 @@ from ..config import Config, Ref
 import torch
 import torch.nn as nn
 
+__all__ = ["Skip", "Concatenate", "Add"]
+
 
 class Skip(DeepTorchModule):
     defaults = Config().inputs[0](nn.Identity)
