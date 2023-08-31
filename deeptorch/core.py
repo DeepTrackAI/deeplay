@@ -55,10 +55,6 @@ class DeepTorchModule(nn.Module):
 
         return UninitializedModule(subconfig)
 
-    def create_many(self, key, n):
-        """Create many modules from the config."""
-        return [self.new(key, i, length=n) for i in range(n)]
-
     def set_config(self, config: Config):
         self.config = config
 

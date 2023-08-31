@@ -22,7 +22,7 @@ class Encoder(DeepTorchModule):
         super().__init__(depth=depth, blocks=blocks)
 
         self.depth = self.attr("depth")
-        self.blocks = nn.ModuleList(self.create_many("blocks", self.depth))
+        self.blocks = nn.ModuleList(self.new("blocks", i) for i in range(depth))
 
     def forward(self, x):
         for block in self.blocks:
