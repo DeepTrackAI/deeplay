@@ -59,25 +59,6 @@ class DeepTorchModule(nn.Module):
         """Create many modules from the config."""
         return [self.create(key, i, length=n) for i in range(n)]
 
-    def create_all(self, key):
-        """Create all modules from the config."""
-        subconfig: Config = self.config.with_selector(key)
-        rules = subconfig._get_all_matching_rules(
-            NoneSelector(), match_key=True, allow_indexed=True
-        )
-        indexes = set()
-
-        for rule in rules:
-            if isinstance(rule.head, IndexSelector):
-                rule_indexes = rule.head.get_list_of_indices()
-                if not isinstance(rule_indexes, list):
-                    rule_indexes = [rule_indexes]
-                indexes.update(rule_indexes)
-
-        max_index = max(indexes) if indexes else 0
-
-        return self.create_many(key, max_index + 1)
-
     def set_config(self, config: Config):
         self.config = config
 
