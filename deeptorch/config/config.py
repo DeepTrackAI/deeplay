@@ -81,11 +81,15 @@ class ConfigRule:
             referenced_value = new_config.get(self.value.selectors, return_dict_if_multiple=False)
             # Evaluate the ref function
             return self.value(referenced_value)
-            
+        
+        if isinstance(self.value, ForwardHook):
+            return self.value.value()
+
         return self.value
 
     def __repr__(self):
         return str(self.selector) + "." + str(self.key) + " = " + str(self.value) + (" (default)" if self.default else "")
+
 
 
 class ConfigRuleDefault(ConfigRule):
@@ -106,6 +110,36 @@ class ConfigRuleWrapper(ConfigRule):
         self.head = value.head
         self.value = value.value
 
+    def __attr__(self, name):
+        # defer to the wrapped rule if the attribute is not found
+        return getattr(self.value, name)
+
+class ForwardHook:
+
+    def __init__(self, hook, first_only=False):
+        if isinstance(hook, ForwardHook):
+            hook = hook.hook
+            first_only = hook.first_only
+        
+        self.hook = hook
+        self.first_only = first_only
+
+        self._value = None
+        self._has_run = False
+
+    def __call__(self, x):
+        if self.first_only and self._has_run:
+            return self._value
+        self.value = self.hook(x)
+        self._has_run = True
+    
+    def value(self):
+        if not self._has_run:
+            raise ValueError("Hook has not been run yet. Make sure the module is evaluated before the target is called.")
+        return self._value
+    
+    def has_run(self):
+        return self._has_run
 
 class Config:
     
@@ -113,50 +147,55 @@ class Config:
     def __init__(self, rules=[], refs=None, context=NoneSelector()):
 
         self._rules = rules.copy()
-        self._refs = {} if refs is None else refs.copy()
+        self._refs = {} if refs is None else refs
         self._context = context
-
-    def __getattr__(self, name):
-        match name:
-            case "_":
-                selector = WildcardSelector()
-            case "__":
-                selector = DoubleWildcardSelector()
-            case _:
-                selector = ClassSelector(name)
-        return Config(self._rules, self._refs, self._context + selector)
     
-    def __getitem__(self, index):
-        if isinstance(self._context, NoneSelector):
-            raise ValueError("Cannot index a config with no context. Use a class selector first")
-
-        if isinstance(index, tuple):
-            index, length = index
-        else:
-            length = None
-        return Config(self._rules, self._refs, self._context[index, length])
-    
-    def __call__(self, *x, **kwargs):
+    def on_first_forward(self, target, hook):
+        return self.on_forward(target, hook, first_only=True)
         
-        if len(x) > 1:
-            raise ValueError("Config can only be called with one positional argument")
+    def on_forward(self, target, hook, first_only=False):
+
+        if not first_only:
+            raise NotImplementedError("Only first_only is supported for now")
         
-        if len(x) == 1:
-            x = x[0]
-            selector, key = self._context.pop()
+        target = parse_selectors(target)
+        _key = str(target)
 
-            self._rules.append(ConfigRule(selector, key, x))
+        # Create a Ref from target to the current context + _key.
+        # On forward, context + _key will be evaluated.
+        # The remote rule will automatically reflect the changes.
+        self._rules.append(
+            ConfigRule(
+                target,
+                _key,
+                Ref(self._context + _key)
+            )
+        )
 
-        for key, value in kwargs.items():
-            rule = ConfigRule(self._context, key, value)
-            self._rules.append(rule)
+        # Create a rule that will be evaluated on forward
+        self._rules.append(
+            ConfigRule(
+                self._context,
+                _key,
+                ForwardHook(hook, first_only=first_only)
+            )
+        )
 
-        # When you call a config, it should reset the selector
-        # This is what allows the chained syntax
-        # Config().a.b.c(1).d.e.f(2)
         return Config(self._rules, self._refs)
+
+    def run_all_forward_hooks(self, x):
+        for rule in self.get_all_forward_hooks():
+            rule.value(x)
+
+    def has_forward_hooks(self):
+        return len(self.get_all_forward_hooks()) > 0
     
-    
+    def get_all_forward_hooks(self):
+        rules = self._get_all_matching_rules(NoneSelector(), match_key=False)
+        module = self._get_all_matching_rules(NoneSelector(), match_key=True)
+
+        all_rules = rules + module
+        return [rule for rule in all_rules if isinstance(rule.value, ForwardHook)]
 
     def set(self, selectors, value, default=False):
         selectors = parse_selectors(selectors)
@@ -168,6 +207,7 @@ class Config:
             self._rules.append(ConfigRule(self._context + selectors, key, value))
         return self
     
+
     def populate(self, selectors, generator, length=None):
         # idx is interpreted as follows:
         # None: every index.
@@ -258,6 +298,7 @@ To populate more, specify the length with .populate(..., length=desired_length)"
         return self.get(NoneSelector())
     
     def add_ref(self, name, config):
+        print("Adding ref", name, config)
         if name in self._refs:
             warnings.warn(f"UID {name} already exists with value {self._refs[name]}. It will be overwritten.")
         self._refs[name] = config
@@ -273,6 +314,46 @@ To populate more, specify the length with .populate(..., length=desired_length)"
     def with_selector(self, selectors):
         selectors = parse_selectors(selectors)
         return Config(self._rules, self._refs, self._context + selectors)
+    
+    def __getattr__(self, name):
+        match name:
+            case "_":
+                selector = WildcardSelector()
+            case "__":
+                selector = DoubleWildcardSelector()
+            case _:
+                selector = ClassSelector(name)
+        return Config(self._rules, self._refs, self._context + selector)
+    
+    def __getitem__(self, index):
+        if isinstance(self._context, NoneSelector):
+            raise ValueError("Cannot index a config with no context. Use a class selector first")
+
+        if isinstance(index, tuple):
+            index, length = index
+        else:
+            length = None
+        return Config(self._rules, self._refs, self._context[index, length])
+    
+    def __call__(self, *x, **kwargs):
+        
+        if len(x) > 1:
+            raise ValueError("Config can only be called with one positional argument")
+        
+        if len(x) == 1:
+            x = x[0]
+            selector, key = self._context.pop()
+
+            self._rules.append(ConfigRule(selector, key, x))
+
+        for key, value in kwargs.items():
+            rule = ConfigRule(self._context, key, value)
+            self._rules.append(rule)
+
+        # When you call a config, it should reset the selector
+        # This is what allows the chained syntax
+        # Config().a.b.c(1).d.e.f(2)
+        return Config(self._rules, self._refs)
     
     def __repr__(self):
         return "Config(\n" + "\n".join([str(rule) for rule in self._rules]) + "\n)"

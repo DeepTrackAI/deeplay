@@ -1,62 +1,66 @@
 import torch.nn as nn
-from ..config import Config
-from ..utils import safe_call
+from .config import Config
+from .utils import safe_call
+from .core import UninitializedModule
 
-__all__ = ["Layer", "LayerInput", "OutputOf", "LayerSequence", "LayerAdd", "LayerSub", "LayerMul", "LayerDiv", "Template"]
+__all__ = [
+    "Layer",
+    "LayerInput",
+    "OutputOf",
+    "LayerSequence",
+    "LayerAdd",
+    "LayerSub",
+    "LayerMul",
+    "LayerDiv",
+    "Template",
+]
+
 
 class Layer:
     def __init__(self, className="", uid=None, **kwargs):
         self.className = className
         self.uid = uid
-    
+
     def __rshift__(self, other):
         return LayerSequence(self, other)
-    
+
     def __add__(self, other):
         return LayerAdd(self, other)
-    
+
     def __sub__(self, other):
         return LayerSub(self, other)
-    
+
     def __mul__(self, other):
         return LayerMul(self, other)
-    
+
     def __div__(self, other):
         return LayerDiv(self, other)
-    
+
     def build(self, config: Config):
         subconfig = config.with_selector(self.className)
 
-        module = subconfig.get_module()
+        module = UninitializedModule(subconfig)
 
-        if module is None:
-            raise ValueError(f"Module not found for selector {self.className} in config {subconfig._rules} with selector {subconfig._context}")
-
-        if hasattr(module, "from_config"):
-            return module.from_config(subconfig)
-        
-        parameters = subconfig.get_parameters()
-        module = safe_call(module, parameters)
-
-        uid = parameters.get("uid", None) or self.uid
-        if uid:
-            config.add_ref(uid, module)
+        if self.uid is not None:
+            config.add_ref(self.uid, module)
 
         return module
-    
+
     def from_config(self, config):
         return self.build(config)
+
 
 class LayerInput(Layer):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-    
+
     def build(self, config):
         return nn.Identity()
 
+
 class InputOf(Layer):
-    """ A layer that references a specific module in the config.
-    """
+    """A layer that references a specific module in the config."""
+
     def __init__(self, selector, **kwargs):
         super().__init__(**kwargs)
         self.selector = selector
@@ -64,12 +68,15 @@ class InputOf(Layer):
     def build(self, config: Config):
         module = config.get_ref(self.selector)
         if module is None:
-            raise ValueError(f"Module not found for selector {self.selector}. Make sure the module is created before it is referenced.")
-        return RemoteModule(module)
+            raise ValueError(
+                f"Module not found for selector {self.selector}. Make sure the module is created before it is referenced."
+            )
+        return RemoteModule(module, take_output=False)
+
 
 class OutputOf(Layer):
-    """ A layer that references a specific module in the config.
-    """
+    """A layer that references a specific module in the config."""
+
     def __init__(self, selector, **kwargs):
         super().__init__(**kwargs)
         self.selector = selector
@@ -77,35 +84,49 @@ class OutputOf(Layer):
     def build(self, config: Config):
         module = config.get_ref(self.selector)
         if module is None:
-            raise ValueError(f"Module not found for selector {self.selector}. Make sure the module is created before it is referenced.")
-        return RemoteModule(module)
-    
+            raise ValueError(
+                f"Module not found for selector {self.selector}. Make sure the module is created before it is referenced."
+            )
+        return RemoteModule(module, take_output=True)
+
+
 class RemoteModule(nn.Module):
-    """ A module that references a module in another module."""
+    """A module that references a module in another module."""
 
-
-    def __init__(self, module:nn.Module, take_output=True):
+    def __init__(self, module: nn.Module, take_output=True):
         super().__init__()
         self.remote = module
+        self.take_output = take_output
+
         self._x = None
-        if take_output:
-            module.register_forward_hook(self._take_output)
+
+        self._register_hooks()
+
+    def _replace_uninitialized_remote(self, module, input, output):
+        self.remote = module.module()
+        self.handle.remove()
+        self._register_hooks()
+
+    def _register_hooks(self):
+        if self.take_output:
+            self.handle = self.remote.register_forward_hook(self._take_output)
         else:
-            module.register_forward_pre_hook(self._hook)
+            self.handle = self.remote.register_forward_pre_hook(self._take_input)
 
     def _take_output(self, module, input, output):
         self._x = output
-    
+
     def _take_input(self, module, input):
         self._x = input
 
     def forward(self, x):
+        if isinstance(self.remote, UninitializedModule):
+            self._replace_uninitialized_remote(self.remote, x, None)
+
         return self._x
 
 
-
 class LayerSequence(Layer):
-
     def __init__(self, *Layers, **kwargs):
         super().__init__(**kwargs)
         self.Layers = Layers
@@ -114,7 +135,6 @@ class LayerSequence(Layer):
         return LayerSequence(*self.Layers, other)
 
     def build(self, config):
-        
         modules = {}
         for Layer in self.Layers:
             name = Layer.className or Layer.__class__.__name__
@@ -123,14 +143,13 @@ class LayerSequence(Layer):
             while name in modules:
                 name = f"{Layer.className}({idx})"
                 idx += 1
-            
+
             modules[name] = module
 
         return Template(modules)
 
 
 class LayerAdd(Layer):
-
     def __init__(self, a, b, **kwargs):
         super().__init__(**kwargs)
         self.a = a
@@ -141,7 +160,6 @@ class LayerAdd(Layer):
 
 
 class LayerSub(Layer):
-
     def __init__(self, a, b, **kwargs):
         super().__init__(**kwargs)
         self.a = a
@@ -152,7 +170,6 @@ class LayerSub(Layer):
 
 
 class LayerMul(Layer):
-
     def __init__(self, a, b, **kwargs):
         super().__init__(**kwargs)
         self.a = a
@@ -161,8 +178,8 @@ class LayerMul(Layer):
     def build(self, config):
         return _TorchMul(self.a.build(config), self.b.build(config))
 
-class LayerDiv(Layer):
 
+class LayerDiv(Layer):
     def __init__(self, a, b, **kwargs):
         super().__init__(**kwargs)
         self.a = a
@@ -171,17 +188,17 @@ class LayerDiv(Layer):
     def build(self, config):
         return _TorchDiv(self.a.build(config), self.b.build(config))
 
-class Template(nn.ModuleDict):
 
-    
+class Template(nn.ModuleDict):
     def __init__(self, kwargs):
         # print("Template", kwargs)
         super().__init__(kwargs)
-        
+
     def forward(self, x):
         for key, module in self.items():
             x = module(x)
         return x
+
 
 # == Helper classes for arithmetic operations
 class _TorchSub(nn.Module):
@@ -189,25 +206,27 @@ class _TorchSub(nn.Module):
         super().__init__()
         self.a = a
         self.b = b
-    
+
     def forward(self, x):
         return self.a(x) - self.b(x)
+
 
 class _TorchAdd(nn.Module):
     def __init__(self, a, b):
         super().__init__()
         self.a = a
         self.b = b
-    
+
     def forward(self, x):
         return self.a(x) + self.b(x)
+
 
 class _TorchMul(nn.Module):
     def __init__(self, a, b):
         super().__init__()
         self.a = a
         self.b = b
-    
+
     def forward(self, x):
         return self.a(x) * self.b(x)
 
@@ -217,7 +236,6 @@ class _TorchDiv(nn.Module):
         super().__init__()
         self.a = a
         self.b = b
-    
+
     def forward(self, x):
         return self.a(x) / self.b(x)
-

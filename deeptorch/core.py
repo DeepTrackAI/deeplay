@@ -1,7 +1,7 @@
 import torch.nn as nn
 import inspect
-from .config import Config, ClassSelector, NoneSelector, IndexSelector, ForwardHook
-from .templates import Layer
+from .config import Config, NoneSelector, IndexSelector
+
 from .utils import safe_call
 
 def _match_signature(func, args, kwargs):
@@ -25,8 +25,16 @@ class DeepTorchModule(nn.Module):
 
     defaults = {}
 
+
     def __init__(self, **kwargs):
         super().__init__()
+        self._all_uninitialized_submodules = []
+        for name, module in self.named_modules():
+            if isinstance(module, UninitializedModule):
+                self._all_uninitialized_submodules.append(module)
+        
+        self._any_uninitialized_submodules = bool(self._all_uninitialized_submodules)
+            
     
     def __new__(cls, *args, **kwargs):
 
@@ -50,48 +58,21 @@ class DeepTorchModule(nn.Module):
         if i is not None:
             subconfig = subconfig[i]
 
-        template = subconfig.get(NoneSelector())
-        parameters = subconfig.get_parameters()
-        uid = parameters.get("uid", None)
-
-        # If the template or any of its arguments are a ForwardHook, we
-        # defer the creation of the module until the forward pass.
-        if self._has_any_uninitialized_forward_hooks(template, parameters):
-            return self._register_forward_hook(key, i, length)
-         
-        # uid is set in Layer   
-        if isinstance(template, Layer):
-            return template.from_config(subconfig)
-        
-        # Here we need to add uid
-        if inspect.isclass(template) and issubclass(template, DeepTorchModule):
-            module = template.from_config(subconfig)
-        elif isinstance(template, nn.Module):
-            module = template
-        elif callable(template):
-            module = safe_call(template, subconfig.get_parameters())
-        else:
-            module = template
-
-        if uid is not None:
-            self.config.add_ref(uid, module)
-        
-        return module
+        return UninitializedModule(subconfig)
             
     
     def create_many(self, key, n):
         """ Create many modules from the config.
         """
-
         return [self.create(key, i, length=n) for i in range(n)]
     
     def create_all(self, key):
         """ Create all modules from the config.
         """
-        subconfig:Config = self.config.with_selector(key)
+        subconfig: Config = self.config.with_selector(key)
         rules = subconfig._get_all_matching_rules(NoneSelector(), match_key=True, allow_indexed=True)
         indexes = set()
-        rules_that_are_indexed = []
+
         for rule in rules:
             if isinstance(rule.head, IndexSelector):
                 rule_indexes = rule.head.get_list_of_indices()
@@ -99,42 +80,33 @@ class DeepTorchModule(nn.Module):
                     rule_indexes = [rule_indexes]
                 indexes.update(rule_indexes)
 
-        
-        indexes = sorted(indexes)
-        max_index = indexes[-1] if indexes else 0
+        max_index = max(indexes) if indexes else 0
 
         return self.create_many(key, max_index + 1)
     
-    def __setattr__(self, key, value):
-        if isinstance(value, UninitializedModule):
-            self.register_forward_pre_hook(value.create_hook(key))
-        return super().__setattr__(key, value) 
-
-    def _has_any_uninitialized_forward_hooks(self, template, parameters):
-        ...
-    
-    def _register_forward_hook(self):
-        """ Register a forward hook to create a module on the fly.
-        """
-        is_first_pass = True
-        def hook(module, input):
-            if not is_first_pass:
-                return
-            
-            if isinstance(template, ForwardHook):
-                template = template(module, input)
-            
-            parameters = {
-                key: value if not isinstance(value, ForwardHook) else value(module, input)
-                for key, value in parameters.items()
-            }
-            
-            module_type = safe_call(template, parameters)
-            module.add_module("module", module_type)
-        return hook
-    
     def set_config(self, config: Config):
         self.config = config
+
+    def __call__(self, *args, **kwargs):
+        y = super().__call__(*args, **kwargs)
+        self._replace_uninitialized_modules()
+        return y
+    
+    def _replace_uninitialized_modules(self):
+        if not self._any_uninitialized_submodules:
+            return
+        remaining = []
+        for name, module in self._all_uninitialized_submodules.copy():
+            # check that the module is still uninitialized
+            if self._modules[name] is module:
+                if module.is_initialized():
+                    self._modules[name] = module.module()
+                else:
+                    remaining.append((name, module))
+
+        self._all_uninitialized_submodules = remaining
+        self._any_uninitialized_submodules = bool(remaining)
+
 
     @classmethod
     def from_config(cls, config):
@@ -176,14 +148,78 @@ class DeepTorchModule(nn.Module):
 
         return config
 
-class UninitializedModule:
 
-    def __init__(self, factory):
-        self.factory = factory
+class UninitializedModule(nn.Module):
 
-    def create_hook(self, key):
-        def hook(module, input):
-            module_type = self.factory(module, input)
-            module.__setattr__(key, module)
-            return None
-        return hook
+    config: Config
+
+    def __new__(cls, config: Config):
+        if not config.has_forward_hooks():
+            # If there are no forward hooks, we can immediately initialize the module.
+            try:
+                return cls.create_module(config)
+            except RuntimeError:
+                # Can happen if there are no immediate hooks, but indirect references to hooks.
+                # In this case, we need to wait until the hooks are resolved.
+                # TODO: make specific error to not catch all runtime errors.
+                return super().__new__(cls)
+        else:
+            return super().__new__(cls)
+        
+    def __init__(self, config: Config):
+        super().__init__()
+        self.config = config
+        self._initialized_module = None
+    
+    def forward(self, x):
+        if self._initialized_module is not None:
+            return self._initialized_module(x)
+        self.config.run_all_forward_hooks(x)
+        self._initialized_module = self.create_module(self.config)
+        return self._initialized_module(x)
+
+    def is_initialized(self):
+        return self._initialized_module is not None
+
+    def module(self):
+        return self._initialized_module
+
+    @staticmethod
+    def create_module(config: Config):
+        """ Create a module from the config.
+        """
+
+        from .templates import Layer
+
+        template = config.get(NoneSelector())
+        parameters = config.get_parameters()
+        uid = parameters.get("uid", None)
+         
+        # uid is set in Layer   
+        if isinstance(template, Layer):
+            module = template.from_config(config)
+        elif inspect.isclass(template) and issubclass(template, DeepTorchModule):
+            module = template.from_config(config)
+        elif isinstance(template, nn.Module):
+            module = template
+        elif callable(template):
+            module = safe_call(template, config.get_parameters())
+        else:
+            module = template
+
+        if uid is not None:
+            config.add_ref(uid, module)
+        
+        return module
+
+    
+    # def _make_into(self, module):
+    #     # Best effort into making this module into the given module.
+    #     # This way, all references to this module will be replaced with the given module.
+    #     self.__class__ = module.__class__
+    #     self.__dict__ = module.__dict__
+    #     # self.__module__ = module.__module__
+    #     # self.__doc__ = module.__doc__
+    #     # self.__annotations__ = module.__annotations__
+    #     # self.__weakref__ = module.__weakref__
+        

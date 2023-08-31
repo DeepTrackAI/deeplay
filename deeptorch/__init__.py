@@ -13,8 +13,8 @@ from .lazy import *
 
 # from .connectors import *
 from .config import *
-from .templates import *
 from .core import *
+from .templates import *
 from .components import *
 
 from .applications import *
