@@ -40,8 +40,8 @@ class Selector:
 
 
 class ClassSelector(Selector):
-    def __init__(self, className: str):
-        self.classes = className.split(" ")
+    def __init__(self, classname: str):
+        self.classes = classname.split(" ")
 
     def __str__(self) -> str:
         if len(self.classes) == 1:

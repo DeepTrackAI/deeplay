@@ -1,6 +1,5 @@
 import torch.nn as nn
 from .config import Config
-from .utils import safe_call
 from .core import UninitializedModule
 
 __all__ = [
@@ -17,8 +16,8 @@ __all__ = [
 
 
 class Layer:
-    def __init__(self, className="", uid=None, **kwargs):
-        self.className = className
+    def __init__(self, classname="", uid=None, **_):
+        self.classname = classname
         self.uid = uid
 
     def __rshift__(self, other):
@@ -37,7 +36,7 @@ class Layer:
         return LayerDiv(self, other)
 
     def build(self, config: Config):
-        subconfig = config.with_selector(self.className)
+        subconfig = config.with_selector(self.classname)
 
         module = UninitializedModule(subconfig)
 
@@ -102,8 +101,8 @@ class RemoteModule(nn.Module):
 
         self._register_hooks()
 
-    def _replace_uninitialized_remote(self, module, input, output):
-        self.remote = module.module()
+    def _replace_uninitialized_remote(self):
+        self.remote = self.remote.module()
         self.handle.remove()
         self._register_hooks()
 
@@ -113,35 +112,35 @@ class RemoteModule(nn.Module):
         else:
             self.handle = self.remote.register_forward_pre_hook(self._take_input)
 
-    def _take_output(self, module, input, output):
-        self._x = output
+    def _take_output(self, _, __, y):
+        self._x = y
 
-    def _take_input(self, module, input):
-        self._x = input
+    def _take_input(self, _, x):
+        self._x = x
 
-    def forward(self, x):
+    def forward(self, _):
         if isinstance(self.remote, UninitializedModule):
-            self._replace_uninitialized_remote(self.remote, x, None)
+            self._replace_uninitialized_remote()
 
         return self._x
 
 
 class LayerSequence(Layer):
-    def __init__(self, *Layers, **kwargs):
+    def __init__(self, *layers, **kwargs):
         super().__init__(**kwargs)
-        self.Layers = Layers
+        self.layers = layers
 
     def __rshift__(self, other):
-        return LayerSequence(*self.Layers, other)
+        return LayerSequence(*self.layers, other)
 
     def build(self, config):
         modules = {}
-        for Layer in self.Layers:
-            name = Layer.className or Layer.__class__.__name__
-            module = Layer.build(config)
+        for layer in self.layers:
+            name = layer.classname or layer.__class__.__name__
+            module = layer.build(config)
             idx = 0
             while name in modules:
-                name = f"{Layer.className}({idx})"
+                name = f"{layer.classname}({idx})"
                 idx += 1
 
             modules[name] = module
