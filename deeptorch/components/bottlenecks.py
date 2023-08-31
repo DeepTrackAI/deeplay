@@ -6,33 +6,26 @@ import torch
 import torch.nn as nn
 
 
-class Bottleneck():
+class Bottleneck:
     defaults = (
         Config()
         .hidden_dim(2)
         .flatten(nn.Flatten)
         .layer(nn.LazyLinear, out_features=Ref("hidden_dim"))
         .activation(nn.Tanh)
-
-
-        
-
     )
 
     def __init__(self, out_channels=1, activation=nn.ReLU):
         super().__init__(out_channels=out_channels, activation=activation)
-        
+
         self.hidden_dim = self.attr("hidden_dim")
         self.flatten = self.create("flatten")
         self.layer = self.create("layer")
         self.activation = self.create("activation")
 
     def forward(self, x):
-
         x = self.flatten(x)
         x = self.layer(x)
         x = self.activation(x)
 
         return x
-    
-    

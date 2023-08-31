@@ -1,6 +1,4 @@
 import warnings
-import torch.nn as nn 
-
 
 # Filter out warnings from lazy torch modules
 warnings.filterwarnings("ignore", category=UserWarning, module="torch.nn.modules.lazy")

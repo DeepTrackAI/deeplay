@@ -3,13 +3,21 @@ import torch.nn as nn
 import torch.nn.functional as F
 import pytorch_lightning as pl
 
-from .. import Config, Ref, DeepTorchModule, Layer, ConvolutionalEncoder, ConvolutionalDecoder
+from .. import (
+    Config,
+    Ref,
+    DeepTorchModule,
+    Layer,
+    ConvolutionalEncoder,
+    ConvolutionalDecoder,
+)
+
 # from ..backbones.encoders import Encoder2d
 # from ..backbones.decoders import Decoder2d
 # from ..connectors import FlattenDenseq
 
-class EncoderDecoder(DeepTorchModule):
 
+class EncoderDecoder(DeepTorchModule):
     defaults = (
         Config()
         .depth(4)
@@ -20,13 +28,16 @@ class EncoderDecoder(DeepTorchModule):
     )
 
     def __init__(self, depth=4, encoder=None, bottleneck=None, decoder=None):
-        super().__init__(depth=depth, encoder=encoder, bottleneck=bottleneck, decoder=decoder)
+        super().__init__(
+            depth=depth, encoder=encoder, bottleneck=bottleneck, decoder=decoder
+        )
 
         self.encoder = self.create("encoder")
         self.decoder = self.create("decoder")
 
     def forward(self, x):
         return self.decoder(self.encoder(x))
+
 
 class ConvolutionalEncoderDecoder(EncoderDecoder):
     defaults = (
@@ -36,8 +47,8 @@ class ConvolutionalEncoderDecoder(EncoderDecoder):
         .decoder(ConvolutionalDecoder)
     )
 
-class Autoencoder(DeepTorchModule, pl.LightningModule):
 
+class Autoencoder(DeepTorchModule, pl.LightningModule):
     defaults = (
         Config()
         .backbone(EncoderDecoder)
@@ -52,7 +63,7 @@ class Autoencoder(DeepTorchModule, pl.LightningModule):
 
     def forward(self, x):
         return self.head(self.backbone(x))
-    
+
     def training_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self(x)
@@ -77,6 +88,3 @@ class Autoencoder(DeepTorchModule, pl.LightningModule):
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
         return optimizer
-
-    
-

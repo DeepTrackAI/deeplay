@@ -4,18 +4,16 @@ from ..config import Config, Ref
 
 import torch.nn as nn
 
-class Decoder(DeepTorchModule):
 
+class Decoder(DeepTorchModule):
     defaults = (
         Config()
         .depth(4)
         .blocks(Layer("layer") >> Layer("activation"))
         .blocks.activation(nn.ReLU)
-        
     )
 
     def __init__(self, depth=4, blocks=None):
-
         super().__init__(depth=depth, blocks=blocks)
 
         self.depth = self.attr("depth")
@@ -31,6 +29,6 @@ class ConvolutionalDecoder(Decoder):
     defaults = (
         Config()
         .merge(None, Decoder.defaults)
-        .blocks.populate("layer.out_channels", lambda i: 8 * 2 ** (3-i), length=8)
+        .blocks.populate("layer.out_channels", lambda i: 8 * 2 ** (3 - i), length=8)
         .blocks.layer(nn.LazyConvTranspose2d, kernel_size=2, stride=2)
     )

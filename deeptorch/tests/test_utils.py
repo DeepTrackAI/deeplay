@@ -1,8 +1,8 @@
 import unittest
 from ..utils import safe_call
 
-class TestUtils(unittest.TestCase):
 
+class TestUtils(unittest.TestCase):
     def test_safe_call_1(self):
         module = lambda: 1
         parameters = {}
@@ -22,7 +22,7 @@ class TestUtils(unittest.TestCase):
         module = lambda a, b: a + b
         parameters = {"a": 2, "b": 3}
         self.assertEqual(safe_call(module, parameters), 5)
-    
+
     def test_safe_call_5(self):
         module = lambda a, b, **kwargs: a + b + kwargs["c"]
         parameters = {"a": 2, "b": 3, "c": 4}

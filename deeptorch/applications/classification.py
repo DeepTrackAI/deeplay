@@ -7,10 +7,14 @@ from torchmetrics import Accuracy
 from ..core import DeepTorchModule
 from ..config import Config, Ref
 from ..templates import Layer
-from ..components import ConvolutionalEncoder, DenseEncoder, CategoricalClassificationHead
+from ..components import (
+    ConvolutionalEncoder,
+    DenseEncoder,
+    CategoricalClassificationHead,
+)
+
 
 class ImageClassifier(DeepTorchModule, pl.LightningModule):
-
     defaults = (
         Config()
         .num_classes(2)

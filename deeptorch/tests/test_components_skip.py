@@ -5,9 +5,7 @@ from .. import Config, Layer, Skip, Concatenate, OutputOf
 
 
 class TestComponentsSkip(unittest.TestCase):
-
     def test_skip(self):
-
         template = Layer("layer1") >> Layer("layer2") >> Layer("socket")
 
         config = (
@@ -24,8 +22,9 @@ class TestComponentsSkip(unittest.TestCase):
         self.assertEqual(y.shape, (1, 20))
 
     def test_skip_2(self):
-
-        template = Layer("layer1", uid="skip_start") >> Layer("layer2") >> Layer("socket")
+        template = (
+            Layer("layer1", uid="skip_start") >> Layer("layer2") >> Layer("socket")
+        )
 
         config = (
             Config()

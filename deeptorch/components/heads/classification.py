@@ -2,8 +2,8 @@ from ... import Layer, DeepTorchModule, Config, Ref
 
 import torch.nn as nn
 
-class CategoricalClassificationHead(DeepTorchModule):
 
+class CategoricalClassificationHead(DeepTorchModule):
     defaults = (
         Config()
         .num_classes(2)
@@ -42,5 +42,3 @@ class CategoricalClassificationHead(DeepTorchModule):
     def forward(self, x):
         x = self.output(x)
         return x
-    
-

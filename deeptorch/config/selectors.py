@@ -1,23 +1,23 @@
 import warnings
 
-class NoneSelector:
 
+class NoneSelector:
     def __add__(self, other):
         return other
 
     def __radd__(self, other):
         return other
-    
+
     def __str__(self) -> str:
         return "#"
 
+
 class Selector:
-      
     def __add__(self, other):
         if isinstance(other, Selector):
             return ParentalRelation(self, other)
         return NotImplemented
-    
+
     def regex(self):
         exp = self._regex()
         return f"^{exp}$"
@@ -34,13 +34,12 @@ class Selector:
 
     def key(self):
         return str(self)
-    
+
     def pop(self):
         return NoneSelector(), self
-    
+
 
 class ClassSelector(Selector):
-
     def __init__(self, className: str):
         self.classes = className.split(" ")
 
@@ -59,11 +58,13 @@ class ClassSelector(Selector):
 
     def key(self):
         if len(self.classes) > 1:
-            warnings.warn(f"ClassSelector {self} has multiple classes. Using the first one as the key.")
+            warnings.warn(
+                f"ClassSelector {self} has multiple classes. Using the first one as the key."
+            )
         return self.classes[0]
 
-class WildcardSelector(Selector):
 
+class WildcardSelector(Selector):
     def __str__(self) -> str:
         return "*"
 
@@ -72,12 +73,12 @@ class WildcardSelector(Selector):
 
     def __iter__(self):
         raise NotImplementedError("WildcardSelector is not iterable")
-    
+
     def key(self):
         raise NotImplementedError("WildcardSelector does not have a key")
 
-class DoubleWildcardSelector(Selector):
 
+class DoubleWildcardSelector(Selector):
     def __str__(self) -> str:
         return "**"
 
@@ -86,31 +87,32 @@ class DoubleWildcardSelector(Selector):
 
     def __iter__(self):
         raise NotImplementedError("DoubleWildcardSelector is not iterable")
-    
+
     def key(self):
         raise NotImplementedError("DoubleWildcardSelector does not have a key")
 
 
 class IndexSelector(Selector):
-
     def __init__(self, selector: Selector, index: int or slice, length=None):
         self.selector = selector
         self.index = index
         self.length = length
 
-
     def get_list_of_indices(self):
         if isinstance(self.index, int):
             return [self.index]
 
-        stop = self.length or self.index.stop 
-
+        stop = self.length or self.index.stop
 
         if stop is None:
-            raise TypeError(f"IndexSelector with slice {self.index} must have a stop value")
+            raise TypeError(
+                f"IndexSelector with slice {self.index} must have a stop value"
+            )
 
         if stop < 0 and self.length is None:
-            raise TypeError(f"IndexSelector with slice {self.index} must have a length value to support negative indexing")
+            raise TypeError(
+                f"IndexSelector with slice {self.index} must have a length value to support negative indexing"
+            )
 
         if stop < 0:
             stop = stop % self.length
@@ -143,9 +145,7 @@ class IndexSelector(Selector):
 
 
 class ParentalRelation(Selector):
-
     def __init__(self, parent: Selector, child: Selector):
-
         self.parent = parent
         self.child = child
 
@@ -153,8 +153,9 @@ class ParentalRelation(Selector):
         return f"{self.parent}.{self.child}"
 
     def _regex(self):
-
-        if isinstance(self.parent, DoubleWildcardSelector) or isinstance(self.child, DoubleWildcardSelector):
+        if isinstance(self.parent, DoubleWildcardSelector) or isinstance(
+            self.child, DoubleWildcardSelector
+        ):
             # If either the parent or child is a double wildcard, then the dot separator is optional.
             # This is to allow for edge cases like **.foo to match foo where no dot is present.
             return f"{self.parent._regex()}\\.?{self.child._regex()}"
@@ -173,7 +174,8 @@ class ParentalRelation(Selector):
         if isinstance(self.child, ParentalRelation):
             return self.child.pop()
         return self.parent, self.child
-    
+
+
 class Ref:
     def __init__(self, selectors, func=None):
         """A reference to a Layer in the config tree."""
@@ -182,12 +184,10 @@ class Ref:
 
     def __call__(self, x):
         return self.func(x)
-    
 
 
 def parse_selectors(x) -> Selector:
-    """Parses a string into a Selector object.
-    """
+    """Parses a string into a Selector object."""
     if isinstance(x, (Selector, NoneSelector)):
         return x
     if isinstance(x, Ref):
@@ -211,6 +211,7 @@ def parse_selectors_from_string(x) -> Selector:
             return DoubleWildcardSelector()
         return ClassSelector(x)
     return parse_selectors_from_tuple(selectors)
+
 
 def parse_selectors_from_tuple(x) -> Selector:
     x = [parse_selectors(s) for s in x]

@@ -6,7 +6,7 @@ CLASS_ACTIVATION = "activation"
 CLASS_NORMALIZATION = "normalization"
 default = object()
 # class Lazy:
-    
+
 #     def __init__(self, module):
 #         self.module = module
 #         self.inlined_styles = []
@@ -19,10 +19,10 @@ default = object()
 #         return self
 
 #     def classed(self, className, replace_current=False):
-#         """Add class names to the module. 
+#         """Add class names to the module.
 #         If replace_current is True, the current class names are replaced.
 #         Multiple class names can be added by separating them with a space.
-        
+
 #         Parameters
 #         ----------
 #         className : str
@@ -53,7 +53,6 @@ default = object()
 #         self.classed(CLASS_NORMALIZATION)
 
 
-
 # class Element:
 
 #     layer = LazyLayer(nn.Conv2d).inline(kernel_size=3, padding=1)
@@ -61,7 +60,7 @@ default = object()
 #     normalization = LazyNormalization(None)
 
 #     def __init__(*args, **kwargs):
-        
+
 #         self.register_argument("layer", nn.Identity)
 
 #     def build(self, layer, activation, normalization):

@@ -13,9 +13,7 @@ class MockModule(nn.Module):
         return x + self.a + self.b
 
 
-
 class TestTemplates(unittest.TestCase):
-
     def test_Layer(self):
         # Example usage:
 
@@ -30,16 +28,11 @@ class TestTemplates(unittest.TestCase):
 
         y = built_Layer(3)
         self.assertEqual(y, 6)
-        
-        
+
     def test_sequential_Layer(self):
-        
         template = Layer("foo") >> Layer("bar")
 
-        config = Config() \
-                    ._(a=1, b=2) \
-                    .foo(MockModule, b=3) \
-                    .bar(MockModule)
+        config = Config()._(a=1, b=2).foo(MockModule, b=3).bar(MockModule)
 
         built_Layer = template.build(config)
 
@@ -49,4 +42,4 @@ class TestTemplates(unittest.TestCase):
         self.assertEqual(built_Layer["bar"].b, 2)
 
         y = built_Layer(5)
-        self.assertEqual(y, 12) # 5 + 1 + 3 + 1 + 2
+        self.assertEqual(y, 12)  # 5 + 1 + 3 + 1 + 2

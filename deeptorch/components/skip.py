@@ -6,17 +6,12 @@ import torch
 import torch.nn as nn
 
 
-
 class Skip(DeepTorchModule):
-
-    defaults = (
-        Config()
-        .inputs[0](None)
-    )
+    defaults = Config().inputs[0](None)
 
     def __init__(self, inputs, func):
         """Skip module.
-        
+
         Parameters
         ----------
         inputs : list of Layer
@@ -36,16 +31,11 @@ class Skip(DeepTorchModule):
 
 
 class Concatenate(DeepTorchModule):
-
-    defaults = (
-        Config()
-        .merge(None, Skip.defaults)
-        .dim(1)
-    )
+    defaults = Config().merge(None, Skip.defaults).dim(1)
 
     def __init__(self, inputs, dim=1):
         """Concatenate module.
-        
+
         Parameters
         ----------
         inputs : list of Layer
@@ -63,18 +53,14 @@ class Concatenate(DeepTorchModule):
     def forward(self, x):
         inputs = [inp(x) if inp is not None else x for inp in self.inputs]
         return torch.cat(inputs, dim=self.dim)
-    
+
 
 class Add(Skip):
-
-    defaults = (
-        Config()
-        .merge(None, Skip.defaults)
-    )
+    defaults = Config().merge(None, Skip.defaults)
 
     def __init__(self, inputs):
         """Add module.
-        
+
         Parameters
         ----------
         inputs : list of Layer

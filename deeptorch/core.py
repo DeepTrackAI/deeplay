@@ -4,6 +4,7 @@ from .config import Config, NoneSelector, IndexSelector
 
 from .utils import safe_call
 
+
 def _match_signature(func, args, kwargs):
     """Returns a dictionary of arguments that match the signature of func.
     This can be used to find the names of arguments passed positionally.
@@ -22,9 +23,7 @@ def _match_signature(func, args, kwargs):
 
 
 class DeepTorchModule(nn.Module):
-
     defaults = {}
-
 
     def __init__(self, **kwargs):
         super().__init__()
@@ -32,45 +31,40 @@ class DeepTorchModule(nn.Module):
         for name, module in self.named_modules():
             if isinstance(module, UninitializedModule):
                 self._all_uninitialized_submodules.append(module)
-        
-        self._any_uninitialized_submodules = bool(self._all_uninitialized_submodules)
-            
-    
-    def __new__(cls, *args, **kwargs):
 
+        self._any_uninitialized_submodules = bool(self._all_uninitialized_submodules)
+
+    def __new__(cls, *args, **kwargs):
         __init__args = _match_signature(cls.__init__, args, kwargs)
         config = cls._build_config(__init__args)
-        
+
         obj = object.__new__(cls)
         obj.set_config(config)
-        
+
         return obj
 
     def attr(self, key):
-        """ Get an attribute from the config.
-        """
+        """Get an attribute from the config."""
         return self.config.get(key)
-    
+
     def create(self, key, i=None, length=None):
-        """ Create a module from the config.
-        """
+        """Create a module from the config."""
         subconfig = self.config.with_selector(key)
         if i is not None:
             subconfig = subconfig[i]
 
         return UninitializedModule(subconfig)
-            
-    
+
     def create_many(self, key, n):
-        """ Create many modules from the config.
-        """
+        """Create many modules from the config."""
         return [self.create(key, i, length=n) for i in range(n)]
-    
+
     def create_all(self, key):
-        """ Create all modules from the config.
-        """
+        """Create all modules from the config."""
         subconfig: Config = self.config.with_selector(key)
-        rules = subconfig._get_all_matching_rules(NoneSelector(), match_key=True, allow_indexed=True)
+        rules = subconfig._get_all_matching_rules(
+            NoneSelector(), match_key=True, allow_indexed=True
+        )
         indexes = set()
 
         for rule in rules:
@@ -83,7 +77,7 @@ class DeepTorchModule(nn.Module):
         max_index = max(indexes) if indexes else 0
 
         return self.create_many(key, max_index + 1)
-    
+
     def set_config(self, config: Config):
         self.config = config
 
@@ -91,7 +85,7 @@ class DeepTorchModule(nn.Module):
         y = super().__call__(*args, **kwargs)
         self._replace_uninitialized_modules()
         return y
-    
+
     def _replace_uninitialized_modules(self):
         if not self._any_uninitialized_submodules:
             return
@@ -107,19 +101,18 @@ class DeepTorchModule(nn.Module):
         self._all_uninitialized_submodules = remaining
         self._any_uninitialized_submodules = bool(remaining)
 
-
     @classmethod
     def from_config(cls, config):
         config = cls._add_defaults(config)
-        
+
         obj = object.__new__(cls)
         obj.set_config(config)
 
-        # if obj.__init__ has any required positional arguments, we need to pass them. 
+        # if obj.__init__ has any required positional arguments, we need to pass them.
         __init__args = _match_signature(cls.__init__, [], config.get_parameters())
         obj.__init__(**__init__args)
         return obj
-    
+
     @classmethod
     def _add_defaults(cls, config: Config):
         if isinstance(cls.defaults, dict):
@@ -133,12 +126,10 @@ class DeepTorchModule(nn.Module):
 
     @classmethod
     def _build_config(cls, kwargs):
-
         # Should only be called from __new__.
-    
+
         config = Config()
         for key, value in kwargs.items():
-
             if isinstance(value, Config):
                 config.merge(key, value)
             else:
@@ -150,7 +141,6 @@ class DeepTorchModule(nn.Module):
 
 
 class UninitializedModule(nn.Module):
-
     config: Config
 
     def __new__(cls, config: Config):
@@ -165,12 +155,12 @@ class UninitializedModule(nn.Module):
                 return super().__new__(cls)
         else:
             return super().__new__(cls)
-        
+
     def __init__(self, config: Config):
         super().__init__()
         self.config = config
         self._initialized_module = None
-    
+
     def forward(self, x):
         if self._initialized_module is not None:
             return self._initialized_module(x)
@@ -186,16 +176,15 @@ class UninitializedModule(nn.Module):
 
     @staticmethod
     def create_module(config: Config):
-        """ Create a module from the config.
-        """
+        """Create a module from the config."""
 
         from .templates import Layer
 
         template = config.get(NoneSelector())
         parameters = config.get_parameters()
         uid = parameters.get("uid", None)
-         
-        # uid is set in Layer   
+
+        # uid is set in Layer
         if isinstance(template, Layer):
             module = template.from_config(config)
         elif inspect.isclass(template) and issubclass(template, DeepTorchModule):
@@ -209,10 +198,9 @@ class UninitializedModule(nn.Module):
 
         if uid is not None:
             config.add_ref(uid, module)
-        
+
         return module
 
-    
     # def _make_into(self, module):
     #     # Best effort into making this module into the given module.
     #     # This way, all references to this module will be replaced with the given module.
@@ -222,4 +210,3 @@ class UninitializedModule(nn.Module):
     #     # self.__doc__ = module.__doc__
     #     # self.__annotations__ = module.__annotations__
     #     # self.__weakref__ = module.__weakref__
-        
