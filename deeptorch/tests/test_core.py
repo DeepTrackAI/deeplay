@@ -86,7 +86,13 @@ class TestCore(unittest.TestCase):
             defaults = Config()
 
             def __init__(self, foo):
-                self.foo = self.create_all("foo")
+                self.foo = self.create("foo")
+
+        module = MockDTModule2.from_config(Config().foo([0, 1, 2]))
+        self.assertEqual(len(module.foo), 3)
+        self.assertEqual(module.foo[0], 0)
+        self.assertEqual(module.foo[1], 1)
+        self.assertEqual(module.foo[2], 2)
 
         module = MockDTModule2.from_config(Config().foo[0](1))
         self.assertEqual(len(module.foo), 1)
@@ -97,7 +103,7 @@ class TestCore(unittest.TestCase):
         self.assertEqual(module.foo[0], 1)
         self.assertEqual(module.foo[1], 2)
 
-        module = MockDTModule2.from_config(Config().foo(None).foo[2](3))
+        module = MockDTModule2.from_config(Config().foo([None, None]).foo[2](3))
         self.assertEqual(len(module.foo), 3)
         self.assertEqual(module.foo[0], None)
         self.assertEqual(module.foo[1], None)

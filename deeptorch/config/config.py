@@ -146,8 +146,8 @@ class ForwardHook:
 
 
 class Config:
-    def __init__(self, rules=[], refs=None, context=NoneSelector()):
-        self._rules = rules.copy()
+    def __init__(self, rules=None, refs=None, context=NoneSelector()):
+        self._rules = [] if rules is None else rules.copy()
         self._refs = {} if refs is None else refs
         self._context = context
 
@@ -265,15 +265,29 @@ To populate more, specify the length with .populate(..., length=desired_length)"
 
     def get(self, selectors, default=None, return_dict_if_multiple=False):
         selectors = parse_selectors(selectors)
-        rules = self._get_all_matching_rules(selectors, match_key=True)
-        most_specific = self._take_most_specific_per_key(rules)
+        full_context = self._context + selectors
+
+        # check if the last selector is a index selector
+        last_selector_is_index = isinstance(full_context.pop()[-1], IndexSelector)
+
+        rules = self._get_all_matching_rules(
+            selectors, match_key=True, allow_indexed=True
+        )
+        rules_per_key = self._merge_rules_on_key(rules)
+
+        if not last_selector_is_index:
+            most_specific = self._take_most_specific_per_key_and_index(
+                rules_per_key, self
+            )
+        else:
+            most_specific = self._take_most_specific_per_key(rules_per_key, self)
 
         if len(most_specific) == 0:
             return default
         if len(most_specific) == 1:
-            return list(most_specific.values())[0].get_value(self)
+            return list(most_specific.values())[0]
         if return_dict_if_multiple:
-            return {key: rule.get_value(self) for key, rule in most_specific.items()}
+            return most_specific
 
         raise ValueError(
             f"Multiple keys match {selectors} ({list(most_specific.keys())})"
@@ -283,7 +297,6 @@ To populate more, specify the length with .populate(..., length=desired_length)"
         return self.get(NoneSelector())
 
     def add_ref(self, name, config):
-        print("Adding ref", name, config)
         if name in self._refs:
             warnings.warn(
                 f"UID {name} already exists with value {self._refs[name]}. It will be overwritten."
@@ -295,8 +308,8 @@ To populate more, specify the length with .populate(..., length=desired_length)"
 
     def get_parameters(self):
         rules = self._get_all_matching_rules(NoneSelector(), match_key=False)
-        most_specific = self._take_most_specific_per_key(rules)
-        return {key: rule.get_value(self) for key, rule in most_specific.items()}
+        rule_dict = self._merge_rules_on_key(rules)
+        return self._take_most_specific_per_key(rule_dict, self)
 
     def with_selector(self, selectors):
         selectors = parse_selectors(selectors)
@@ -361,17 +374,101 @@ To populate more, specify the length with .populate(..., length=desired_length)"
     def _is_last_selector_a(self, type):
         if isinstance(self._context, NoneSelector):
             return type == NoneSelector
-        body, head = self._context.pop()
+        _, head = self._context.pop()
         return isinstance(head, type)
 
     @staticmethod
-    def _take_most_specific_per_key(rules):
+    def _take_most_specific_per_key(key_rule_dict, config):
         most_specific = {}
+        for key, rules in key_rule_dict.items():
+            most_specific[key] = Config._take_most_specific_in_list(rules).get_value(
+                config
+            )
+        return most_specific
+
+    @staticmethod
+    def _take_most_specific_in_list(rules):
+        most_specific = rules[0]
+        for rule in rules:
+            if rule.is_more_specific_than(most_specific):
+                most_specific = rule
+        return most_specific
+
+    @staticmethod
+    def _take_most_specific_per_key_and_index(key_rule_dict, config):
+        # This function is awful. It needs to be rewritten.
+
+        most_specific = {}
+
+        for key, rules in key_rule_dict.items():
+            rule_if_no_indexed = []
+            any_indexed = False
+
+            indexed_values = {}
+            for rule in rules:
+                if isinstance(rule.head, IndexSelector):
+                    any_indexed = True
+                    for index in rule.head.get_list_of_indices():
+                        if index not in indexed_values:
+                            indexed_values[index] = [rule]
+                        else:
+                            indexed_values[index].append(rule)
+                else:
+                    rule_if_no_indexed.append(rule)
+
+            if len(rule_if_no_indexed) == 0:
+                least_specific_rule = ConfigRule(NoneSelector(), "", [])
+                least_specific_rule.specificity = -9999
+                rule_if_no_indexed = [least_specific_rule]
+
+            most_specific_rule_if_no_index = Config._take_most_specific_in_list(
+                rule_if_no_indexed
+            )
+            value_if_no_indexed = most_specific_rule_if_no_index.get_value(config)
+
+            if not any_indexed:
+                most_specific[key] = value_if_no_indexed
+                continue
+
+            # We will use this to fill potential missing indices
+            if not isinstance(value_if_no_indexed, (list, tuple)):
+                value_if_no_indexed = [value_if_no_indexed]
+
+            for idx, value in enumerate(value_if_no_indexed):
+                if idx not in indexed_values or (
+                    most_specific_rule_if_no_index.specificity
+                    > max(r.specificity for r in indexed_values[idx])
+                ):
+                    indexed_values[idx] = [most_specific_rule_if_no_index]
+
+            most_specific_for_key = {}
+            for index, rules in indexed_values.items():
+                most_specific_for_key[index] = Config._take_most_specific_in_list(rules)
+
+            indices = list(indexed_values.keys())
+            indices.sort()
+            missing_indices = [i for i in range(indices[-1]) if i not in indices]
+            assert (
+                len(missing_indices) == 0
+            ), f"Missing indices {missing_indices} for key {key}"
+
+            most_specific_values = [
+                most_specific_for_key[i].get_value(config) for i in indices
+            ]
+            for i in indices:
+                if not isinstance(most_specific_for_key[i].head, IndexSelector):
+                    most_specific_values[i] = most_specific_values[i][i]
+            most_specific[key] = most_specific_values
+
+        return most_specific
+
+    @staticmethod
+    def _merge_rules_on_key(rules):
+        merged = {}
         for rule in rules:
             key = rule.key
-            if key in most_specific:
-                if rule.is_more_specific_than(most_specific[key]):
-                    most_specific[key] = rule
+            if key in merged:
+                merged[key].append(rule)
             else:
-                most_specific[key] = rule
-        return most_specific
+                merged[key] = [rule]
+        return merged
