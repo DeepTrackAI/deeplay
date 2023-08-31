@@ -23,7 +23,7 @@ class Skip(DeepTorchModule):
         super().__init__(inputs=inputs, func=func)
 
         self.func = self.attr("func")
-        self.inputs = self.create("inputs")
+        self.inputs = self.new("inputs")
 
     def forward(self, x):
         inputs = [inp(x) for inp in self.inputs]
@@ -48,7 +48,7 @@ class Concatenate(DeepTorchModule):
         super().__init__(inputs=inputs, dim=dim)
 
         self.dim = self.attr("dim")
-        self.inputs = self.create("inputs")
+        self.inputs = self.new("inputs")
 
     def forward(self, x):
         inputs = [inp(x) for inp in self.inputs]
@@ -69,7 +69,7 @@ class Add(Skip):
 
         super().__init__(inputs=inputs)
 
-        self.inputs = self.create("inputs")
+        self.inputs = self.new("inputs")
 
     def forward(self, x):
         inputs = [inp(x) for inp in self.inputs]

@@ -47,7 +47,7 @@ class DeepTorchModule(nn.Module):
         """Get an attribute from the config."""
         return self.config.get(key)
 
-    def create(self, key, i=None, length=None):
+    def new(self, key, i=None, length=None):
         """Create a module from the config."""
         subconfig = self.config.with_selector(key)
         if i is not None:
@@ -57,7 +57,7 @@ class DeepTorchModule(nn.Module):
 
     def create_many(self, key, n):
         """Create many modules from the config."""
-        return [self.create(key, i, length=n) for i in range(n)]
+        return [self.new(key, i, length=n) for i in range(n)]
 
     def set_config(self, config: Config):
         self.config = config

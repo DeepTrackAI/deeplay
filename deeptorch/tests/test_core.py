@@ -16,7 +16,7 @@ class TestCore(unittest.TestCase):
         def __init__(self, bias=0, block=None, **kwargs):
             super().__init__(bias=bias, block=block, **kwargs)
             self.bias = self.attr("bias")
-            self.layer = self.create("block")
+            self.layer = self.new("block")
 
         def forward(self, x):
             return self.layer(x) + self.bias
@@ -86,7 +86,7 @@ class TestCore(unittest.TestCase):
             defaults = Config()
 
             def __init__(self, foo):
-                self.foo = self.create("foo")
+                self.foo = self.new("foo")
 
         module = MockDTModule2.from_config(Config().foo([0, 1, 2]))
         self.assertEqual(len(module.foo), 3)

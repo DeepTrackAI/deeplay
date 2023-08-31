@@ -32,8 +32,8 @@ class EncoderDecoder(DeepTorchModule):
             depth=depth, encoder=encoder, bottleneck=bottleneck, decoder=decoder
         )
 
-        self.encoder = self.create("encoder")
-        self.decoder = self.create("decoder")
+        self.encoder = self.new("encoder")
+        self.decoder = self.new("decoder")
 
     def forward(self, x):
         return self.decoder(self.encoder(x))
@@ -58,8 +58,8 @@ class Autoencoder(DeepTorchModule, pl.LightningModule):
     def __init__(self, backbone=None, head=None):
         super().__init__(backbone=backbone, head=head)
 
-        self.backbone = self.create("backbone")
-        self.head = self.create("head")
+        self.backbone = self.new("backbone")
+        self.head = self.new("head")
 
     def forward(self, x):
         return self.head(self.backbone(x))

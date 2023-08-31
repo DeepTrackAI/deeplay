@@ -37,7 +37,7 @@ class CategoricalClassificationHead(DeepTorchModule):
         )
 
         self.num_classes = self.attr("num_classes")
-        self.output = self.create("output")
+        self.output = self.new("output")
 
     def forward(self, x):
         x = self.output(x)

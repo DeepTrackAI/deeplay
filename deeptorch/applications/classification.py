@@ -49,9 +49,9 @@ class ImageClassifier(DeepTorchModule, pl.LightningModule):
         )
 
         self.num_classes = self.attr("num_classes")
-        self.backbone = self.create("backbone")
-        self.connector = self.create("connector")
-        self.head = self.create("head")
+        self.backbone = self.new("backbone")
+        self.connector = self.new("connector")
+        self.head = self.new("head")
 
         self.val_accuracy = Accuracy()
 
