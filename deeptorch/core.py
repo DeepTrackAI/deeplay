@@ -25,6 +25,8 @@ def _match_signature(func, args, kwargs):
 class DeepTorchModule(nn.Module):
     defaults = {}
 
+    config: Config
+
     def __init__(self, **kwargs):
         super().__init__()
         self._all_uninitialized_submodules = []
