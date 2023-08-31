@@ -276,11 +276,9 @@ To populate more, specify the length with .populate(..., length=desired_length)"
         rules_per_key = self._merge_rules_on_key(rules)
 
         if not last_selector_is_index:
-            most_specific = self._take_most_specific_per_key_and_index(
-                rules_per_key, self
-            )
+            most_specific = self._take_most_specific_per_key_and_index(rules_per_key)
         else:
-            most_specific = self._take_most_specific_per_key(rules_per_key, self)
+            most_specific = self._take_most_specific_per_key(rules_per_key)
 
         if len(most_specific) == 0:
             return default
@@ -309,7 +307,7 @@ To populate more, specify the length with .populate(..., length=desired_length)"
     def get_parameters(self):
         rules = self._get_all_matching_rules(NoneSelector(), match_key=False)
         rule_dict = self._merge_rules_on_key(rules)
-        return self._take_most_specific_per_key(rule_dict, self)
+        return self._take_most_specific_per_key(rule_dict)
 
     def with_selector(self, selectors):
         selectors = parse_selectors(selectors)
@@ -377,12 +375,11 @@ To populate more, specify the length with .populate(..., length=desired_length)"
         _, head = self._context.pop()
         return isinstance(head, type)
 
-    @staticmethod
-    def _take_most_specific_per_key(key_rule_dict, config):
+    def _take_most_specific_per_key(self, key_rule_dict):
         most_specific = {}
         for key, rules in key_rule_dict.items():
             most_specific[key] = Config._take_most_specific_in_list(rules).get_value(
-                config
+                self
             )
         return most_specific
 
@@ -394,8 +391,7 @@ To populate more, specify the length with .populate(..., length=desired_length)"
                 most_specific = rule
         return most_specific
 
-    @staticmethod
-    def _take_most_specific_per_key_and_index(key_rule_dict, config):
+    def _take_most_specific_per_key_and_index(self, key_rule_dict):
         # This function is awful. It needs to be rewritten.
 
         most_specific = {}
@@ -424,7 +420,7 @@ To populate more, specify the length with .populate(..., length=desired_length)"
             most_specific_rule_if_no_index = Config._take_most_specific_in_list(
                 rule_if_no_indexed
             )
-            value_if_no_indexed = most_specific_rule_if_no_index.get_value(config)
+            value_if_no_indexed = most_specific_rule_if_no_index.get_value(self)
 
             if not any_indexed:
                 most_specific[key] = value_if_no_indexed
@@ -453,7 +449,7 @@ To populate more, specify the length with .populate(..., length=desired_length)"
             ), f"Missing indices {missing_indices} for key {key}"
 
             most_specific_values = [
-                most_specific_for_key[i].get_value(config) for i in indices
+                most_specific_for_key[i].get_value(self) for i in indices
             ]
             for i in indices:
                 if not isinstance(most_specific_for_key[i].head, IndexSelector):
