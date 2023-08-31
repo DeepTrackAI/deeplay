@@ -174,32 +174,41 @@ class UninitializedModule(nn.Module):
     def module(self):
         return self._initialized_module
 
-    @staticmethod
-    def create_module(config: Config):
+    @classmethod
+    def create_module(cls, config: Config):
         """Create a module from the config."""
-
-        from .templates import Layer
 
         template = config.get(NoneSelector())
         parameters = config.get_parameters()
         uid = parameters.get("uid", None)
 
         # uid is set in Layer
-        if isinstance(template, Layer):
-            module = template.from_config(config)
-        elif inspect.isclass(template) and issubclass(template, DeepTorchModule):
-            module = template.from_config(config)
-        elif isinstance(template, nn.Module):
-            module = template
-        elif callable(template):
-            module = safe_call(template, config.get_parameters())
-        else:
-            module = template
+
+        res = cls.build_template(template, config)
 
         if uid is not None:
-            config.add_ref(uid, module)
+            config.add_ref(uid, res)
 
-        return module
+        return res
+
+    @classmethod
+    def build_template(cls, template, config):
+        from .templates import Layer
+
+        if isinstance(template, (list, tuple)):
+            return [
+                cls.build_template(template[i], config[i]) for i in range(len(template))
+            ]
+        elif isinstance(template, Layer):
+            return template.from_config(config)
+        elif inspect.isclass(template) and issubclass(template, DeepTorchModule):
+            return template.from_config(config)
+        elif isinstance(template, nn.Module):
+            return template
+        elif callable(template):
+            return safe_call(template, config.get_parameters())
+        else:
+            return template
 
     # def _make_into(self, module):
     #     # Best effort into making this module into the given module.
