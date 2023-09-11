@@ -15,10 +15,34 @@ __all__ = ["Config", "ForwardHook"]
 
 
 class ConfigRule:
+    """
+    Represents a rule in the configuration.
+
+    Attributes:
+        selector (Selector): The selector of the rule.
+        head (Selector): The parsed selector key.
+        key (str): The key of the rule.
+        value (Any): The value of the rule.
+        scope_root (Selector): The root context of the rule.
+
+    Methods:
+        is_more_specific_than(other): Check if the rule is more specific than another rule based on their specificity values.
+        matches(context, match_key=False, allow_indexed=False): Check if the rule matches the given context.
+        get_value(config): Get the value of the rule from the config.
+    """
+
     specificity = 1
     default = False
 
     def __init__(self, selector, key, value):
+        """
+        Initialize a ConfigRule instance.
+
+        Args:
+            selector (Selector): The selector of the rule.
+            key (str): The key of the rule.
+            value (Any): The value of the rule.
+        """
         self.selector = selector
 
         head = parse_selectors(key)
@@ -32,6 +56,15 @@ class ConfigRule:
         # self._selector_has_double_wildcard = selector.any(lambda s: isinstance(s, DoubleWildcardSelector))
 
     def is_more_specific_than(self, other):
+        """
+        Check if the rule is more specific than another rule based on their specificity values.
+
+        Args:
+            other (ConfigRule): The other rule to compare.
+
+        Returns:
+            bool: True if the rule is more specific than the other rule, False otherwise.
+        """
         if other is None:
             return True
 
@@ -43,6 +76,17 @@ class ConfigRule:
         return True
 
     def matches(self, context, match_key=False, allow_indexed=False):
+        """
+        Check if the rule matches the given context.
+
+        Args:
+            context (Selector): The context to match against.
+            match_key (bool): Whether to match the key of the rule.
+            allow_indexed (bool): Whether to allow indexed selectors.
+
+        Returns:
+            bool: True if the rule matches the context, False otherwise.
+        """
         head = ClassSelector(self.key) if allow_indexed else self.head
         if match_key:
             full_selector = self.selector + head
@@ -66,6 +110,15 @@ class ConfigRule:
         return False
 
     def get_value(self, config):
+        """
+        Get the value of the rule from the config.
+
+        Args:
+            config (Config): The config to retrieve the value from.
+
+        Returns:
+            Any: The value of the rule.
+        """
         if isinstance(self.value, Ref):
             # Create a new config with the root context of the rule
             new_config = Config(config._rules, config._refs, self.scope_root)
@@ -93,12 +146,44 @@ class ConfigRule:
 
 
 class ConfigRuleDefault(ConfigRule):
+    """
+    Represents a default rule in the configuration.
+
+    Attributes:
+    - specificity: An integer representing the specificity of the rule. Default value is 0.
+    - default: A boolean indicating whether the rule is a default rule. Default value is True.
+    """
+
     specificity = 0
     default = True
 
 
 class ConfigRuleWrapper(ConfigRule):
+    """
+    A subclass of ConfigRule that wraps another ConfigRule instance.
+
+    This class allows for additional functionality to be added to the wrapped rule without modifying the original class.
+    Specifically useful when merging Configs together.
+
+    Example Usage:
+    ```python
+    rule = ConfigRule(ClassSelector('selector'), 'key', 'value')
+    wrapper = ConfigRuleWrapper(ClassSelector('new_selector'), rule)
+    print(wrapper.selector)  # Output: 'new_selector.selector'
+    print(wrapper.key)  # Output: 'key'
+    print(wrapper.value)  # Output: 'value'
+    ```
+    """
+
     def __init__(self, selector, value, default=False):
+        """
+        Initializes a ConfigRuleWrapper instance.
+
+        Args:
+            selector (str): The selector of the wrapped rule combined with the selector of the wrapper.
+            value (ConfigRule): The wrapped ConfigRule instance.
+            default (bool, optional): If True, sets the specificity to 0 and the default flag to True. Defaults to False.
+        """
         if default:
             self.specificity = 0
             self.default = True
@@ -109,13 +194,56 @@ class ConfigRuleWrapper(ConfigRule):
         self.head = value.head
         self.value = value.value
 
-    def __attr__(self, name):
-        # defer to the wrapped rule if the attribute is not found
+    def __getattr__(self, name):
+        """
+        Delegates attribute access to the wrapped rule if the attribute is not found in the wrapper.
+
+        Args:
+            name (str): The name of the attribute to access.
+
+        Returns:
+            Any: The value of the attribute from the wrapped rule.
+        """
         return getattr(self.value, name)
 
 
 class ForwardHook:
-    def __init__(self, hook, first_only=False):
+    """
+    A class used to create a hook that can be called on a target object.
+
+    Will run on the first forward pass of the direct parent module. Can be used to
+    retrieve information from the forward pass of a module.
+
+    Attributes:
+    - hook: The hook function to be executed on the target object.
+    - first_only: A boolean indicating whether the hook should run only once.
+
+    Methods:
+    - __call__(self, x): Calls the hook function on a target object and stores the result.
+    - value(self): Returns the stored result of the hook function.
+    - has_run(self): Returns a boolean indicating whether the hook has been run.
+
+    Example Usage:
+    ```python
+    model = Layer("layer").from_config(
+        Config()
+        .layer(nn.Linear)
+        .layer.in_features(ForwardHook(lambda x: x.shape[1]))
+        .layer.out_features(10)
+    )
+
+    y = model(torch.ones(1, 5))
+    print(model.in_features) # Output: 5
+    """
+
+    def __init__(self, hook, first_only=True):
+        """
+        Initializes a ForwardHook instance with a hook function and an option to run only once.
+
+        Parameters:
+        - hook: The hook function to be executed on the target object.
+        - first_only: A boolean indicating whether the hook should run only once.
+        """
         if isinstance(hook, ForwardHook):
             hook = hook.hook
             first_only = hook.first_only
@@ -127,12 +255,30 @@ class ForwardHook:
         self._has_run = False
 
     def __call__(self, x):
+        """
+        Calls the hook function on a target object and stores the result.
+
+        Parameters:
+        - x: The target object to call the hook function on.
+
+        Returns:
+        - The result of the hook function.
+        """
         if self.first_only and self._has_run:
             return self._value
-        self.value = self.hook(x)
+        self._value = self.hook(x)
         self._has_run = True
 
     def value(self):
+        """
+        Returns the stored result of the hook function.
+
+        Returns:
+        - The stored result of the hook function.
+
+        Raises:
+        - ValueError: If the hook has not been run yet.
+        """
         if not self._has_run:
             raise ValueError(
                 "Hook has not been run yet. Make sure the module is evaluated before the target is called."
@@ -140,10 +286,79 @@ class ForwardHook:
         return self._value
 
     def has_run(self):
+        """
+        Returns a boolean indicating whether the hook has been run.
+
+        Returns:
+        - True if the hook has been run, False otherwise.
+        """
         return self._has_run
 
 
 class Config:
+    """
+    The `Config` class is a configuration management class that allows users to define and manipulate configuration rules. It provides methods for setting and getting values, merging configurations, adding references, and more.
+
+    Example Usage:
+        # Create a new Config object
+        config = Config()
+
+        # Set values using selectors
+        config.a.b.c(10).d.e.f(20)
+
+        # Get a value using selectors
+        c = config.get("a.b.c")  # returns 10
+        f = config.get("d.e.f")  # returns 20
+
+        # Merge two configurations
+        config1 = Config().a(1)
+        config2 = Config().b(2)
+        merged_config = config1.merge("other", config2)  # merges config1 and config2
+        a = merged_config.get("a")  # returns 1
+        b = merged_config.get("other.b")  # returns 2
+
+        # Add a reference to another rule
+        ref_config = Config().x.y(100).a.b(Ref("x.y", lambda x: x + 1))
+        a = ref_config.get("a.b")  # returns 101
+
+
+    Main functionalities:
+    - Setting and getting values using selectors
+    - Merging configurations
+    - Adding and retrieving references to other configurations
+    - Populating configurations with values from generators
+    - Running forward hooks
+
+    Methods:
+    - value(): Returns the stored result of the hook function.
+    - has_run(): Returns a boolean indicating whether the hook has been run.
+    - on_first_forward(): Sets a hook to be evaluated only on the first forward pass.
+    - on_forward(): Sets a hook to be evaluated on every forward pass.
+    - run_all_forward_hooks(): Runs all forward hooks.
+    - has_forward_hooks(): Returns a boolean indicating whether there are any forward hooks.
+    - set(): Sets a value for the given selectors.
+    - populate(): Populates the configuration with values from a generator.
+    - default(): Sets a default value for the given selectors.
+    - merge(): Merges another configuration into the current configuration.
+    - get(): Retrieves a value for the given selectors.
+    - get_module(): Retrieves the module configuration.
+    - add_ref(): Adds a reference to another configuration.
+    - get_ref(): Retrieves a reference configuration.
+    - get_parameters(): Retrieves the parameters of the configuration.
+    - with_selector(): Creates a new configuration with additional selectors.
+    - __getattr__(): Handles attribute access for class selectors.
+    - __getitem__(): Handles indexing for index selectors.
+    - __call__(): Handles function call for setting values and adding rules.
+    - __repr__(): Returns a string representation of the configuration.
+    - _get_all_matching_rules(): Retrieves all rules that match the given selectors.
+    - _is_last_selector_a(): Checks if the last selector is of a specific type.
+    - _take_most_specific_per_key(): Retrieves the most specific value for each key.
+    - _take_most_specific_in_list(): Retrieves the most specific rule in a list.
+    - _take_most_specific_per_key_and_index(): Retrieves the most specific value for each key and index.
+    - _merge_rules_on_key(): Merges rules with the same key into a dictionary.
+
+    """
+
     def __init__(self, rules=None, refs=None, context=NoneSelector()):
         self._rules = [] if rules is None else rules.copy()
         self._refs = {} if refs is None else refs

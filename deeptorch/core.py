@@ -51,13 +51,18 @@ class DeepTorchModule(nn.Module):
         """Get an attribute from the config."""
         return self.config.get(key)
 
-    def new(self, key, i=None, length=None):
+    def new(self, key, i=None, length=None, now=False):
         """Create a module from the config."""
         subconfig = self.config.with_selector(key)
         if i is not None:
             subconfig = subconfig[i]
 
-        return UninitializedModule(subconfig)
+        lazy = UninitializedModule(subconfig)
+        if now and isinstance(lazy, UninitializedModule):
+            raise RuntimeError(
+                f"Cannot create module {key} now, because it has forward hooks."
+            )
+        return lazy
 
     def set_config(self, config: Config):
         self.config = config
@@ -193,6 +198,18 @@ class UninitializedModule(nn.Module):
             return safe_call(template, config.get_parameters())
         else:
             return template
+
+    def __getattr__(self, name):
+        # if not self.is_initialized():
+        #     raise AttributeError(f"Uninitialized module has no attribute {name}")
+        # if not hasattr(self._initialized_module, name):
+        #     raise AttributeError(
+        #         f"Neither {self} nor {self._initialized_module} has attribute {name}"
+        #     )
+        try:
+            return super().__getattr__(name)
+        except AttributeError:
+            return getattr(self._initialized_module, name)
 
     # def _make_into(self, module):
     #     # Best effort into making this module into the given module.
