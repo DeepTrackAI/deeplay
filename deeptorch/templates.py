@@ -15,25 +15,32 @@ __all__ = [
 ]
 
 
+def _convert_other_to_layer(other):
+    if isinstance(other, Layer):
+        return other
+    elif isinstance(other, (int, float, complex, bool)):
+        return LayerConstant(other)
+
+
 class Layer:
     def __init__(self, classname="", uid=None, **_):
         self.classname = classname
         self.uid = uid
 
     def __rshift__(self, other):
-        return LayerSequence(self, other)
+        return LayerSequence(self, _convert_other_to_layer(other))
 
     def __add__(self, other):
-        return LayerAdd(self, other)
+        return LayerAdd(self, _convert_other_to_layer(other))
 
     def __sub__(self, other):
-        return LayerSub(self, other)
+        return LayerSub(self, _convert_other_to_layer(other))
 
     def __mul__(self, other):
-        return LayerMul(self, other)
+        return LayerMul(self, _convert_other_to_layer(other))
 
     def __div__(self, other):
-        return LayerDiv(self, other)
+        return LayerDiv(self, _convert_other_to_layer(other))
 
     def build(self, config: Config):
         subconfig = config.with_selector(self.classname)
@@ -47,6 +54,15 @@ class Layer:
 
     def from_config(self, config):
         return self.build(config)
+
+
+class LayerConstant(Layer):
+    def __init__(self, value, **kwargs):
+        super().__init__(**kwargs)
+        self.value = value
+
+    def build(self, config):
+        return lambda _: self.value
 
 
 class LayerInput(Layer):
