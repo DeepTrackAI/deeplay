@@ -26,7 +26,7 @@ class ImageClassifier(DeeplayModule, pl.LightningModule):
         .optimizer(torch.optim.Adam, lr=1e-3)
     )
 
-    def __init__(self, num_classes, backbone=None, connector=None, head=None, **kwargs):
+    def __init__(self, num_classes, backbone=None, connector=None, head=None):
         """Image classifier.
 
         Parameters
@@ -49,7 +49,6 @@ class ImageClassifier(DeeplayModule, pl.LightningModule):
             backbone=backbone,
             connector=connector,
             head=head,
-            **kwargs
         )
 
         self.num_classes = self.attr("num_classes")
