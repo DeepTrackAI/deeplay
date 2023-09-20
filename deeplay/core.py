@@ -4,7 +4,7 @@ from .config import Config, NoneSelector, IndexSelector
 
 from .utils import safe_call
 
-__all__ = ["DeepTorchModule", "UninitializedModule"]
+__all__ = ["DeeplayModule", "UninitializedModule"]
 
 
 def _match_signature(func, args, kwargs):
@@ -24,7 +24,7 @@ def _match_signature(func, args, kwargs):
     return bound.arguments
 
 
-class DeepTorchModule(nn.Module):
+class DeeplayModule(nn.Module):
     defaults = {}
 
     config: Config
@@ -51,11 +51,14 @@ class DeepTorchModule(nn.Module):
         """Get an attribute from the config."""
         return self.config.get(key)
 
-    def new(self, key, i=None, length=None, now=False):
+    def new(self, key, i=None, length=None, now=False, extra_kwargs=None):
         """Create a module from the config."""
         subconfig = self.config.with_selector(key)
         if i is not None:
             subconfig = subconfig[i]
+
+        for k, v in (extra_kwargs or {}).items():
+            subconfig.set(k, v)
 
         lazy = UninitializedModule(subconfig)
         if now and isinstance(lazy, UninitializedModule):
@@ -190,7 +193,7 @@ class UninitializedModule(nn.Module):
             ]
         elif isinstance(template, Layer):
             return template.from_config(config)
-        elif inspect.isclass(template) and issubclass(template, DeepTorchModule):
+        elif inspect.isclass(template) and issubclass(template, DeeplayModule):
             return template.from_config(config)
         elif isinstance(template, nn.Module):
             return template

@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import pytorch_lightning as pl
 
 from torchmetrics import Accuracy
-from ..core import DeepTorchModule
+from ..core import DeeplayModule
 from ..config import Config, Ref
 from ..templates import Layer
 from ..components import (
@@ -16,13 +16,14 @@ from ..components import (
 __all__ = ["ImageClassifier"]
 
 
-class ImageClassifier(DeepTorchModule, pl.LightningModule):
+class ImageClassifier(DeeplayModule, pl.LightningModule):
     defaults = (
         Config()
         .num_classes(2)
         .backbone(ConvolutionalEncoder)
         .connector(nn.Flatten)
         .head(CategoricalClassificationHead, num_classes=Ref("num_classes"))
+        .optimizer(torch.optim.Adam, lr=1e-3)
     )
 
     def __init__(self, num_classes, backbone=None, connector=None, head=None):
@@ -55,6 +56,7 @@ class ImageClassifier(DeepTorchModule, pl.LightningModule):
         self.connector = self.new("connector")
         self.head = self.new("head")
 
+        self.loss = self.new("loss")
         self.val_accuracy = Accuracy()
 
     def forward(self, x):
@@ -93,7 +95,7 @@ class ImageClassifier(DeepTorchModule, pl.LightningModule):
         return y
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+        optimizer = self.new("optimizer", extra_kwargs={"params": self.parameters()})
         return optimizer
 
     def training_step(self, batch, batch_idx):

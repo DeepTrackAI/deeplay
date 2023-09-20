@@ -6,7 +6,7 @@ import pytorch_lightning as pl
 from .. import (
     Config,
     Ref,
-    DeepTorchModule,
+    DeeplayModule,
     Layer,
     ConvolutionalEncoder,
     ConvolutionalDecoder,
@@ -19,7 +19,7 @@ from .. import (
 __all__ = ["Autoencoder", "EncoderDecoder", "ConvolutionalEncoderDecoder"]
 
 
-class EncoderDecoder(DeepTorchModule):
+class EncoderDecoder(DeeplayModule):
     defaults = (
         Config()
         .depth(4)
@@ -50,7 +50,7 @@ class ConvolutionalEncoderDecoder(EncoderDecoder):
     )
 
 
-class Autoencoder(DeepTorchModule, pl.LightningModule):
+class Autoencoder(DeeplayModule, pl.LightningModule):
     defaults = (
         Config()
         .backbone(EncoderDecoder)

@@ -1,5 +1,5 @@
 from ..templates import Layer
-from ..core import DeepTorchModule
+from ..core import DeeplayModule
 from ..config import Config, Ref
 
 import torch.nn as nn
@@ -7,7 +7,7 @@ import torch.nn as nn
 __all__ = ["Decoder", "ConvolutionalDecoder"]
 
 
-class Decoder(DeepTorchModule):
+class Decoder(DeeplayModule):
     defaults = (
         Config()
         .depth(4)
