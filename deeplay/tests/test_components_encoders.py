@@ -1,12 +1,12 @@
 import unittest
 import torch
 import torch.nn as nn
-from .. import Config, Layer, ConvolutionalEncoder
+from .. import Config, Layer, ImageToImageEncoder
 
 
 class TestComponentsEncoders(unittest.TestCase):
     def test_encoder_defaults(self):
-        encoder = ConvolutionalEncoder()
+        encoder = ImageToImageEncoder()
         self.assertEqual(encoder.depth, 4)
         self.assertEqual(len(encoder.blocks), 4)
         self.assertListEqual(
@@ -18,7 +18,7 @@ class TestComponentsEncoders(unittest.TestCase):
         self.assertEqual(y.shape, (1, 64, 1, 1))
 
     def test_encoder_shallow(self):
-        encoder = ConvolutionalEncoder(depth=2)
+        encoder = ImageToImageEncoder(depth=2)
 
         self.assertEqual(encoder.depth, 2)
         self.assertEqual(len(encoder.blocks), 2)
@@ -31,7 +31,7 @@ class TestComponentsEncoders(unittest.TestCase):
         self.assertEqual(y.shape, (1, 16, 7, 7))
 
     def test_encoder_with_padding(self):
-        encoder = ConvolutionalEncoder(depth=2, blocks=Config().layer.padding(0))
+        encoder = ImageToImageEncoder(depth=2, blocks=Config().layer.padding(0))
         self.assertEqual(encoder.depth, 2)
         self.assertEqual(len(encoder.blocks), 2)
         self.assertListEqual(

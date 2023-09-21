@@ -8,7 +8,7 @@ from .. import (
     Ref,
     DeeplayModule,
     Layer,
-    ConvolutionalEncoder,
+    ImageToImageEncoder,
     ConvolutionalDecoder,
 )
 

@@ -8,8 +8,7 @@ from ..core import DeeplayModule
 from ..config import Config, Ref
 from ..templates import Layer
 from ..components import (
-    ConvolutionalEncoder,
-    DenseEncoder,
+    ImageToVectorEncoder,
     CategoricalClassificationHead,
 )
 
@@ -20,8 +19,7 @@ class ImageClassifier(DeeplayModule, pl.LightningModule):
     defaults = (
         Config()
         .num_classes(2)
-        .backbone(ConvolutionalEncoder)
-        .connector(nn.Flatten)
+        .backbone(ImageToVectorEncoder)
         .head(CategoricalClassificationHead, num_classes=Ref("num_classes"))
         .optimizer(torch.optim.Adam, lr=1e-3)
     )
@@ -53,7 +51,6 @@ class ImageClassifier(DeeplayModule, pl.LightningModule):
 
         self.num_classes = self.attr("num_classes")
         self.backbone = self.new("backbone")
-        self.connector = self.new("connector")
         self.head = self.new("head")
 
         self.loss = self.new("loss")
@@ -73,7 +70,6 @@ class ImageClassifier(DeeplayModule, pl.LightningModule):
             Output tensor.
         """
         x = self.backbone(x)
-        x = self.connector(x)
         x = self.head(x)
         return x
 
