@@ -58,7 +58,7 @@ class ImageClassifier(DeeplayModule, pl.LightningModule):
         self.head = self.new("head")
 
         self.loss = self.new("loss")
-        self.val_accuracy = Accuracy()
+        self.val_accuracy = Accuracy(task="multiclass", num_classes=self.num_classes)
 
     def forward(self, x):
         """Forward pass.

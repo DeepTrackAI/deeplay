@@ -5,20 +5,14 @@ import pytorch_lightning as pl
 
 from .. import (
     Config,
-    Ref,
     DeeplayModule,
-    Layer,
-    ConvolutionalEncoder,
-    ConvolutionalDecoder,
 )
 
-
-class DeeplayLightningModule(DeeplayModule, pl.LightningModule):
+class Application(DeeplayModule, pl.LightningModule):
 
     config = (
         Config()
         .optimizer(torch.optim.Adam, lr=1e-3)
-        .scheduler(lambda
     )
 
     def __init__(self, **kwargs):
