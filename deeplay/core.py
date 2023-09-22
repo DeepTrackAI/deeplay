@@ -1,5 +1,6 @@
 import torch.nn as nn
 import inspect
+from typing import Any
 from .config import Config, NoneSelector, IndexSelector
 
 from .utils import safe_call
@@ -22,114 +23,6 @@ def _match_signature(func, args, kwargs):
 
     bound = sig.bind(*args, **kwargs)
     return bound.arguments
-
-
-class DeeplayModule(nn.Module):
-    defaults = {}
-
-    config: Config
-
-    def __init__(self, **kwargs):
-        super().__init__()
-        self._all_uninitialized_submodules = []
-        for name, module in self.named_modules():
-            if isinstance(module, UninitializedModule):
-                self._all_uninitialized_submodules.append(module)
-
-        self._any_uninitialized_submodules = bool(self._all_uninitialized_submodules)
-
-    def __new__(cls, *args, **kwargs):
-        __init__args = _match_signature(cls.__init__, args, kwargs)
-        config = cls._build_config(__init__args)
-
-        obj = object.__new__(cls)
-        obj.set_config(config)
-
-        return obj
-
-    def attr(self, key):
-        """Get an attribute from the config."""
-        return self.config.get(key)
-
-    def new(self, key, i=None, length=None, now=False, extra_kwargs=None):
-        """Create a module from the config."""
-        subconfig = self.config.with_selector(key)
-        if i is not None:
-            subconfig = subconfig[i]
-
-        for k, v in (extra_kwargs or {}).items():
-            subconfig.set(k, v)
-
-        lazy = UninitializedModule(subconfig)
-        if now and isinstance(lazy, UninitializedModule):
-            raise RuntimeError(
-                f"Cannot create module {key} now, because it has forward hooks."
-            )
-        return lazy
-
-    def set_config(self, config: Config):
-        self.config = config
-
-    def __call__(self, *args, **kwargs):
-        y = super().__call__(*args, **kwargs)
-        # TODO: we could consider dynamically replacing the __call__ overload to avoid
-        # the overhead of this check.
-        # Should be benchmarked.
-        self._replace_uninitialized_modules()
-        return y
-
-    def _replace_uninitialized_modules(self):
-        if not self._any_uninitialized_submodules:
-            return
-        remaining = []
-        for name, module in self._all_uninitialized_submodules.copy():
-            # check that the module is still uninitialized
-            if self._modules[name] is module:
-                if module.is_initialized():
-                    self._modules[name] = module.module()
-                else:
-                    remaining.append((name, module))
-
-        self._all_uninitialized_submodules = remaining
-        self._any_uninitialized_submodules = bool(remaining)
-
-    @classmethod
-    def from_config(cls, config):
-        config = cls._add_defaults(config)
-
-        obj = object.__new__(cls)
-        obj.set_config(config)
-
-        # if obj.__init__ has any required positional arguments, we need to pass them.
-        _factory_kwargs = _match_signature(cls.__init__, [], config.get_parameters())
-        obj.__init__(**_factory_kwargs)
-        return obj
-
-    @classmethod
-    def _add_defaults(cls, config: Config):
-        if isinstance(cls.defaults, dict):
-            for key, value in cls.defaults.items():
-                config.default(key, value)
-        elif isinstance(cls.defaults, Config):
-            # We set prepend to true to allow the caller to override the defaults.
-            config.merge(NoneSelector(), cls.defaults, as_default=True, prepend=True)
-
-        return config
-
-    @classmethod
-    def _build_config(cls, kwargs):
-        # Should only be called from __new__.
-
-        config = Config()
-        for key, value in kwargs.items():
-            if isinstance(value, Config):
-                config.merge(key, value)
-            else:
-                config.set(key, value)
-
-        config = cls._add_defaults(config)
-
-        return config
 
 
 class UninitializedModule(nn.Module):
@@ -213,6 +106,116 @@ class UninitializedModule(nn.Module):
             return super().__getattr__(name)
         except AttributeError:
             return getattr(self._initialized_module, name)
+
+
+class DeeplayModule(nn.Module):
+    defaults = {}
+
+    config: Config
+
+    def __init__(self, **kwargs):
+        super().__init__()
+        self._all_uninitialized_submodules = []
+        for name, module in self.named_modules():
+            if isinstance(module, UninitializedModule):
+                self._all_uninitialized_submodules.append(module)
+
+        self._any_uninitialized_submodules = bool(self._all_uninitialized_submodules)
+
+    def __new__(cls, *args, **kwargs):
+        __init__args = _match_signature(cls.__init__, args, kwargs)
+        config = cls._build_config(__init__args)
+
+        obj = object.__new__(cls)
+        obj.set_config(config)
+
+        return obj
+
+    def attr(self, key) -> Any:
+        """Get an attribute from the config."""
+        return self.config.get(key)
+
+    def new(
+        self, key, i=None, length=None, now=False, extra_kwargs=None
+    ) -> UninitializedModule or "DeeplayModule":
+        """Create a module from the config."""
+        subconfig = self.config.with_selector(key)
+        if i is not None:
+            subconfig = subconfig[i]
+
+        for k, v in (extra_kwargs or {}).items():
+            subconfig.set(k, v)
+
+        lazy = UninitializedModule(subconfig)
+        if now and isinstance(lazy, UninitializedModule):
+            raise RuntimeError(
+                f"Cannot create module {key} now, because it has forward hooks."
+            )
+        return lazy
+
+    def set_config(self, config: Config):
+        self.config = config
+
+    def __call__(self, *args, **kwargs):
+        y = super().__call__(*args, **kwargs)
+        # TODO: we could consider dynamically replacing the __call__ overload to avoid
+        # the overhead of this check.
+        # Should be benchmarked.
+        self._replace_uninitialized_modules()
+        return y
+
+    def _replace_uninitialized_modules(self):
+        if not self._any_uninitialized_submodules:
+            return
+        remaining = []
+        for name, module in self._all_uninitialized_submodules.copy():
+            # check that the module is still uninitialized
+            if self._modules[name] is module:
+                if module.is_initialized():
+                    self._modules[name] = module.module()
+                else:
+                    remaining.append((name, module))
+
+        self._all_uninitialized_submodules = remaining
+        self._any_uninitialized_submodules = bool(remaining)
+
+    @classmethod
+    def from_config(cls, config):
+        config = cls._add_defaults(config)
+
+        obj = object.__new__(cls)
+        obj.set_config(config)
+
+        # if obj.__init__ has any required positional arguments, we need to pass them.
+        _factory_kwargs = _match_signature(cls.__init__, [], config.get_parameters())
+        obj.__init__(**_factory_kwargs)
+        return obj
+
+    @classmethod
+    def _add_defaults(cls, config: Config):
+        if isinstance(cls.defaults, dict):
+            for key, value in cls.defaults.items():
+                config.default(key, value)
+        elif isinstance(cls.defaults, Config):
+            # We set prepend to true to allow the caller to override the defaults.
+            config.merge(NoneSelector(), cls.defaults, as_default=True, prepend=True)
+
+        return config
+
+    @classmethod
+    def _build_config(cls, kwargs):
+        # Should only be called from __new__.
+
+        config = Config()
+        for key, value in kwargs.items():
+            if isinstance(value, Config):
+                config.merge(key, value)
+            else:
+                config.set(key, value)
+
+        config = cls._add_defaults(config)
+
+        return config
 
     # def _make_into(self, module):
     #     # Best effort into making this module into the given module.

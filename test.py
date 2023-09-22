@@ -1,9 +1,7 @@
-from __future__ import annotations
+# %%
+import torch
 
+x = torch.randn(2, 50)
+x.unflatten(1, (-1, 5, 5)).size()
 
-class A:
-    def __init__(self, value):
-        self.value = value
-
-    def __getattr__(self, name):
-        return A(name)
+# %%

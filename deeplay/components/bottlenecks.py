@@ -33,6 +33,11 @@ class Bottleneck(DeeplayModule):
         return x
 
 
+class AbstractSampler(DeeplayModule):
+    n_inputs: int
+    n_outputs: int
+
+
 class NormalDistribtionSampler(DeeplayModule):
     defaults = (
         Config()
@@ -52,38 +57,40 @@ class NormalDistribtionSampler(DeeplayModule):
     def forward(self, x):
         loc = self.loc(x)
         scale = self.scale(x)
-        return torch.distributions.Normal(loc=loc, scale=scale).sample(x.shape)
+        return torch.distributions.Normal(loc=loc, scale=scale).rsample(x.shape)
 
 
 class VariationalBottleneck(DeeplayModule):
     defaults = (
         Config()
         .hidden_dim(4)
-        .flatten(nn.Flatten)
-        .layer(nn.LazyLinear, out_features=Ref("hidden_dim"))
+        .layer(nn.LazyLinear)
         .samplers(NormalDistribtionSampler)
         .activation(nn.Tanh)
     )
 
-    def __init__(self, out_channels=1, activation=nn.ReLU):
-        super().__init__(out_channels=out_channels, activation=activation)
+    def __init__(self):
+        super().__init__()
 
-        self.hidden_dim = self.attr("hidden_dim")
+        self.hidden_dim: int = self.attr("hidden_dim")
 
         # Create samplers until we have enough outputs
         self.samplers = []
-        n_sampler_outputs = 0
-        while n_sampler_outputs < self.hidden_dim:
-            sampler = self.new("samplers", i=len(self.samplers))
-            n_sampler_outputs += sampler.n_outputs
+        __n_sampler_inputs = 0
+        __n_sampler_outputs = 0
+
+        while __n_sampler_outputs < self.hidden_dim:
+            sampler: AbstractSampler = self.new("samplers", i=len(self.samplers))
+            __n_sampler_inputs += sampler.n_inputs
+            __n_sampler_outputs += sampler.n_outputs
             self.samplers.append(sampler)
 
-        self.flatten = self.new("flatten")
-        self.layer = self.new("layer")
+        self.layer = self.new(
+            "layer", extra_kwargs=dict(out_features=__n_sampler_inputs)
+        )
         self.activation = self.new("activation")
 
     def forward(self, x):
-        x = self.flatten(x)
         x = self.layer(x)
 
         # for i in range(hidden_dim):

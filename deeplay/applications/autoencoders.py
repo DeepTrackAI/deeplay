@@ -8,7 +8,7 @@ from .. import (
     Ref,
     DeeplayModule,
     Layer,
-    ImageToImageEncoder,
+    ImageToVectorEncoder,
     ConvolutionalDecoder,
 )
 
@@ -19,13 +19,14 @@ from .. import (
 __all__ = ["Autoencoder", "EncoderDecoder", "ImageToImageEncoderDecoder"]
 
 
-class EncoderDecoder(DeeplayModule):
+class Autoencoder(DeeplayModule):
     defaults = (
         Config()
         .depth(4)
-        .encoder.depth(Ref("depth"))
-        .encoder.layer.padding(1)
-        .decoder.depth(Ref("depth"))
+        .hidden_dim(2)
+        .encoder(ImageToVectorEncoder, depth=Ref("depth"))
+        .bottleneck(nn.LazyConv2d, out_channels=Ref("hidden_dim"))
+        .decoder(VectorToImageDecoder, depth=Ref("depth"))
         .bottleneck(nn.Identity)
     )
 
@@ -41,52 +42,52 @@ class EncoderDecoder(DeeplayModule):
         return self.decoder(self.encoder(x))
 
 
-class ImageToImageEncoderDecoder(EncoderDecoder):
-    defaults = (
-        Config()
-        .merge(None, EncoderDecoder.defaults)
-        .encoder(ImageToImageEncoder)
-        .decoder(ConvolutionalDecoder)
-    )
+# class ImageToImageEncoderDecoder(EncoderDecoder):
+#     defaults = (
+#         Config()
+#         .merge(None, EncoderDecoder.defaults)
+#         .encoder(ImageToImageEncoder)
+#         .decoder(ConvolutionalDecoder)
+#     )
 
 
-class Autoencoder(DeeplayModule, pl.LightningModule):
-    defaults = (
-        Config()
-        .backbone(EncoderDecoder)
-        .head(nn.LazyConv2d, out_channels=1, kernel_size=1, stride=1)
-    )
+# class Autoencoder(DeeplayModule, pl.LightningModule):
+#     defaults = (
+#         Config()
+#         .backbone(EncoderDecoder)
+#         .head(nn.LazyConv2d, out_channels=1, kernel_size=1, stride=1)
+#     )
 
-    def __init__(self, backbone=None, head=None):
-        super().__init__(backbone=backbone, head=head)
+#     def __init__(self, backbone=None, head=None):
+#         super().__init__(backbone=backbone, head=head)
 
-        self.backbone = self.new("backbone")
-        self.head = self.new("head")
+#         self.backbone = self.new("backbone")
+#         self.head = self.new("head")
 
-    def forward(self, x):
-        return self.head(self.backbone(x))
+#     def forward(self, x):
+#         return self.head(self.backbone(x))
 
-    def training_step(self, batch, batch_idx):
-        x, y = batch
-        y_hat = self(x)
-        loss = F.mse_loss(y_hat, x)
-        self.log("train_loss", loss)
-        return loss
+#     def training_step(self, batch, batch_idx):
+#         x, y = batch
+#         y_hat = self(x)
+#         loss = F.mse_loss(y_hat, x)
+#         self.log("train_loss", loss)
+#         return loss
 
-    def validation_step(self, batch, batch_idx):
-        x, y = batch
-        y_hat = self(x)
-        loss = F.mse_loss(y_hat, x)
-        self.log("val_loss", loss)
-        return loss
+#     def validation_step(self, batch, batch_idx):
+#         x, y = batch
+#         y_hat = self(x)
+#         loss = F.mse_loss(y_hat, x)
+#         self.log("val_loss", loss)
+#         return loss
 
-    def test_step(self, batch, batch_idx):
-        x, y = batch
-        y_hat = self(x)
-        loss = F.mse_loss(y_hat, x)
-        self.log("test_loss", loss)
-        return loss
+#     def test_step(self, batch, batch_idx):
+#         x, y = batch
+#         y_hat = self(x)
+#         loss = F.mse_loss(y_hat, x)
+#         self.log("test_loss", loss)
+#         return loss
 
-    def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
-        return optimizer
+#     def configure_optimizers(self):
+#         optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+#         return optimizer
