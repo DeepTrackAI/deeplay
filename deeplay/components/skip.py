@@ -1,5 +1,5 @@
 from ..templates import Layer
-from ..core import DeepTorchModule
+from ..core import DeeplayModule
 from ..config import Config, Ref
 
 import torch
@@ -8,7 +8,7 @@ import torch.nn as nn
 __all__ = ["Skip", "Concatenate", "Add"]
 
 
-class Skip(DeepTorchModule):
+class Skip(DeeplayModule):
     defaults = Config().inputs[0](nn.Identity)
 
     def __init__(self, inputs, func):
@@ -32,7 +32,7 @@ class Skip(DeepTorchModule):
         return self.func(*inputs)
 
 
-class Concatenate(DeepTorchModule):
+class Concatenate(DeeplayModule):
     defaults = Config().merge(None, Skip.defaults).dim(1)
 
     def __init__(self, inputs, dim=1):

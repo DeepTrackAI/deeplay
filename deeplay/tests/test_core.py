@@ -1,11 +1,11 @@
 import unittest
-from ..core import DeepTorchModule
+from ..core import DeeplayModule
 from ..templates import Layer
 from ..config import Config
 
 
 class TestCore(unittest.TestCase):
-    class MockDTModule(DeepTorchModule):
+    class MockDTModule(DeeplayModule):
         defaults = {
             "bias": 0,
             "block": Layer("layer"),
@@ -82,7 +82,7 @@ class TestCore(unittest.TestCase):
         self.assertEqual(module(3), 10)
 
     def test_create_all(self):
-        class MockDTModule2(DeepTorchModule):
+        class MockDTModule2(DeeplayModule):
             defaults = Config()
 
             def __init__(self, foo):

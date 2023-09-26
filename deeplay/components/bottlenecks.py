@@ -1,5 +1,5 @@
 from ..templates import Layer
-from ..core import DeepTorchModule
+from ..core import DeeplayModule
 from ..config import Config, Ref
 
 import torch
@@ -8,7 +8,7 @@ import torch.nn as nn
 __all__ = ["Bottleneck"]
 
 
-class Bottleneck(DeepTorchModule):
+class Bottleneck(DeeplayModule):
     defaults = (
         Config()
         .hidden_dim(2)
@@ -33,7 +33,7 @@ class Bottleneck(DeepTorchModule):
         return x
 
 
-class NormalDistribtionSampler(DeepTorchModule):
+class NormalDistribtionSampler(DeeplayModule):
     defaults = (
         Config()
         .prior(torch.distributions.Normal, loc=0, scale=1)
@@ -55,7 +55,7 @@ class NormalDistribtionSampler(DeepTorchModule):
         return torch.distributions.Normal(loc=loc, scale=scale).sample(x.shape)
 
 
-class VariationalBottleneck(DeepTorchModule):
+class VariationalBottleneck(DeeplayModule):
     defaults = (
         Config()
         .hidden_dim(4)

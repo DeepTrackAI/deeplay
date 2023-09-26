@@ -1,11 +1,11 @@
-from ... import Layer, DeepTorchModule, Config, Ref
+from ... import Layer, DeeplayModule, Config, Ref
 
 import torch.nn as nn
 
 __all__ = ["CategoricalClassificationHead"]
 
 
-class CategoricalClassificationHead(DeepTorchModule):
+class CategoricalClassificationHead(DeeplayModule):
     defaults = (
         Config()
         .num_classes(2)
