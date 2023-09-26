@@ -317,8 +317,8 @@ class TestConfig(unittest.TestCase):
         self.assertEqual(config.get("my_subconfig.attr_1"), "baz")
 
         # Non-existent attributes return None
-        self.assertEqual(config.get("my_nonexistent_attr"), None)
-        self.assertEqual(config.get("my_nonexistent_attr.attr_1"), None)
+        self.assertEqual(config.get("my_nonexistent_attr", default=None), None)
+        self.assertEqual(config.get("my_nonexistent_attr.attr_1", default=None), None)
 
         # Non-existent subconfigs inherit from parent
         self.assertEqual(config.get("my_nonexistent_subconfig.my_attr_1"), "foo")

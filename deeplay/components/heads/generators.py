@@ -18,7 +18,7 @@ class ImageGeneratorHead(DeeplayModule):
     )
 
     def __init__(self, output_size, output=None):
-        """Classification head.
+        """Image generator head.
 
         Parameters
         ----------

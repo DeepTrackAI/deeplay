@@ -236,7 +236,10 @@ class Template(nn.ModuleDict):
 
     def forward(self, *x):
         for key, module in self.items():
-            x = module(*x)
+            if isinstance(x, (list, tuple)):
+                x = module(*x)
+            else:
+                x = module(x)
         return x
 
 class MultiInputTemplate(nn.ModuleList):

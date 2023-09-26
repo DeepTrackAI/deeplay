@@ -11,7 +11,6 @@ __all__ = [
     "VolumeToVolumeEncoder",
 ]
 
-
 class BaseEncoder(DeeplayModule):
     defaults = Config().depth(4).blocks(nn.Identity).output(nn.Identity)
 
