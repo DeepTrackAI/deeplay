@@ -8,7 +8,7 @@ from .. import (
     Ref,
     DeeplayModule,
     Layer,
-    ConvolutionalEncoder,
+    ImageToImageEncoder,
     ConvolutionalDecoder,
 )
 
@@ -16,7 +16,7 @@ from .. import (
 # from ..backbones.decoders import Decoder2d
 # from ..connectors import FlattenDenseq
 
-__all__ = ["Autoencoder", "EncoderDecoder", "ConvolutionalEncoderDecoder"]
+__all__ = ["Autoencoder", "EncoderDecoder", "ImageToImageEncoderDecoder"]
 
 
 class EncoderDecoder(DeeplayModule):
@@ -41,11 +41,11 @@ class EncoderDecoder(DeeplayModule):
         return self.decoder(self.encoder(x))
 
 
-class ConvolutionalEncoderDecoder(EncoderDecoder):
+class ImageToImageEncoderDecoder(EncoderDecoder):
     defaults = (
         Config()
         .merge(None, EncoderDecoder.defaults)
-        .encoder(ConvolutionalEncoder)
+        .encoder(ImageToImageEncoder)
         .decoder(ConvolutionalDecoder)
     )
 
