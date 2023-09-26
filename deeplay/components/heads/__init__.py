@@ -1,1 +1,2 @@
-from .classification import *
+from .classification import CategoricalClassificationHead
+from .generators import ImageGeneratorHead

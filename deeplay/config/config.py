@@ -14,6 +14,8 @@ from . import (
 
 __all__ = ["Config", "ForwardHook"]
 
+default_obj = object()
+
 
 class ConfigRule:
     """
@@ -123,10 +125,12 @@ class ConfigRule:
         if isinstance(self.value, Ref):
             # Create a new config with the root context of the rule
             new_config = Config(config._rules, config._refs, self.scope_root)
+
             # Get the value of the ref, should be a unique selector
             referenced_value = new_config.get(
                 self.value.selectors, return_dict_if_multiple=False
             )
+
             # Evaluate the ref function
             return self.value(referenced_value)
 
@@ -139,7 +143,7 @@ class ConfigRule:
         return (
             str(self.selector)
             + "."
-            + str(self.key)
+            + str(self.head)
             + " = "
             + str(self.value)
             + (" (default)" if self.default else "")
@@ -255,7 +259,7 @@ class ForwardHook:
         self._value = None
         self._has_run = False
 
-    def __call__(self, x):
+    def __call__(self, module, *args, **kwargs):
         """
         Calls the hook function on a target object and stores the result.
 
@@ -267,7 +271,7 @@ class ForwardHook:
         """
         if self.first_only and self._has_run:
             return self._value
-        self._value = self.hook(x)
+        self._value = self.hook(module, *args, **kwargs)
         self._has_run = True
 
     def value(self):
@@ -373,12 +377,14 @@ class Config:
             raise NotImplementedError("Only first_only is supported for now")
 
         target = parse_selectors(target)
-        _key = str(target)
+
+        body, head = target.pop()
+        _key = ClassSelector("___" + str(head))
 
         # Create a Ref from target to the current context + _key.
         # On forward, context + _key will be evaluated.
         # The remote rule will automatically reflect the changes.
-        self._rules.append(ConfigRule(target, _key, Ref(self._context + _key)))
+        self._rules.append(ConfigRule(body, head, Ref(self._context + _key)))
 
         # Create a rule that will be evaluated on forward
         self._rules.append(
@@ -477,7 +483,7 @@ To populate more, specify the length with .populate(..., length=desired_length)"
 
         return Config(self._rules, self._refs)
 
-    def get(self, selectors, default=None, return_dict_if_multiple=False):
+    def get(self, selectors, default=default_obj, return_dict_if_multiple=False):
         selectors = parse_selectors(selectors)
         full_context = self._context + selectors
 
@@ -495,7 +501,10 @@ To populate more, specify the length with .populate(..., length=desired_length)"
             most_specific = self._take_most_specific_per_key(rules_per_key)
 
         if len(most_specific) == 0:
-            return default
+            if default is not default_obj:
+                return default
+            else:
+                raise ValueError(f"No keys match for {selectors} in {self}")
         if len(most_specific) == 1:
             return list(most_specific.values())[0]
         if return_dict_if_multiple:
@@ -592,9 +601,14 @@ To populate more, specify the length with .populate(..., length=desired_length)"
     def _take_most_specific_per_key(self, key_rule_dict):
         most_specific = {}
         for key, rules in key_rule_dict.items():
-            most_specific[key] = Config._take_most_specific_in_list(rules).get_value(
-                self
-            )
+            try:
+                most_specific[key] = Config._take_most_specific_in_list(
+                    rules
+                ).get_value(self)
+            except ValueError:
+                # In case of forward hooks that have not been run yet, we may get a ValueError
+                # In this case we assume that the rule is not necessary to build the module
+                pass
         return most_specific
 
     @staticmethod
