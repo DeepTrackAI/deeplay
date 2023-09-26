@@ -1,6 +1,9 @@
+from torch import Tensor
 import torch.nn as nn
 import inspect
-from typing import Any
+from typing import Any, Union
+
+from torch.nn.modules.module import Module
 from .config import Config, NoneSelector, IndexSelector
 
 from .utils import safe_call
@@ -28,12 +31,15 @@ def _match_signature(func, args, kwargs):
 class UninitializedModule(nn.Module):
     config: Config
 
-    def __new__(cls, config: Config):
+    def __new__(cls, config: Config, now=False):
+        if now:
+            return cls.create_module(config)
+
         if not config.has_forward_hooks():
             # If there are no forward hooks, we can immediately initialize the module.
             try:
                 return cls.create_module(config)
-            except RuntimeError:
+            except (RuntimeError, TypeError, ValueError):
                 # Can happen if there are no immediate hooks, but indirect references to hooks.
                 # In this case, we need to wait until the hooks are resolved.
                 # TODO: make specific error to not catch all runtime errors.
@@ -41,7 +47,7 @@ class UninitializedModule(nn.Module):
         else:
             return super().__new__(cls)
 
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, now=False):
         super().__init__()
         self.config = config
         self._initialized_module = None
@@ -49,7 +55,6 @@ class UninitializedModule(nn.Module):
     def forward(self, x):
         if self._initialized_module is not None:
             return self._initialized_module(x)
-        self.config.run_all_forward_hooks(x)
         self._initialized_module = self.create_module(self.config)
         return self._initialized_module(x)
 
@@ -116,11 +121,9 @@ class DeeplayModule(nn.Module):
     def __init__(self, **kwargs):
         super().__init__()
         self._all_uninitialized_submodules = []
-        for name, module in self.named_modules():
-            if isinstance(module, UninitializedModule):
-                self._all_uninitialized_submodules.append(module)
+        self._any_uninitialized_submodules = False
 
-        self._any_uninitialized_submodules = bool(self._all_uninitialized_submodules)
+        self._deeplay_forward_hooks = self.config.get_all_forward_hooks()
 
     def __new__(cls, *args, **kwargs):
         __init__args = _match_signature(cls.__init__, args, kwargs)
@@ -130,6 +133,12 @@ class DeeplayModule(nn.Module):
         obj.set_config(config)
 
         return obj
+
+    def __setattr__(self, name: str, value) -> None:
+        if isinstance(value, UninitializedModule):
+            self._all_uninitialized_submodules.append((name, value))
+            self._any_uninitialized_submodules = True
+        return super().__setattr__(name, value)
 
     def attr(self, key) -> Any:
         """Get an attribute from the config."""
@@ -146,7 +155,7 @@ class DeeplayModule(nn.Module):
         for k, v in (extra_kwargs or {}).items():
             subconfig.set(k, v)
 
-        lazy = UninitializedModule(subconfig)
+        lazy = UninitializedModule(subconfig, now=now)
         if now and isinstance(lazy, UninitializedModule):
             raise RuntimeError(
                 f"Cannot create module {key} now, because it has forward hooks."
@@ -157,6 +166,9 @@ class DeeplayModule(nn.Module):
         self.config = config
 
     def __call__(self, *args, **kwargs):
+        for hook in self._deeplay_forward_hooks:
+            hook.value(self, *args, **kwargs)
+
         y = super().__call__(*args, **kwargs)
         # TODO: we could consider dynamically replacing the __call__ overload to avoid
         # the overhead of this check.
@@ -199,6 +211,8 @@ class DeeplayModule(nn.Module):
         elif isinstance(cls.defaults, Config):
             # We set prepend to true to allow the caller to override the defaults.
             config.merge(NoneSelector(), cls.defaults, as_default=True, prepend=True)
+        elif callable(cls.defaults):
+            config.merge(NoneSelector(), cls.defaults(), as_default=True, prepend=True)
 
         return config
 

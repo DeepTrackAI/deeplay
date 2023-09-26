@@ -6,88 +6,252 @@ import pytorch_lightning as pl
 from .. import (
     Config,
     Ref,
-    DeeplayModule,
+    ImageToImageEncoder,
+    VectorToImageDecoder,
+    ImageToImageDecoder,
+    ImageGeneratorHead,
+    Bottleneck,
+    VariationalBottleneck,
     Layer,
-    ImageToVectorEncoder,
-    ConvolutionalDecoder,
 )
+
+from .applications import DeeplayLightningModule
 
 # from ..backbones.encoders import Encoder2d
 # from ..backbones.decoders import Decoder2d
 # from ..connectors import FlattenDenseq
 
-__all__ = ["Autoencoder", "EncoderDecoder", "ImageToImageEncoderDecoder"]
+__all__ = [
+    "SimpleAutoencoder",
+    "Autoencoder",
+    "FullAutoencoder",
+    "VariationalAutoencoder",
+    "BetaVAE",
+]
 
 
-class Autoencoder(DeeplayModule):
-    defaults = (
-        Config()
-        .depth(4)
-        .hidden_dim(2)
-        .encoder(ImageToVectorEncoder, depth=Ref("depth"))
-        .bottleneck(nn.LazyConv2d, out_channels=Ref("hidden_dim"))
-        .decoder(VectorToImageDecoder, depth=Ref("depth"))
-        .bottleneck(nn.Identity)
-    )
+def _prod(x):
+    p = x[0]
+    for i in x[1:]:
+        p *= i
+    return p
 
-    def __init__(self, depth=4, encoder=None, bottleneck=None, decoder=None):
+
+class SimpleAutoencoder(DeeplayLightningModule):
+    @staticmethod
+    def defaults():
+        return (
+            Config()
+            .hidden_dim(2)
+            .encoder(Layer("flatten") >> Layer("layer") >> Layer("activation"))
+            .encoder.flatten(nn.Flatten)
+            .encoder.layer(nn.LazyLinear, out_features=Ref("hidden_dim"))
+            .encoder.activation(nn.ReLU)
+            .decoder(Layer("layer") >> Layer("activation") >> Layer("unflatten"))
+            .decoder.layer(nn.LazyLinear, out_features=Ref("input_size", _prod))
+            .decoder.activation(nn.Sigmoid)
+            .decoder.unflatten(nn.Unflatten, dim=1, unflattened_size=Ref("input_size"))
+            # hooks
+            .on_first_forward("input_size", lambda _, x: x.shape[1:])
+        )
+
+    def __init__(self, hidden_dim=2, encoder=None, decoder=None):
         super().__init__(
-            depth=depth, encoder=encoder, bottleneck=bottleneck, decoder=decoder
+            encoder=encoder,
+            decoder=decoder,
         )
 
         self.encoder = self.new("encoder")
         self.decoder = self.new("decoder")
 
-    def forward(self, x):
-        return self.decoder(self.encoder(x))
+        self.loss = nn.MSELoss()
+
+    def forward(self, x, return_latent=False):
+        latent = self.encode(x)
+        x = self.decode(latent)
+        if return_latent:
+            return x, latent
+        return x
+
+    def encode(self, x):
+        x = self.encoder(x)
+        return x
+
+    def decode(self, x):
+        x = self.decoder(x)
+        return x
+
+    def _get_image(self, batch):
+        if isinstance(batch, (list, tuple)):
+            batch = batch[0]
+        return batch
+
+    def _compute_loss(self, batch, batch_idx):
+        x = self._get_image(batch)
+        y_hat = self(x)
+        loss = self.loss(y_hat, x)
+        return loss
+
+    def training_step(self, batch, batch_idx):
+        loss = self._compute_loss(batch, batch_idx)
+        self.log("train_loss", loss)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        loss = self._compute_loss(batch, batch_idx)
+        self.log("val_loss", loss)
+        return loss
+
+    def test_step(self, batch, batch_idx):
+        loss = self._compute_loss(batch, batch_idx)
+        self.log("test_loss", loss)
+        return loss
 
 
-# class ImageToImageEncoderDecoder(EncoderDecoder):
-#     defaults = (
-#         Config()
-#         .merge(None, EncoderDecoder.defaults)
-#         .encoder(ImageToImageEncoder)
-#         .decoder(ConvolutionalDecoder)
-#     )
+class Autoencoder(SimpleAutoencoder):
+    @staticmethod
+    def defaults():
+        return (
+            Config()
+            .hidden_dim(2)
+            .encoder(ImageToImageEncoder, depth=2)
+            .bottleneck(Bottleneck, hidden_dim=Ref("hidden_dim"))
+            .decoder(VectorToImageDecoder, depth=2)
+            .head(ImageGeneratorHead)
+            # hooks
+            .on_first_forward("head.output_size", lambda _, x: x.shape[1:])
+            .bottleneck.on_first_forward("decoder.base_size", lambda _, x: x.shape[1:])
+        )
+
+    def __init__(
+        self, hidden_dim=2, encoder=None, bottleneck=None, decoder=None, head=None
+    ):
+        DeeplayLightningModule.__init__(
+            self,
+            hidden_dim=hidden_dim,
+            encoder=encoder,
+            decoder=decoder,
+        )
+
+        self.encoder = self.new("encoder")
+        self.bottleneck = self.new("bottleneck")
+        self.decoder = self.new("decoder")
+        self.head = self.new("head")
+
+        self.loss = nn.MSELoss()
+
+    def encode(self, x):
+        x = self.encoder(x)
+        x = self.bottleneck(x)
+        return x
+
+    def decode(self, x):
+        x = self.decoder(x)
+        x = self.head(x)
+        return x
 
 
-# class Autoencoder(DeeplayModule, pl.LightningModule):
-#     defaults = (
-#         Config()
-#         .backbone(EncoderDecoder)
-#         .head(nn.LazyConv2d, out_channels=1, kernel_size=1, stride=1)
-#     )
+class FullAutoencoder(Autoencoder):
+    @staticmethod
+    def defaults():
+        return (
+            Config()
+            .hidden_dim(2)
+            .encoder(ImageToImageEncoder, depth=2)
+            .connector_to_vector(nn.Flatten)
+            .bottleneck(Bottleneck, hidden_dim=Ref("hidden_dim"))
+            .connector_to_image(nn.Unflatten, dim=1, unflattened_size=Ref("base_size"))
+            .decoder(ImageToImageDecoder, depth=2)
+            .head(ImageGeneratorHead)
+            # hooks
+            .on_first_forward("head.output_size", lambda _, x: x.shape[1:])
+            .bottleneck.on_first_forward(
+                "connector_to_image.base_size", lambda _, x: x.shape[1:]
+            )
+        )
 
-#     def __init__(self, backbone=None, head=None):
-#         super().__init__(backbone=backbone, head=head)
 
-#         self.backbone = self.new("backbone")
-#         self.head = self.new("head")
+class VariationalAutoencoder(Autoencoder):
+    @staticmethod
+    def defaults():
+        return (
+            Config()
+            .merge(None, Autoencoder.defaults())
+            .bottleneck(VariationalBottleneck)
+        )
 
-#     def forward(self, x):
-#         return self.head(self.backbone(x))
+    def encode(self, x, return_posteriors=False):
+        x = self.encoder(x)
+        x, posts = self.bottleneck(x)
 
-#     def training_step(self, batch, batch_idx):
-#         x, y = batch
-#         y_hat = self(x)
-#         loss = F.mse_loss(y_hat, x)
-#         self.log("train_loss", loss)
-#         return loss
+        if return_posteriors:
+            return x, posts
+        return x
 
-#     def validation_step(self, batch, batch_idx):
-#         x, y = batch
-#         y_hat = self(x)
-#         loss = F.mse_loss(y_hat, x)
-#         self.log("val_loss", loss)
-#         return loss
+    def decode(self, x):
+        x = self.decoder(x)
+        x = self.head(x)
+        return x
 
-#     def test_step(self, batch, batch_idx):
-#         x, y = batch
-#         y_hat = self(x)
-#         loss = F.mse_loss(y_hat, x)
-#         self.log("test_loss", loss)
-#         return loss
+    def forward(self, x, return_posteriors=False):
+        x, posts = self.encode(x, return_posteriors=True)
+        x = self.decode(x)
+        if return_posteriors:
+            return x, posts
+        return x
 
-#     def configure_optimizers(self):
-#         optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
-#         return optimizer
+    def _compute_loss(self, batch, batch_idx):
+        x = self._get_image(batch)
+        y_hat, posts = self(x, return_posteriors=True)
+
+        reconstruction_loss = self.loss(y_hat, x)
+        kl_loss = (
+            torch.cat(
+                [
+                    torch.distributions.kl_divergence(post, prior)
+                    for post, prior in zip(posts, self.bottleneck.priors)
+                ]
+            )
+            .sum(-1)
+            .mean()
+        )
+
+        self.log(
+            "reconstruction_loss", reconstruction_loss, prog_bar=True, on_step=True
+        )
+        self.log("kl_loss", kl_loss, prog_bar=True, on_step=True)
+
+        return reconstruction_loss * 728 + kl_loss
+
+
+class BetaVAE(VariationalAutoencoder):
+    @staticmethod
+    def defaults():
+        return Config().merge(None, VariationalAutoencoder.defaults()).beta(1)
+
+    def __init__(self, beta=1, **kwargs):
+        super().__init__(**kwargs)
+        self.beta = self.attr("beta")
+
+    def _compute_loss(self, batch, batch_idx):
+        x = self._get_image(batch)
+        y_hat, posts = self(x, return_posteriors=True)
+
+        reconstruction_loss = self.loss(y_hat, x)
+        kl_loss = (
+            torch.cat(
+                [
+                    torch.distributions.kl_divergence(post, prior)
+                    for post, prior in zip(posts, self.bottleneck.priors)
+                ]
+            )
+            .sum(-1)
+            .mean()
+        )
+
+        self.log(
+            "reconstruction_loss", reconstruction_loss, prog_bar=True, on_step=True
+        )
+        self.log("kl_loss", kl_loss, prog_bar=True, on_step=True)
+
+        return reconstruction_loss * 728 + self.beta * kl_loss

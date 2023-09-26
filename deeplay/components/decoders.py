@@ -6,7 +6,14 @@ import torch.nn as nn
 import torch
 
 
-__all__ = ["Decoder", "ImageToImageDecoder", "ConvolutionalDecoder"]
+__all__ = ["Decoder", "ImageToImageDecoder", "VectorToImageDecoder"]
+
+
+def _prod(x):
+    p = x[0]
+    for i in x[1:]:
+        p *= i
+    return p
 
 
 class Decoder(DeeplayModule):
@@ -16,9 +23,11 @@ class Decoder(DeeplayModule):
         super().__init__(depth=depth, blocks=blocks)
 
         self.depth = self.attr("depth")
-        self.blocks = nn.ModuleList(self.new("blocks", i) for i in range(depth))
+        self.input = self.new("input")
+        self.blocks = nn.ModuleList(self.new("blocks", i) for i in range(self.depth))
 
     def forward(self, x):
+        x = self.input(x)
         for block in self.blocks:
             x = block(x)
         return x
@@ -40,22 +49,20 @@ class ImageToImageDecoder(Decoder):
     defaults = Config().merge(None, Base2dConvolutionalDecoder.defaults)
 
 
-
 class VectorToImageDecoder(ImageToImageDecoder):
     defaults = (
         Config()
         .merge(None, ImageToImageDecoder.defaults)
-        .base_size((1, 1))
         .output_size(None)
-        .input(
-            nn.Unflatten,
-            dim=1,
-            unflattened_size=Ref("base_size", lambda x: (-1, *x)),
-        )
+        .input(Layer("layer") >> Layer("connector"))
+        .input.layer(nn.LazyLinear, out_features=Ref("base_size", lambda x: _prod(x)))
+        .input.connector(nn.Unflatten, dim=1, unflattened_size=Ref("base_size"))
     )
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, base_size, **kwargs):
+        super().__init__(base_size, **kwargs)
+
+        self.base_size = self.attr("base_size")
         self.output_size = self.attr("output_size")
 
     def forward(self, x):
