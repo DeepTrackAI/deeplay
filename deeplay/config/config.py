@@ -1,3 +1,4 @@
+from __future__ import annotations
 import re
 import warnings
 
@@ -526,7 +527,7 @@ To populate more, specify the length with .populate(..., length=desired_length)"
         selectors = parse_selectors(selectors)
         return Config(self._rules, self._refs, self._context + selectors)
 
-    def __getattr__(self, name):
+    def __getattr__(self, name) -> Config:
         match name:
             case "_":
                 selector = WildcardSelector()
