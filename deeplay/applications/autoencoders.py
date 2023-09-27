@@ -9,7 +9,7 @@ from .. import (
     ImageToImageEncoder,
     VectorToImageDecoder,
     ImageToImageDecoder,
-    ImageGeneratorHead,
+    ImageRegressionHead,
     Bottleneck,
     VariationalBottleneck,
     Layer,
@@ -117,7 +117,8 @@ class Autoencoder(SimpleAutoencoder):
             .encoder(ImageToImageEncoder, depth=2)
             .bottleneck(Bottleneck, hidden_dim=Ref("hidden_dim"))
             .decoder(VectorToImageDecoder, depth=2)
-            .head(ImageGeneratorHead)
+            .head(ImageRegressionHead)
+            .head.output.activation(nn.Sigmoid)
             # hooks
             .on_first_forward("head.output_size", lambda _, x: x.shape[1:])
             .bottleneck.on_first_forward("decoder.base_size", lambda _, x: x.shape[1:])
@@ -162,7 +163,8 @@ class FullAutoencoder(Autoencoder):
             .bottleneck(Bottleneck, hidden_dim=Ref("hidden_dim"))
             .connector_to_image(nn.Unflatten, dim=1, unflattened_size=Ref("base_size"))
             .decoder(ImageToImageDecoder, depth=2)
-            .head(ImageGeneratorHead)
+            .head(ImageRegressionHead)
+            .head.output.activation(nn.Sigmoid)
             # hooks
             .on_first_forward("head.output_size", lambda _, x: x.shape[1:])
             .bottleneck.on_first_forward(
