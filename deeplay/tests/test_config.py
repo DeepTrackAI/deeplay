@@ -437,3 +437,11 @@ class TestConfig(unittest.TestCase):
         self.assertEqual(config_prepend_false.get("baz.bar"), 3)
         self.assertEqual(config_prepend_true.get("baz.foo"), 1)
         self.assertEqual(config_prepend_true.get("baz.bar"), 2)
+
+    def test_get_last_indexed(self):
+        config = Config().foo[0](0).foo[1](1)
+
+        foo0 = config.foo[0].get(None)
+        foo1 = config.foo[1].get(None)
+        self.assertEqual(foo0, 0)
+        self.assertEqual(foo1, 1)

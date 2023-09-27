@@ -13,7 +13,7 @@ class ImageSegmentationHead(DeeplayModule):
         .output.activation(nn.Sigmoid)
     )
 
-    def __init__(self, output_size, output=None):
+    def __init__(self, output=None):
         """Classification head.
 
         Parameters

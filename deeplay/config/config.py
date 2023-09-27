@@ -491,7 +491,7 @@ To populate more, specify the length with .populate(..., length=desired_length)"
         last_selector_is_index = isinstance(full_context.pop()[-1], IndexSelector)
 
         rules = self._get_all_matching_rules(
-            selectors, match_key=True, allow_indexed=True
+            selectors, match_key=True, allow_indexed=not last_selector_is_index
         )
         rules_per_key = self._merge_rules_on_key(rules)
 

@@ -56,8 +56,8 @@ class Layer:
     def from_config(self, config):
         return self.build(config)
 
-class MultiInputLayer(Layer):
 
+class MultiInputLayer(Layer):
     def __init__(self, classname="", uid=None, n_inputs=2, **_):
         super().__init__(classname, uid)
         self.n_inputs = n_inputs
@@ -68,8 +68,8 @@ class MultiInputLayer(Layer):
         modules = []
 
         for i in range(self.n_inputs):
-            subconfig = subconfig.with_selector(i)
-            modules.append(UninitializedModule(subconfig))
+            module = UninitializedModule(subconfig[i])
+            modules.append(module)
 
         module = MultiInputTemplate(modules)
 
@@ -80,6 +80,7 @@ class MultiInputLayer(Layer):
 
     def from_config(self, config):
         return self.build(config)
+
 
 class LayerConstant(Layer):
     def __init__(self, value, **kwargs):
@@ -241,6 +242,7 @@ class Template(nn.ModuleDict):
             else:
                 x = module(x)
         return x
+
 
 class MultiInputTemplate(nn.ModuleList):
     def __init__(self, *args, **kwargs):

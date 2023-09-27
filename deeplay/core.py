@@ -39,10 +39,11 @@ class UninitializedModule(nn.Module):
             # If there are no forward hooks, we can immediately initialize the module.
             try:
                 return cls.create_module(config)
-            except (RuntimeError, TypeError, ValueError):
+            except ValueError as e:
                 # Can happen if there are no immediate hooks, but indirect references to hooks.
                 # In this case, we need to wait until the hooks are resolved.
                 # TODO: make specific error to not catch all runtime errors.
+                print(e)
                 return super().__new__(cls)
         else:
             return super().__new__(cls)
@@ -52,11 +53,11 @@ class UninitializedModule(nn.Module):
         self.config = config
         self._initialized_module = None
 
-    def forward(self, x):
+    def forward(self, *x, **kwargs):
         if self._initialized_module is not None:
-            return self._initialized_module(x)
+            return self._initialized_module(*x, **kwargs)
         self._initialized_module = self.create_module(self.config)
-        return self._initialized_module(x)
+        return self._initialized_module(*x, **kwargs)
 
     def is_initialized(self):
         return self._initialized_module is not None
