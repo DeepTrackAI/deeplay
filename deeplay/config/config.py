@@ -605,7 +605,7 @@ To populate more, specify the length with .populate(..., length=desired_length)"
                 most_specific[key] = Config._take_most_specific_in_list(
                     rules
                 ).get_value(self)
-            except ValueError:
+            except (ValueError, TypeError):
                 # In case of forward hooks that have not been run yet, we may get a ValueError
                 # In this case we assume that the rule is not necessary to build the module
                 pass

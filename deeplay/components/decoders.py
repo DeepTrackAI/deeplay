@@ -1,12 +1,23 @@
 from ..templates import Layer
 from ..core import DeeplayModule
 from ..config import Config, Ref
-
+from .encodings import (
+    PositionalEncodingLinear1d,
+    PositionalEncodingLinear2d,
+    PositionalEncodingLinear3d,
+)
 import torch.nn as nn
 import torch
 
 
-__all__ = ["Decoder", "ImageToImageDecoder", "VectorToImageDecoder"]
+__all__ = [
+    "Decoder",
+    "ImageToImageDecoder",
+    "VectorToImageDecoder",
+    "SpatialBroadcastDecoder1d",
+    "SpatialBroadcastDecoder2d",
+    "SpatialBroadcastDecoder3d",
+]
 
 
 def _prod(x):
@@ -68,3 +79,123 @@ class VectorToImageDecoder(ImageToImageDecoder):
         if self.output_size is not None:
             x = nn.functional.interpolate(x, size=self.output_size)
         return x
+
+
+class _BaseSpatialBroadcastDecoder(Decoder):
+    @staticmethod
+    def defaults():
+        return (
+            Config()
+            .depth(4)
+            .output_size(None)
+            .input(nn.Identity)
+            .blocks(Layer("layer") >> Layer("activation"))
+            .blocks.activation(nn.ReLU)
+        )
+
+    def __init__(
+        self, depth=4, output_size=None, input=None, encoding=None, blocks=None
+    ):
+        DeeplayModule.__init__(
+            self,
+            depth=depth,
+            output_size=output_size,
+            input=input,
+            encoding=encoding,
+            blocks=blocks,
+        )
+
+        self.depth = self.attr("depth")
+        self.output_size = self.attr("output_size")
+        self.input = self.new("input")
+        self.encoding = self.new("encoding")
+        self.blocks = nn.ModuleList(self.new("blocks", i) for i in range(self.depth))
+
+    def forward(self, x, positions=None):
+        """Forward pass.
+        Can optionally pass in a grid of coordinates representing the spatial location of each pixel.
+        Should be of shape (batch_size, x)
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor.
+        positions : torch.Tensor
+            Grid of xy coordinates to broadcast to each spatial location.
+            (batch_size, 2, height, width)
+            Default is None.
+        """
+        x = self.input(x)
+
+        if positions is None:
+            output_size = self.output_size
+        else:
+            output_size = positions.shape[2:]
+
+        x = self.broadcast(x, output_size)
+
+        x = self.encoding(x, positions=positions)
+        for block in self.blocks:
+            x = block(x)
+
+        return x
+
+    def broadcast(self, x, size):
+        """Broadcast a tensor to a given size.
+        Expects the tensor to be of shape (batch_size, channels)
+        Returns a tensor of shape (batch_size, channels, *size)
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor.
+        size : tuple
+            Size to broadcast to.
+
+        Returns
+        -------
+        torch.Tensor
+            Broadcasted tensor.
+        """
+        if len(x.shape) != 2:
+            raise RuntimeError("The input tensor has to be 2d!")
+
+        batch_size, channels = x.shape
+        for _ in size:
+            x = x.unsqueeze(-1)
+        x = x.expand(batch_size, channels, *size)
+
+        return x
+
+
+class SpatialBroadcastDecoder1d(_BaseSpatialBroadcastDecoder):
+    @staticmethod
+    def defaults():
+        return (
+            Config()
+            .merge(None, _BaseSpatialBroadcastDecoder.defaults())
+            .encoding(PositionalEncodingLinear1d)
+            .blocks.layer(nn.LazyConv1d, kernel_size=1, padding=0, out_channels=128)
+        )
+
+
+class SpatialBroadcastDecoder2d(_BaseSpatialBroadcastDecoder):
+    @staticmethod
+    def defaults():
+        return (
+            Config()
+            .merge(None, _BaseSpatialBroadcastDecoder.defaults())
+            .encoding(PositionalEncodingLinear2d)
+            .blocks.layer(nn.LazyConv2d, kernel_size=1, padding=0, out_channels=128)
+        )
+
+
+class SpatialBroadcastDecoder3d(_BaseSpatialBroadcastDecoder):
+    @staticmethod
+    def defaults():
+        return (
+            Config()
+            .merge(None, _BaseSpatialBroadcastDecoder.defaults())
+            .encoding(PositionalEncodingLinear3d)
+            .blocks.layer(nn.LazyConv3d, kernel_size=1, padding=0, out_channels=128)
+        )
