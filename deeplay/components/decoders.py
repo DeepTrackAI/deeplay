@@ -59,10 +59,8 @@ class VectorToImageDecoder(ImageToImageDecoder):
         .input.connector(nn.Unflatten, dim=1, unflattened_size=Ref("base_size"))
     )
 
-    def __init__(self, base_size, **kwargs):
-        super().__init__(base_size, **kwargs)
-
-        self.base_size = self.attr("base_size")
+    def __init__(self, output_size=None, **kwargs):
+        super().__init__(**kwargs)
         self.output_size = self.attr("output_size")
 
     def forward(self, x):

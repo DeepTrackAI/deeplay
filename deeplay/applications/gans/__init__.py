@@ -1,0 +1,1 @@
+from .vanilla_gan import VanillaGAN
