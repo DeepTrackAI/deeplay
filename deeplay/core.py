@@ -39,11 +39,10 @@ class UninitializedModule(nn.Module):
             # If there are no forward hooks, we can immediately initialize the module.
             try:
                 return cls.create_module(config)
-            except ValueError as e:
+            except (ValueError, TypeError) as e:
                 # Can happen if there are no immediate hooks, but indirect references to hooks.
                 # In this case, we need to wait until the hooks are resolved.
                 # TODO: make specific error to not catch all runtime errors.
-                print(e)
                 return super().__new__(cls)
         else:
             return super().__new__(cls)
@@ -112,6 +111,11 @@ class UninitializedModule(nn.Module):
             return super().__getattr__(name)
         except AttributeError:
             return getattr(self._initialized_module, name)
+
+    def __repr__(self):
+        if self._initialized_module is not None:
+            return repr(self._initialized_module)
+        return super().__repr__()
 
 
 class DeeplayModule(nn.Module):
