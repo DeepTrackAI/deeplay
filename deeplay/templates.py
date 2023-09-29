@@ -4,6 +4,7 @@ from .core import UninitializedModule
 
 __all__ = [
     "Layer",
+    "MultiInputLayer",
     "LayerInput",
     "OutputOf",
     "LayerSequence",
@@ -46,6 +47,31 @@ class Layer:
         subconfig = config.with_selector(self.classname)
 
         module = UninitializedModule(subconfig)
+
+        if self.uid is not None:
+            config.add_ref(self.uid, module)
+
+        return module
+
+    def from_config(self, config):
+        return self.build(config)
+
+
+class MultiInputLayer(Layer):
+    def __init__(self, classname="", uid=None, n_inputs=2, **_):
+        super().__init__(classname, uid)
+        self.n_inputs = n_inputs
+
+    def build(self, config: Config):
+        subconfig = config.with_selector(self.classname)
+
+        modules = []
+
+        for i in range(self.n_inputs):
+            module = UninitializedModule(subconfig[i])
+            modules.append(module)
+
+        module = MultiInputTemplate(modules)
 
         if self.uid is not None:
             config.add_ref(self.uid, module)
@@ -134,7 +160,7 @@ class RemoteModule(nn.Module):
     def _take_input(self, _, x):
         self._x = x
 
-    def forward(self, _):
+    def forward(self, *_):
         if isinstance(self.remote, UninitializedModule):
             self._replace_uninitialized_remote()
 
@@ -209,10 +235,24 @@ class Template(nn.ModuleDict):
         # print("Template", kwargs)
         super().__init__(kwargs)
 
-    def forward(self, x):
+    def forward(self, *x):
         for key, module in self.items():
-            x = module(x)
+            if isinstance(x, (list, tuple)):
+                x = module(*x)
+            else:
+                x = module(x)
         return x
+
+
+class MultiInputTemplate(nn.ModuleList):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def forward(self, *x):
+        outputs = []
+        for _x, module in zip(x, self):
+            outputs.append(module(_x))
+        return tuple(outputs)
 
 
 # == Helper classes for arithmetic operations
@@ -222,8 +262,8 @@ class _TorchSub(nn.Module):
         self.a = a
         self.b = b
 
-    def forward(self, x):
-        return self.a(x) - self.b(x)
+    def forward(self, *x):
+        return self.a(*x) - self.b(*x)
 
 
 class _TorchAdd(nn.Module):
@@ -232,8 +272,8 @@ class _TorchAdd(nn.Module):
         self.a = a
         self.b = b
 
-    def forward(self, x):
-        return self.a(x) + self.b(x)
+    def forward(self, *x):
+        return self.a(*x) + self.b(*x)
 
 
 class _TorchMul(nn.Module):
@@ -242,8 +282,8 @@ class _TorchMul(nn.Module):
         self.a = a
         self.b = b
 
-    def forward(self, x):
-        return self.a(x) * self.b(x)
+    def forward(self, *x):
+        return self.a(*x) * self.b(*x)
 
 
 class _TorchDiv(nn.Module):
@@ -252,5 +292,5 @@ class _TorchDiv(nn.Module):
         self.a = a
         self.b = b
 
-    def forward(self, x):
-        return self.a(x) / self.b(x)
+    def forward(self, *x):
+        return self.a(*x) / self.b(*x)

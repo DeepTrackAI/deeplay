@@ -1,19 +1,15 @@
 # %%
+
 import deeplay as dl
-import torch
+
+encoder = dl.encoders.Base2dConvolutionalEncoder()
+encoder
 
 # %%
 
-autoencoder = dl.Autoencoder()
-autoencoder._deeplay_forward_hooks
+import torch.nn.modules.linear
+
+torch.nn.modules.linear.Identity(torch.randn(1, 2, 3))
 
 # %%
-x = autoencoder.encoder(torch.rand(1, 1, 28, 28))
-x = autoencoder.bottleneck(x)
-x = autoencoder.decoder(x)
-x.shape
-
-# %%
-autoencoder
-
-# %%
+encoder.new("output_block", now=True)

@@ -18,13 +18,23 @@ __all__ = ["ImageClassifier"]
 class ImageClassifier(DeeplayModule, pl.LightningModule):
     defaults = (
         Config()
-        .num_classes(2)
         .backbone(ImageToVectorEncoder)
         .head(CategoricalClassificationHead, num_classes=Ref("num_classes"))
+        .head.output.activation(
+            Ref(
+                "num_classes",
+                lambda num_classes: nn.Sigmoid()
+                if num_classes == 1
+                else nn.LogSoftmax(),
+            )
+        )
         .optimizer(torch.optim.Adam, lr=1e-3)
+        .loss(nn.NLLLoss)
     )
 
-    def __init__(self, num_classes, backbone=None, connector=None, head=None):
+    def __init__(
+        self, num_classes, backbone=None, head=None, optimizer=None, loss=None, **kwargs
+    ):
         """Image classifier.
 
         Parameters
@@ -34,19 +44,25 @@ class ImageClassifier(DeeplayModule, pl.LightningModule):
         backbone : None, Config, nn.Module, optional
             Backbone config. If None, a default Encoder backbone is used.
             If nn.Module, it is used as the backbone.
-        connector : None, Dict, nn.Module, optional
-            Connector config. Connects the backbone to the head by reducing the
-            to 1D (channels).
         head : None, Dict, nn.Module, optional
             Head config. If None, a default CategoricalClassificationHead head is used.
             If Dict, it is used as kwargs for the head class.
             If nn.Module, it is used as the head.
+        optimizer : None, Config, nn.Module, optional
+            Optimizer config. If None, a default Adam optimizer is used.
+            If nn.Module, it is used as the optimizer.
+        loss : None, Config, nn.Module, optional
+            Loss config. If None, a default CrossEntropyLoss loss is used.
+            If nn.Module, it is used as the loss.
+
         """
         super().__init__(
             num_classes=num_classes,
             backbone=backbone,
-            connector=connector,
             head=head,
+            optimizer=optimizer,
+            loss=loss,
+            **kwargs
         )
 
         self.num_classes = self.attr("num_classes")

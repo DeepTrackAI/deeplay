@@ -8,8 +8,9 @@ from .. import (
     Ref,
     ImageToImageEncoder,
     VectorToImageDecoder,
+    SpatialBroadcastDecoder2d,
     ImageToImageDecoder,
-    ImageGeneratorHead,
+    ImageRegressionHead,
     Bottleneck,
     VariationalBottleneck,
     Layer,
@@ -46,11 +47,12 @@ class SimpleAutoencoder(DeeplayLightningModule):
             .encoder(Layer("flatten") >> Layer("layer") >> Layer("activation"))
             .encoder.flatten(nn.Flatten)
             .encoder.layer(nn.LazyLinear, out_features=Ref("hidden_dim"))
-            .encoder.activation(nn.ReLU)
+            .encoder.activation(nn.LeakyReLU, negative_slope=0.2)
             .decoder(Layer("layer") >> Layer("activation") >> Layer("unflatten"))
             .decoder.layer(nn.LazyLinear, out_features=Ref("input_size", _prod))
             .decoder.activation(nn.Sigmoid)
             .decoder.unflatten(nn.Unflatten, dim=1, unflattened_size=Ref("input_size"))
+            .loss(nn.MSELoss, reduction="sum")
             # hooks
             .on_first_forward("input_size", lambda _, x: x.shape[1:])
         )
@@ -64,7 +66,7 @@ class SimpleAutoencoder(DeeplayLightningModule):
         self.encoder = self.new("encoder")
         self.decoder = self.new("decoder")
 
-        self.loss = nn.MSELoss()
+        self.loss = self.new("loss")
 
     def forward(self, x, return_latent=False):
         latent = self.encode(x)
@@ -116,11 +118,16 @@ class Autoencoder(SimpleAutoencoder):
             .hidden_dim(2)
             .encoder(ImageToImageEncoder, depth=2)
             .bottleneck(Bottleneck, hidden_dim=Ref("hidden_dim"))
-            .decoder(VectorToImageDecoder, depth=2)
-            .head(ImageGeneratorHead)
+            .decoder(
+                SpatialBroadcastDecoder2d,
+                depth=2,
+                output_size=Ref("input_size", lambda s: s[1:]),
+            )
+            .head(ImageRegressionHead, output_size=Ref("input_size"))
+            .head.output.activation(nn.Sigmoid)
+            .loss(nn.MSELoss, reduction="sum")
             # hooks
-            .on_first_forward("head.output_size", lambda _, x: x.shape[1:])
-            .bottleneck.on_first_forward("decoder.base_size", lambda _, x: x.shape[1:])
+            .on_first_forward("input_size", lambda _, x: x.shape[1:])
         )
 
     def __init__(
@@ -138,7 +145,7 @@ class Autoencoder(SimpleAutoencoder):
         self.decoder = self.new("decoder")
         self.head = self.new("head")
 
-        self.loss = nn.MSELoss()
+        self.loss = self.new("loss")
 
     def encode(self, x):
         x = self.encoder(x)
@@ -162,7 +169,8 @@ class FullAutoencoder(Autoencoder):
             .bottleneck(Bottleneck, hidden_dim=Ref("hidden_dim"))
             .connector_to_image(nn.Unflatten, dim=1, unflattened_size=Ref("base_size"))
             .decoder(ImageToImageDecoder, depth=2)
-            .head(ImageGeneratorHead)
+            .head(ImageRegressionHead)
+            .head.output.activation(nn.Sigmoid)
             # hooks
             .on_first_forward("head.output_size", lambda _, x: x.shape[1:])
             .bottleneck.on_first_forward(
@@ -178,6 +186,7 @@ class VariationalAutoencoder(Autoencoder):
             Config()
             .merge(None, Autoencoder.defaults())
             .bottleneck(VariationalBottleneck)
+            .loss(nn.BCELoss, reduction="sum")
         )
 
     def encode(self, x, return_posteriors=False):
@@ -204,24 +213,20 @@ class VariationalAutoencoder(Autoencoder):
         x = self._get_image(batch)
         y_hat, posts = self(x, return_posteriors=True)
 
-        reconstruction_loss = self.loss(y_hat, x)
-        kl_loss = (
-            torch.cat(
-                [
-                    torch.distributions.kl_divergence(post, prior)
-                    for post, prior in zip(posts, self.bottleneck.priors)
-                ]
-            )
-            .sum(-1)
-            .mean()
-        )
+        reconstruction_loss = self.loss(y_hat.squeeze(), x.squeeze())
+        kl_loss = torch.cat(
+            [
+                torch.distributions.kl_divergence(post, prior)
+                for post, prior in zip(posts, self.bottleneck.priors)
+            ]
+        ).sum()
 
         self.log(
             "reconstruction_loss", reconstruction_loss, prog_bar=True, on_step=True
         )
         self.log("kl_loss", kl_loss, prog_bar=True, on_step=True)
 
-        return reconstruction_loss * 728 + kl_loss
+        return reconstruction_loss * x[0].numel() + kl_loss
 
 
 class BetaVAE(VariationalAutoencoder):
@@ -238,6 +243,7 @@ class BetaVAE(VariationalAutoencoder):
         y_hat, posts = self(x, return_posteriors=True)
 
         reconstruction_loss = self.loss(y_hat, x)
+
         kl_loss = (
             torch.cat(
                 [
@@ -254,4 +260,4 @@ class BetaVAE(VariationalAutoencoder):
         )
         self.log("kl_loss", kl_loss, prog_bar=True, on_step=True)
 
-        return reconstruction_loss * 728 + self.beta * kl_loss
+        return reconstruction_loss + self.beta * kl_loss

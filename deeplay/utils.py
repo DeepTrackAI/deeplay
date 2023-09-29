@@ -1,6 +1,15 @@
 import inspect
+import torch.nn as nn
+import torch
 
-__all__ = ["safe_call"]
+__all__ = [
+    "safe_call",
+    "match_signature",
+    "center_pad_to_largest",
+    "center_crop_to_smallest",
+    "center_pad",
+    "center_crop",
+]
 
 
 def safe_call(cls, kwargs):
@@ -35,3 +44,113 @@ def safe_call(cls, kwargs):
         key: value for key, value in kwargs.items() if key in signature.parameters
     }
     return cls(**valid_kwargs)
+
+
+def match_signature(func, args, kwargs):
+    """Returns a dictionary of arguments that match the signature of func.
+    This can be used to find the names of arguments passed positionally.
+    """
+    sig = inspect.signature(func)
+    # remove 'self' from the signature if present
+    # TODO: has to be a better way to do this. What if the first argument is not called 'self'?
+    if "self" in sig.parameters:
+        sig = sig.replace(parameters=list(sig.parameters.values())[1:])
+
+    kwargs = {k: v for k, v in kwargs.items() if k in sig.parameters}
+
+    bound = sig.bind(*args, **kwargs)
+    return bound.arguments
+
+
+def center_pad_to_largest(inputs):
+    """Pad the inputs to the largest input.
+    Two first dimensions are assumed to be batch and channel and are not padded.
+
+    Parameters
+    ----------
+    inputs : list of torch.Tensor
+        List of inputs.
+
+    Returns
+    -------
+    list of torch.Tensor
+        List of padded inputs.
+    """
+
+    max_shape = max(inp.shape[2:] for inp in inputs)
+    return [center_pad(inp, max_shape) for inp in inputs]
+
+
+def center_pad(inp, shape):
+    """Pad the input to the given shape.
+    Two first dimensions are assumed to be batch and channel and are not padded.
+
+    Parameters
+    ----------
+    inp : torch.Tensor
+        Input.
+    shape : tuple of int
+        Shape to pad to.
+
+    Returns
+    -------
+    torch.Tensor
+        Padded input.
+    """
+    pads = []
+    for i, s in zip(inp.shape[2:], shape):
+        before = (s - i) // 2
+        after = s - i - before
+
+        # reversed since we will reverse the list later
+        pads.extend([after, before])
+
+    # reversed since pad expects padding for the last dimension first
+    pads = pads[::-1]
+
+    return nn.functional.pad(inp, pads)
+
+
+def center_crop_to_smallest(inputs):
+    """Crop the inputs to the smallest input.
+    Two first dimensions are assumed to be batch and channel and are not cropped.
+
+    Parameters
+    ----------
+    inputs : list of torch.Tensor
+        List of inputs.
+
+    Returns
+    -------
+    list of torch.Tensor
+        List of cropped inputs.
+    """
+
+    min_shape = min(inp.shape[2:] for inp in inputs)
+    return [center_crop(inp, min_shape) for inp in inputs]
+
+
+def center_crop(inp, shape):
+    """Crop the input to the given shape.
+    Two first dimensions are assumed to be batch and channel and are not cropped.
+
+    Parameters
+    ----------
+    inp : torch.Tensor
+        Input.
+    shape : tuple of int
+        Shape to crop to.
+
+    Returns
+    -------
+    torch.Tensor
+        Cropped input.
+    """
+
+    slices = []
+    for i, s in enumerate(shape):
+        before = (inp.shape[i + 2] - s) // 2
+        after = before + s
+        slices.append(slice(before, after))
+
+    return inp[(...,) + tuple(slices)]

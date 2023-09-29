@@ -1,2 +1,3 @@
 from .classification import CategoricalClassificationHead
-from .generators import ImageGeneratorHead
+from .segmentation import ImageSegmentationHead
+from .regression import VectorRegressionHead, ImageRegressionHead

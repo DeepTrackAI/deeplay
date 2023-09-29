@@ -1,6 +1,7 @@
 from ..templates import Layer
 from ..core import DeeplayModule
-from ..config import Config, Ref
+from ..config import Config
+from ..utils import center_pad_to_largest, center_crop_to_smallest
 
 import torch
 import torch.nn as nn
@@ -27,15 +28,15 @@ class Skip(DeeplayModule):
         self.func = self.attr("func")
         self.inputs = self.new("inputs")
 
-    def forward(self, x):
-        inputs = [inp(x) for inp in self.inputs]
+    def forward(self, *x):
+        inputs = [inp(*x) for inp in self.inputs]
         return self.func(*inputs)
 
 
 class Concatenate(DeeplayModule):
-    defaults = Config().merge(None, Skip.defaults).dim(1)
+    defaults = Config().merge(None, Skip.defaults).dim(1).mismatch_strategy(None)
 
-    def __init__(self, inputs, dim=1):
+    def __init__(self, inputs, dim=1, mismatch_strategy=None):
         """Concatenate module.
 
         Parameters
@@ -45,34 +46,31 @@ class Concatenate(DeeplayModule):
         dim : int
             Dimension to concatenate on.
             Default is 1.
+        mismatch_strategy : str or none
+            Strategy to use when the inputs have different shapes.
+            Allowed values are "pad" and "crop" or None.
         """
 
-        super().__init__(inputs=inputs, dim=dim)
+        super().__init__(inputs=inputs, dim=dim, mismatch_strategy=mismatch_strategy)
 
         self.dim = self.attr("dim")
-        self.inputs = self.new("inputs")
+        self.mismatch_strategy = self.attr("mismatch_strategy")
 
-    def forward(self, x):
-        inputs = [inp(x) for inp in self.inputs]
-        return torch.cat(inputs, dim=self.dim)
+    def forward(self, *x):
+        if self.mismatch_strategy == "pad":
+            x = center_pad_to_largest(x)
+        elif self.mismatch_strategy == "crop":
+            x = center_crop_to_smallest(x)
+        return torch.cat(x, dim=self.dim)
 
 
-class Add(Skip):
+class Add(DeeplayModule):
     defaults = Config().merge(None, Skip.defaults)
 
-    def __init__(self, inputs):
-        """Add module.
+    def __init__(self):
+        """Add module."""
 
-        Parameters
-        ----------
-        inputs : list of Layer
-            List of inputs.
-        """
+        super().__init__()
 
-        super().__init__(inputs=inputs)
-
-        self.inputs = self.new("inputs")
-
-    def forward(self, x):
-        inputs = [inp(x) for inp in self.inputs]
-        return sum(inputs)
+    def forward(self, *x):
+        return sum(x)

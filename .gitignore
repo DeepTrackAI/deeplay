@@ -1,3 +1,5 @@
 *.pyc
 lightning_logs
 *ubyte*
+data
+tensorflow_datasets
