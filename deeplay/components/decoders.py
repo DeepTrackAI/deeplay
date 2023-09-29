@@ -11,7 +11,6 @@ import torch
 
 
 __all__ = [
-    "Decoder",
     "ImageToImageDecoder",
     "VectorToImageDecoder",
     "SpatialBroadcastDecoder1d",
@@ -331,7 +330,7 @@ class VectorToImageDecoder(BaseDecoder):
         self.output_size = self.attr("output_size")
 
 
-class _BaseSpatialBroadcastDecoder(Decoder):
+class _BaseSpatialBroadcastDecoder(BaseDecoder):
     @staticmethod
     def defaults():
         return (
