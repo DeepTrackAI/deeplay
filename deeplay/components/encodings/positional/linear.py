@@ -1,6 +1,7 @@
 from ....core import DeeplayModule
 import torch
 import torch.nn as nn
+import warnings
 
 
 class _PositionalEncodingLinear(DeeplayModule):
@@ -30,6 +31,12 @@ class _PositionalEncodingLinear(DeeplayModule):
         return encoding
 
     def forward(self, x, positions=None):
+        if x.shape[1] > 64:
+            warnings.warn(
+                "Using linear positional encoding with large latent dimensions is unlikely to work well."
+                "Consider using sinusoidal positional encoding instead.",
+                source=type(self).__name__,
+            )
         encoding = self.encoding(x, positions=positions)
         x = torch.cat([x, encoding], dim=1)
         return x

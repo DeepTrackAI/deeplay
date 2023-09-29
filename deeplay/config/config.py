@@ -11,6 +11,13 @@ from . import (
     Ref,
     parse_selectors,
 )
+from ..utils import (
+    safe_call,
+    match_signature as _match_signature,
+)
+
+import inspect
+import torch
 
 __all__ = ["Config", "ForwardHook"]
 
@@ -527,10 +534,15 @@ To populate more, specify the length with .populate(..., length=desired_length)"
     def get_ref(self, name):
         return self._refs[name]
 
-    def get_parameters(self):
+    def get_parameters(self, create=True):
         rules = self._get_all_matching_rules(NoneSelector(), match_key=False)
         rule_dict = self._merge_rules_on_key(rules)
-        return self._take_most_specific_per_key(rule_dict)
+        rule_dict = self._take_most_specific_per_key(rule_dict)
+
+        if create:
+            rule_dict = self._initialize_classes(rule_dict)
+
+        return rule_dict
 
     def with_selector(self, selectors):
         selectors = parse_selectors(selectors)
@@ -686,6 +698,12 @@ To populate more, specify the length with .populate(..., length=desired_length)"
 
         return most_specific
 
+    def _initialize_classes(self, rule_dict):
+        initialized = {}
+        for key, value in rule_dict.items():
+            initialized[key] = self.with_selector(key).build_object(value)
+        return initialized
+
     @staticmethod
     def _merge_rules_on_key(rules):
         merged = {}
@@ -696,3 +714,27 @@ To populate more, specify the length with .populate(..., length=desired_length)"
             else:
                 merged[key] = [rule]
         return merged
+
+    def build_object(self, template):
+        from ..templates import Layer
+
+        if isinstance(template, (list, tuple)):
+            return [self[i].build_object(template[i]) for i in range(len(template))]
+        elif isinstance(template, Layer):
+            return template.from_config(self)
+        elif inspect.isclass(template) and hasattr(template, "from_config"):
+            return template.from_config(self)
+        elif isinstance(template, torch.nn.Module):
+            return template
+        elif callable(template):
+            subparams = self.get_parameters(create=False)
+            if inspect.isclass(template):
+                _factory_kwargs = _match_signature(template.__init__, [], subparams)
+            else:
+                _factory_kwargs = _match_signature(template, [], subparams)
+            # recurse.
+
+            _factory_kwargs = self._initialize_classes(_factory_kwargs)
+            return template(**_factory_kwargs)
+        else:
+            return template

@@ -184,23 +184,8 @@ class UninitializedModule(nn.Module):
         return res
 
     @classmethod
-    def build_template(cls, template, config):
-        from .templates import Layer
-
-        if isinstance(template, (list, tuple)):
-            return [
-                cls.build_template(template[i], config[i]) for i in range(len(template))
-            ]
-        elif isinstance(template, Layer):
-            return template.from_config(config)
-        elif inspect.isclass(template) and issubclass(template, DeeplayModule):
-            return template.from_config(config)
-        elif isinstance(template, nn.Module):
-            return template
-        elif callable(template):
-            return safe_call(template, config.get_parameters())
-        else:
-            return template
+    def build_template(cls, template, config: Config):
+        return config.build_object(template)
 
     def __getattr__(self, name):
         # if not self.is_initialized():

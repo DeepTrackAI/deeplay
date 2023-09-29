@@ -445,3 +445,50 @@ class TestConfig(unittest.TestCase):
         foo1 = config.foo[1].get(None)
         self.assertEqual(foo0, 0)
         self.assertEqual(foo1, 1)
+
+    def test_create_from_function(self):
+        def foo():
+            return 1
+
+        config = Config().foo(foo)
+        self.assertEqual(config.get_parameters().get("foo"), 1)
+
+    def test_create_from_function_with_arg(self):
+        def foo(a):
+            return a + 1
+
+        config = Config().foo(foo, a=1)
+        self.assertEqual(config.get_parameters().get("foo"), 2)
+
+    def test_create_from_function_nested(self):
+        def foo(bar):
+            return bar
+
+        def bar():
+            return 1
+
+        config = Config().foo(foo, bar=bar)
+        self.assertEqual(config.get_parameters().get("foo"), 1)
+
+    def test_create_from_function_nested_2(self):
+        def foo(bar):
+            return bar + 1
+
+        def bar(baz):
+            return baz + 1
+
+        config = Config().foo(foo).foo.bar(bar).foo.bar.baz(1)
+        self.assertEqual(config.get_parameters().get("foo"), 3)
+
+    def test_create_from_function_with_list(self):
+        def foo(bar):
+            return bar[0] + bar[1] + 1
+
+        def bar_1():
+            return 1
+
+        def bar_2():
+            return 2
+
+        config = Config().foo(foo, bar=[bar_1, bar_2])
+        self.assertEqual(config.get_parameters().get("foo"), 4)

@@ -6,26 +6,9 @@ from typing import Any, Union
 from torch.nn.modules.module import Module
 from .config import Config, NoneSelector, IndexSelector
 
-from .utils import safe_call
+from .utils import safe_call, match_signature as _match_signature
 
 __all__ = ["DeeplayModule", "UninitializedModule"]
-
-
-def _match_signature(func, args, kwargs):
-    """Returns a dictionary of arguments that match the signature of func.
-    This can be used to find the names of arguments passed positionally.
-    """
-    sig = inspect.signature(func)
-    # remove 'self' from the signature
-    sig = sig.replace(parameters=list(sig.parameters.values())[1:])
-
-    # remove arguments in kwargs that are not in the signature
-    for name in list(kwargs.keys()):
-        if name not in sig.parameters:
-            del kwargs[name]
-
-    bound = sig.bind(*args, **kwargs)
-    return bound.arguments
 
 
 class UninitializedModule(nn.Module):
@@ -69,11 +52,7 @@ class UninitializedModule(nn.Module):
         """Create a module from the config."""
 
         template = config.get(NoneSelector())
-        parameters = config.get_parameters()
-        uid = parameters.get("uid", None)
-
-        # uid is set in Layer
-
+        uid = config.get("uid", None)
         res = cls.build_template(template, config)
 
         if uid is not None:
@@ -82,23 +61,8 @@ class UninitializedModule(nn.Module):
         return res
 
     @classmethod
-    def build_template(cls, template, config):
-        from .templates import Layer
-
-        if isinstance(template, (list, tuple)):
-            return [
-                cls.build_template(template[i], config[i]) for i in range(len(template))
-            ]
-        elif isinstance(template, Layer):
-            return template.from_config(config)
-        elif inspect.isclass(template) and issubclass(template, DeeplayModule):
-            return template.from_config(config)
-        elif isinstance(template, nn.Module):
-            return template
-        elif callable(template):
-            return safe_call(template, config.get_parameters())
-        else:
-            return template
+    def build_template(cls, template, config: Config):
+        return config.build_object(template)
 
     def __getattr__(self, name):
         # if not self.is_initialized():
@@ -122,12 +86,12 @@ class DeeplayModule(nn.Module):
     defaults = {}
 
     config: Config
+    _extra_attributes: dict
 
     def __init__(self, **kwargs):
         super().__init__()
         self._all_uninitialized_submodules = []
         self._any_uninitialized_submodules = False
-
         self._deeplay_forward_hooks = self.config.get_all_forward_hooks()
 
     def __new__(cls, *args, **kwargs):
@@ -136,6 +100,7 @@ class DeeplayModule(nn.Module):
 
         obj = object.__new__(cls)
         obj.set_config(config)
+        obj._extra_attributes = {}
 
         return obj
 
@@ -147,7 +112,13 @@ class DeeplayModule(nn.Module):
 
     def attr(self, key) -> Any:
         """Get an attribute from the config."""
-        return self.config.get(key)
+
+        value = self.config.get(key)
+        if not isinstance(value, nn.Module):
+            # If the module is not a nn.Module, we need to add it to the extra attributes
+            # so that it is properly printed.
+            self._extra_attributes[key] = value
+        return value
 
     def new(
         self, key, i=None, length=None, now=False, extra_kwargs=None
@@ -165,6 +136,11 @@ class DeeplayModule(nn.Module):
             raise RuntimeError(
                 f"Cannot create module {key} now, because it has forward hooks."
             )
+
+        if not isinstance(lazy, nn.Module):
+            # If the module is not a nn.Module, we need to add it to the extra attributes
+            # so that it is properly printed.
+            self._extra_attributes[key] = lazy
         return lazy
 
     def set_config(self, config: Config):
@@ -180,6 +156,13 @@ class DeeplayModule(nn.Module):
         # Should be benchmarked.
         self._replace_uninitialized_modules()
         return y
+
+    def extra_repr(self) -> str:
+        # also wrint extra attributes
+        extra = "\n".join(
+            f"({k}): {v}" for k, v in self._extra_attributes.items() if k != "config"
+        )
+        return extra
 
     def _replace_uninitialized_modules(self):
         if not self._any_uninitialized_submodules:
@@ -202,9 +185,12 @@ class DeeplayModule(nn.Module):
 
         obj = object.__new__(cls)
         obj.set_config(config)
+        obj._extra_attributes = {}
 
         # if obj.__init__ has any required positional arguments, we need to pass them.
-        _factory_kwargs = _match_signature(cls.__init__, [], config.get_parameters())
+        _factory_kwargs = _match_signature(
+            cls.__init__, [], config.get_parameters(create=False)
+        )
         obj.__init__(**_factory_kwargs)
         return obj
 

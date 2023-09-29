@@ -1,6 +1,6 @@
 from ..applications import DeeplayLightningModule
 from ..classification import ImageClassifier
-from ...config import Config
+from ...config import Config, Ref
 from ...templates import Layer
 from ...components import (
     SpatialBroadcastDecoder2d,
@@ -13,11 +13,12 @@ import torch.nn as nn
 from torch.optim import Adam
 
 
-class VanillaGAN(DeeplayLightningModule):
+class ClassConditionedGAN(DeeplayLightningModule):
     @staticmethod
     def defaults():
         return (
             Config()
+            .num_classes(10)
             .hidden_dim(10)
             .generator(Layer("backbone") >> Layer("head"))
             .generator.backbone(SpatialBroadcastDecoder2d)
@@ -28,8 +29,8 @@ class VanillaGAN(DeeplayLightningModule):
             .discriminator.on_first_forward(
                 "generator.backbone.output_size", lambda _, x: x.shape[2:]
             )
+            .embedding(nn.Embedding, num_embeddings=Ref("num_classes"), embedding_dim=4)
             .discriminator_loss(nn.MSELoss)
-            .generator_loss(nn.MSELoss)
             .discriminator_optimizer(Adam, lr=1e-4, betas=(0.5, 0.999))
             .generator_optimizer(Adam, lr=2e-4, betas=(0.5, 0.999))
         )
@@ -61,9 +62,9 @@ class VanillaGAN(DeeplayLightningModule):
 
         self.generator = self.new("generator")
         self.discriminator = self.new("discriminator")
+        self.embedding = self.new("embedding")
 
         self.discriminator_loss = self.new("discriminator_loss")
-        self.generator_loss = self.new("generator_loss")
 
     def configure_optimizers(self):
         return (
@@ -77,28 +78,50 @@ class VanillaGAN(DeeplayLightningModule):
             ),
         )
 
-    def sample_noise(self, batch_size):
-        return torch.randn(batch_size, self.hidden_dim).to(self.device)
+    def sample_noise(self, size):
+        batch_size, *spatials = size
+        return torch.randn(batch_size, self.hidden_dim, *spatials).to(self.device)
 
-    def forward(self, x=None):
-        if x is None:
-            x = self.sample_noise(1)
-            x = x.to(self.device).float()
-        return self.generator(x)
+    def sample_conditioned_latent(self, x, z=None):
+        if z is None:
+            z = self.sample_noise(x.size())
+            z = z.to(self.device).float()
+
+        embed = self.embedding(x.long())
+        conditioned_latent = torch.cat([embed, z], dim=1)
+        return conditioned_latent
+
+    def forward(self, x, z=None):
+        image = self.generate(x, z=z)
+        valid = self.discriminate(image, x)
+        return image, valid
+
+    def discriminate(self, x, condition):
+        embed = self.embedding(condition)
+        while len(embed.shape) < len(x.shape):
+            embed = embed.unsqueeze(-1)
+        embed = embed.repeat(1, 1, *x.shape[2:])
+
+        x = torch.cat([x, embed], dim=1)
+        return self.discriminator(x)
+
+    def generate(self, condition, z=None):
+        conditioned_latent = self.sample_conditioned_latent(condition, z=z)
+        return self.generator(conditioned_latent)
 
     def training_step(self, batch, batch_idx, optimizer_idx):
-        x = self._get_image(batch)
-        z = self.sample_noise(x.size(0))
+        x, condition = batch
+
+        z = self.sample_noise(condition.size())
+        z = z.to(self.device).float()
 
         if optimizer_idx == 0:
             # store generated images for the discriminator optimizer
-            self._generated_imgs = self(z)
+            y_hat = self.generate(condition, z=z)
 
             valid = torch.ones(x.size(0), 1).type_as(x)
 
-            g_loss = self.generator_loss(
-                self.discriminator(self._generated_imgs), valid
-            )
+            g_loss = self.discriminator_loss(self.discriminate(y_hat, condition), valid)
 
             self.log("g_loss", g_loss, prog_bar=True, on_epoch=True)
 
@@ -107,16 +130,13 @@ class VanillaGAN(DeeplayLightningModule):
         if optimizer_idx == 1:
             valid = torch.ones(x.size(0), 1).type_as(x)
             fake = torch.zeros(x.size(0), 1).type_as(x)
-
-            real_loss = self.discriminator_loss(self.discriminator(x), valid)
+            fake_x = self.generate(condition, z=z).detach()
+            real_loss = self.discriminator_loss(self.discriminate(x, condition), valid)
             fake_loss = self.discriminator_loss(
-                self.discriminator(self.generator(z).detach()), fake
+                self.discriminate(fake_x, condition), fake
             )
             d_loss = (real_loss + fake_loss) / 2
             self.log("d_loss", d_loss, prog_bar=True, on_epoch=True)
-            # if d_loss.item() < 0.25:
-            #     return d_loss * 0
-
             return d_loss
 
     def _get_image(self, batch):

@@ -2,7 +2,14 @@ import inspect
 import torch.nn as nn
 import torch
 
-__all__ = ["safe_call"]
+__all__ = [
+    "safe_call",
+    "match_signature",
+    "center_pad_to_largest",
+    "center_crop_to_smallest",
+    "center_pad",
+    "center_crop",
+]
 
 
 def safe_call(cls, kwargs):
@@ -37,6 +44,22 @@ def safe_call(cls, kwargs):
         key: value for key, value in kwargs.items() if key in signature.parameters
     }
     return cls(**valid_kwargs)
+
+
+def match_signature(func, args, kwargs):
+    """Returns a dictionary of arguments that match the signature of func.
+    This can be used to find the names of arguments passed positionally.
+    """
+    sig = inspect.signature(func)
+    # remove 'self' from the signature if present
+    # TODO: has to be a better way to do this. What if the first argument is not called 'self'?
+    if "self" in sig.parameters:
+        sig = sig.replace(parameters=list(sig.parameters.values())[1:])
+
+    kwargs = {k: v for k, v in kwargs.items() if k in sig.parameters}
+
+    bound = sig.bind(*args, **kwargs)
+    return bound.arguments
 
 
 def center_pad_to_largest(inputs):
