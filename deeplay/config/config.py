@@ -312,26 +312,26 @@ class Config:
     The `Config` class is a configuration management class that allows users to define and manipulate configuration rules. It provides methods for setting and getting values, merging configurations, adding references, and more.
 
     Example Usage:
-        # Create a new Config object
-        config = Config()
+    >>> # Create a new Config object
+    >>> config = Config()
+    >>>
+    >>> # Set values using selectors
+    >>> config.a.b.c(10).d.e.f(20)
 
-        # Set values using selectors
-        config.a.b.c(10).d.e.f(20)
+    >>> # Get a value using selectors
+    >>> c = config.get("a.b.c")  # returns 10
+    >>> f = config.get("d.e.f")  # returns 20
 
-        # Get a value using selectors
-        c = config.get("a.b.c")  # returns 10
-        f = config.get("d.e.f")  # returns 20
+    >>> # Merge two configurations
+    >>> config1 = Config().a(1)
+    >>> config2 = Config().b(2)
+    >>> merged_config = config1.merge("other", config2)  # merges config1 and config2
+    >>> a = merged_config.get("a")  # returns 1
+    >>> b = merged_config.get("other.b")  # returns 2
 
-        # Merge two configurations
-        config1 = Config().a(1)
-        config2 = Config().b(2)
-        merged_config = config1.merge("other", config2)  # merges config1 and config2
-        a = merged_config.get("a")  # returns 1
-        b = merged_config.get("other.b")  # returns 2
-
-        # Add a reference to another rule
-        ref_config = Config().x.y(100).a.b(Ref("x.y", lambda x: x + 1))
-        a = ref_config.get("a.b")  # returns 101
+    >>> # Add a reference to another rule
+    >>> ref_config = Config().x.y(100).a.b(Ref("x.y", lambda x: x + 1))
+    >>> a = ref_config.get("a.b")  # returns 101
 
 
     Main functionalities:
@@ -342,32 +342,14 @@ class Config:
     - Running forward hooks
 
     Methods:
-    - value(): Returns the stored result of the hook function.
-    - has_run(): Returns a boolean indicating whether the hook has been run.
     - on_first_forward(): Sets a hook to be evaluated only on the first forward pass.
     - on_forward(): Sets a hook to be evaluated on every forward pass.
-    - run_all_forward_hooks(): Runs all forward hooks.
-    - has_forward_hooks(): Returns a boolean indicating whether there are any forward hooks.
-    - set(): Sets a value for the given selectors.
     - populate(): Populates the configuration with values from a generator.
     - default(): Sets a default value for the given selectors.
     - merge(): Merges another configuration into the current configuration.
     - get(): Retrieves a value for the given selectors.
-    - get_module(): Retrieves the module configuration.
-    - add_ref(): Adds a reference to another configuration.
-    - get_ref(): Retrieves a reference configuration.
     - get_parameters(): Retrieves the parameters of the configuration.
     - with_selector(): Creates a new configuration with additional selectors.
-    - __getattr__(): Handles attribute access for class selectors.
-    - __getitem__(): Handles indexing for index selectors.
-    - __call__(): Handles function call for setting values and adding rules.
-    - __repr__(): Returns a string representation of the configuration.
-    - _get_all_matching_rules(): Retrieves all rules that match the given selectors.
-    - _is_last_selector_a(): Checks if the last selector is of a specific type.
-    - _take_most_specific_per_key(): Retrieves the most specific value for each key.
-    - _take_most_specific_in_list(): Retrieves the most specific rule in a list.
-    - _take_most_specific_per_key_and_index(): Retrieves the most specific value for each key and index.
-    - _merge_rules_on_key(): Merges rules with the same key into a dictionary.
 
     """
 

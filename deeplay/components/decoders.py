@@ -312,7 +312,7 @@ class VectorToImageDecoder(BaseDecoder):
             Config()
             .merge(None, BaseDecoder.defaults)
             .output_size(None)
-            .input_block(SpatialBroadcastDecoder2d)
+            .input_block(SpatialBroadcastDecoder2d, depth=0)
             # In case user provides output_size as (ch, height, width) instead of (height, width)
             # we need to remove the channel dimension.
             .input_block.output_size(Ref("output_size", lambda size: size[-2:]))
@@ -330,35 +330,44 @@ class VectorToImageDecoder(BaseDecoder):
         self.output_size = self.attr("output_size")
 
 
-class _BaseSpatialBroadcastDecoder(BaseDecoder):
+class _BaseSpatialBroadcastDecoder(DeeplayModule):
     @staticmethod
     def defaults():
         return (
             Config()
-            .depth(4)
+            .merge(None, BaseDecoder.defaults())
+            .depth(1)
             .output_size(None)
-            .input(nn.Identity)
-            .blocks(Layer("layer") >> Layer("activation"))
-            .blocks.activation(nn.ReLU)
+            .input_block(nn.Identity)
+            .decoder_blocks(Layer("layer") >> Layer("activation"))
         )
 
     def __init__(
-        self, depth=4, output_size=None, input=None, encoding=None, blocks=None
+        self,
+        output_size=None,
+        depth=1,
+        input_block=None,
+        encoding=None,
+        decoder_blocks=None,
+        output_block=None,
     ):
-        DeeplayModule.__init__(
-            self,
-            depth=depth,
+        super().__init__(
             output_size=output_size,
-            input=input,
+            depth=depth,
+            input_block=input_block,
             encoding=encoding,
-            blocks=blocks,
+            decoder_blocks=decoder_blocks,
+            output_block=output_block,
         )
 
         self.depth = self.attr("depth")
         self.output_size = self.attr("output_size")
-        self.input = self.new("input")
+        self.input_block = self.new("input_block")
         self.encoding = self.new("encoding")
-        self.blocks = nn.ModuleList(self.new("blocks", i) for i in range(self.depth))
+        self.decoder_blocks = nn.ModuleList(
+            self.new("decoder_blocks", i) for i in range(self.depth)
+        )
+        self.output_block = self.new("output_block")
 
     def forward(self, x):
         """Forward pass.
@@ -374,15 +383,17 @@ class _BaseSpatialBroadcastDecoder(BaseDecoder):
             (batch_size, 2, height, width)
             Default is None.
         """
-        x = self.input(x)
+        x = self.input_block(x)
 
         output_size = self.output_size
 
         x = self.broadcast(x, output_size)
 
         x = self.encoding(x)
-        for block in self.blocks:
+        for block in self.decoder_blocks:
             x = block(x)
+
+        x = self.output_block(x)
 
         return x
 
@@ -421,7 +432,9 @@ class SpatialBroadcastDecoder1d(_BaseSpatialBroadcastDecoder):
             Config()
             .merge(None, _BaseSpatialBroadcastDecoder.defaults())
             .encoding(PositionalEncodingLinear1d)
-            .blocks.layer(nn.LazyConv1d, kernel_size=1, padding=0, out_channels=128)
+            .decoder_blocks.layer(
+                nn.LazyConv1d, kernel_size=1, padding=0, out_channels=128
+            )
         )
 
 
@@ -432,7 +445,9 @@ class SpatialBroadcastDecoder2d(_BaseSpatialBroadcastDecoder):
             Config()
             .merge(None, _BaseSpatialBroadcastDecoder.defaults())
             .encoding(PositionalEncodingLinear2d)
-            .blocks.layer(nn.LazyConv2d, kernel_size=1, padding=0, out_channels=128)
+            .decoder_blocks.layer(
+                nn.LazyConv2d, kernel_size=1, padding=0, out_channels=128
+            )
         )
 
 
@@ -443,5 +458,7 @@ class SpatialBroadcastDecoder3d(_BaseSpatialBroadcastDecoder):
             Config()
             .merge(None, _BaseSpatialBroadcastDecoder.defaults())
             .encoding(PositionalEncodingLinear3d)
-            .blocks.layer(nn.LazyConv3d, kernel_size=1, padding=0, out_channels=128)
+            .decoder_blocks.layer(
+                nn.LazyConv3d, kernel_size=1, padding=0, out_channels=128
+            )
         )
