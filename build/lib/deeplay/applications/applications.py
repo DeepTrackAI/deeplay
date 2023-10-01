@@ -13,7 +13,7 @@ from .. import (
 )
 
 
-class DeeplayLightningModule(DeeplayModule, pl.LightningModule):
+class Application(DeeplayModule, pl.LightningModule):
 
     config = (
         Config()

@@ -1,4 +1,4 @@
-from .applications import DeeplayLightningModule
+from .applications import Application
 from .classification import *
 from .autoencoders import *
 from .segmentation import ImageSegmentor

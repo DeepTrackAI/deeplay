@@ -104,9 +104,9 @@ class Base2dConvolutionalEncoder(_BaseEncoder):
             ._.activation(nn.ReLU)
             ._.pool(nn.MaxPool2d, kernel_size=2)
             # populate out_channels for each block
-            .input_block.layer.out_channels(8)
+            .input_block.layer.out_channels(16)
             .encoder_blocks.populate(
-                "layer.out_channels", lambda i: 16 * 2**i, length=8
+                "layer.out_channels", lambda i: 32 * 2**i, length=8
             )
         )
 

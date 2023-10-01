@@ -61,6 +61,7 @@ class Concatenate(DeeplayModule):
             x = center_pad_to_largest(x)
         elif self.mismatch_strategy == "crop":
             x = center_crop_to_smallest(x)
+        print([i.shape for i in x])
         return torch.cat(x, dim=self.dim)
 
 

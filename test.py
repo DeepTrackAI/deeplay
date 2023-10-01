@@ -1,15 +1,8 @@
 # %%
-
 import deeplay as dl
+import torch
 
-encoder = dl.encoders.Base2dConvolutionalEncoder()
-encoder
+mlp = dl.MultiLayerPerceptron(2, [4, 4, 7], 3)
 
-# %%
 
-import torch.nn.modules.linear
-
-torch.nn.modules.linear.Identity(torch.randn(1, 2, 3))
-
-# %%
-encoder.new("output_block", now=True)
+mlp

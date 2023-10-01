@@ -18,16 +18,12 @@ class UninitializedModule(nn.Module):
         if now:
             return cls.create_module(config)
 
-        if not config.has_forward_hooks():
-            # If there are no forward hooks, we can immediately initialize the module.
-            try:
-                return cls.create_module(config)
-            except (ValueError, TypeError) as e:
-                # Can happen if there are no immediate hooks, but indirect references to hooks.
-                # In this case, we need to wait until the hooks are resolved.
-                # TODO: make specific error to not catch all runtime errors.
-                return super().__new__(cls)
-        else:
+        try:
+            return cls.create_module(config)
+        except (ValueError, TypeError) as e:
+            # Can happen if there are no immediate hooks, but indirect references to hooks.
+            # In this case, we need to wait until the hooks are resolved.
+            # TODO: make specific error to not catch all runtime errors.
             return super().__new__(cls)
 
     def __init__(self, config: Config, now=False):

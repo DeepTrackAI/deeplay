@@ -399,11 +399,18 @@ class Config:
     def set(self, selectors, value, default=False):
         selectors = parse_selectors(selectors)
 
-        selectors, key = selectors.pop()
-        if default:
-            self._rules.append(ConfigRuleDefault(self._context + selectors, key, value))
+        if isinstance(selectors, NoneSelector):
+            if isinstance(self._context, NoneSelector):
+                raise ValueError("Cannot set a value with no context and no selector.")
+            selectors, key = self._context.pop()
         else:
-            self._rules.append(ConfigRule(self._context + selectors, key, value))
+            selectors, key = selectors.pop()
+            selectors = self._context + selectors
+
+        if default:
+            self._rules.append(ConfigRuleDefault(selectors, key, value))
+        else:
+            self._rules.append(ConfigRule(selectors, key, value))
         return self
 
     def populate(self, selectors, generator, length=None):
@@ -455,7 +462,11 @@ To populate more, specify the length with .populate(..., length=desired_length)"
     def default(self, selectors, value):
         return self.set(selectors, value, default=True)
 
-    def merge(self, selectors, config, as_default=False, prepend=False):
+    def merge(self, selectors=None, config=None, as_default=False, prepend=False):
+        if config is None:
+            config = selectors
+            selectors = None
+
         selectors = parse_selectors(selectors)
 
         additional_rules = []
@@ -493,7 +504,7 @@ To populate more, specify the length with .populate(..., length=desired_length)"
             if default is not default_obj:
                 return default
             else:
-                raise ValueError(f"No keys match for {selectors} in {self}")
+                raise ValueError(f"No keys match for {str(full_context)} in {self}")
         if len(most_specific) == 1:
             return list(most_specific.values())[0]
         if return_dict_if_multiple:
@@ -553,23 +564,29 @@ To populate more, specify the length with .populate(..., length=desired_length)"
         return Config(self._rules, self._refs, self._context[index, length])
 
     def __call__(self, *x, **kwargs):
-        if len(x) > 1:
-            raise ValueError("Config can only be called with one positional argument")
+        if len(x) > 2:
+            raise ValueError(
+                "Config can only be called with one or two positional arguments"
+            )
+
+        new_config = Config(self._rules.copy(), self._refs, self._context)
 
         if len(x) == 1:
             x = x[0]
-            selector, key = self._context.pop()
+            new_config.set(None, x)
 
-            self._rules.append(ConfigRule(selector, key, x))
+        elif len(x) == 2:
+            x, subconfig = x
+            new_config.set(None, x)
+            new_config.merge(subconfig)
 
         for key, value in kwargs.items():
-            rule = ConfigRule(self._context, key, value)
-            self._rules.append(rule)
+            new_config.set(key, value)
 
-        # When you call a config, it should reset the selector
-        # This is what allows the chained syntax
-        # Config().a.b.c(1).d.e.f(2)
-        return Config(self._rules, self._refs)
+        # reset context
+        new_config._context = NoneSelector()
+
+        return new_config
 
     def __repr__(self):
         return "Config(\n" + "\n".join([str(rule) for rule in self._rules]) + "\n)"

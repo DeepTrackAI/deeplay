@@ -1,38 +1,37 @@
-from ..applications import DeeplayLightningModule
-from ..classification import ImageClassifier
+from ..applications import Application
+from ..classification import Classifier
 from ...config import Config, Ref
-from ...templates import Layer
+from ...templates import Layer, MultiInputLayer
 from ...components import (
     SpatialBroadcastDecoder2d,
     PositionalEncodingSinusoidal2d,
+    ImageToVectorEncoder,
+    Concatenate,
     PositionalEncodingLinear2d,
     ImageRegressionHead,
+    MultiLayerPerceptron,
+    CategoricalClassificationHead,
 )
 import torch
 import torch.nn as nn
 from torch.optim import Adam
 
 
-class ClassConditionedGAN(DeeplayLightningModule):
+class ClassConditionedGAN(Application):
     @staticmethod
     def defaults():
         return (
             Config()
             .num_classes(10)
             .hidden_dim(10)
-            .generator(Layer("backbone") >> Layer("head"))
-            .generator.backbone(SpatialBroadcastDecoder2d)
-            .generator.backbone.encoding(PositionalEncodingLinear2d)
-            .generator.head(ImageRegressionHead)
-            .discriminator(ImageClassifier)
-            .discriminator.num_classes(1)
-            .discriminator.on_first_forward(
-                "generator.backbone.output_size", lambda _, x: x.shape[2:]
+            .embedding(
+                nn.Embedding,
+                num_embeddings=Ref("num_classes"),
+                embedding_dim=Ref("num_classes", lambda x: x // 2),
             )
-            .embedding(nn.Embedding, num_embeddings=Ref("num_classes"), embedding_dim=4)
             .discriminator_loss(nn.MSELoss)
             .discriminator_optimizer(Adam, lr=1e-4, betas=(0.5, 0.999))
-            .generator_optimizer(Adam, lr=2e-4, betas=(0.5, 0.999))
+            .generator_optimizer(Adam, lr=1e-4, betas=(0.5, 0.999))
         )
 
     def __init__(
@@ -46,7 +45,7 @@ class ClassConditionedGAN(DeeplayLightningModule):
         discriminator_optimizer=None,
         generator_optimizer=None,
     ):
-        DeeplayLightningModule.__init__(
+        Application.__init__(
             self,
             hidden_dim=hidden_dim,
             generator=generator,
@@ -98,12 +97,7 @@ class ClassConditionedGAN(DeeplayLightningModule):
 
     def discriminate(self, x, condition):
         embed = self.embedding(condition)
-        while len(embed.shape) < len(x.shape):
-            embed = embed.unsqueeze(-1)
-        embed = embed.repeat(1, 1, *x.shape[2:])
-
-        x = torch.cat([x, embed], dim=1)
-        return self.discriminator(x)
+        return self.discriminator(x, embed)
 
     def generate(self, condition, z=None):
         conditioned_latent = self.sample_conditioned_latent(condition, z=z)

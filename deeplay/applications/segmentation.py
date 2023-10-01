@@ -9,7 +9,7 @@ from ..components import (
 )
 from ..config import Config
 from ..utils import center_pad_to_largest, center_crop
-from .applications import DeeplayLightningModule
+from .applications import Application
 
 # from ..backbones.encoders import Encoder2d
 # from ..backbones.decoders import Decoder2d
@@ -20,7 +20,7 @@ __all__ = [
 ]
 
 
-class ImageSegmentor(DeeplayLightningModule):
+class ImageSegmentor(Application):
     @staticmethod
     def defaults():
         return Config().backbone(UNet).head(ImageSegmentationHead).loss(nn.BCELoss)

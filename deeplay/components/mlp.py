@@ -56,19 +56,122 @@ class MultiLayerPerceptron(DeeplayModule):
     def defaults():
         return (
             Config()
-            .depth(2)
-            .blocks(Layer("layer") >> Layer("activation"))
-            .blocks.layer(nn.LazyLinear)
+            .in_features(None)
+            .depth(Ref("hidden_dims", lambda s: len(s) + 1))
+            .blocks(
+                Layer("layer")
+                >> Layer("normalization")
+                >> Layer("activation")
+                >> Layer("dropout")
+            )
+            .blocks.layer(nn.Linear)
             .blocks.activation(nn.ReLU)
+            .blocks.normalization(nn.Identity)
+            .blocks.dropout(nn.Identity)
+            .out_layer(nn.Linear)
+            .out_layer.in_features(Ref("hidden_dims", lambda s: s[-1]))
+            .out_layer.out_features(Ref("out_features"))
+            .out_activation(nn.Identity)
+            # If in_features is not specified, we do lazy initialization
         )
 
-    def __init__(self, depth=2, blocks=None):
-        super().__init__(depth=depth, blocks=blocks)
+    def __init__(
+        self,
+        in_features: int or None,
+        hidden_dims: list[int],
+        out_features: int,
+        out_activation=None,
+        blocks=None,
+    ):
+        super().__init__(
+            in_features=in_features,
+            hidden_dims=hidden_dims,
+            out_features=out_features,
+            out_activation=out_activation,
+            blocks=blocks,
+        )
 
+        self.in_features = self.attr("in_features")
+        self.hidden_dims = self.attr("hidden_dims")
+        self.out_features = self.attr("out_features")
         self.depth = self.attr("depth")
-        self.blocks = nn.ModuleList(self.new("blocks", i) for i in range(depth))
+
+        blocks = nn.ModuleList()
+        for i, out_features in enumerate(self.hidden_dims):
+            in_features = self.in_features if i == 0 else self.hidden_dims[i - 1]
+
+            if in_features is None:
+                kwargs = {
+                    "layer": nn.LazyLinear,
+                    "layer.out_features": out_features,
+                }
+            else:
+                kwargs = {
+                    "layer.in_features": in_features,
+                    "layer.out_features": out_features,
+                }
+
+            block = self.new(
+                "blocks",
+                i,
+                extra_kwargs=kwargs,
+                now=True,
+            )
+            blocks.append(block)
+
+        self.blocks = blocks
+
+        # Underscored to represent that it is not a configurable attribute
+        self.out_layer = self.new("out_layer")
+
+        self.out_activation = self.new("out_activation")
 
     def forward(self, x):
+        x = nn.Flatten()(x)
         for block in self.blocks:
             x = block(x)
+        x = self.out_layer(x)
+        x = self.out_activation(x)
         return x
+
+
+class MLPTiny(MultiLayerPerceptron):
+    @staticmethod
+    def defaults():
+        return MultiLayerPerceptron.defaults().hidden_dims([32, 32])
+
+
+class MLPSmall(MultiLayerPerceptron):
+    @staticmethod
+    def defaults():
+        return MultiLayerPerceptron.defaults().hidden_dims([64, 128, 64])
+
+
+class MLPMedium(MultiLayerPerceptron):
+    @staticmethod
+    def defaults():
+        return (
+            MultiLayerPerceptron.defaults()
+            .hidden_dims([128, 256, 512, 1024])
+            .blocks.normalization(nn.LazyBatchNorm1d)
+        )
+
+
+class MLPLarge(MultiLayerPerceptron):
+    @staticmethod
+    def defaults():
+        return (
+            MultiLayerPerceptron.defaults()
+            .hidden_dims([256, 512, 1024, 1024, 1024])
+            .blocks.normalization(nn.LazyBatchNorm1d)
+        )
+
+
+class MLPMassive(MultiLayerPerceptron):
+    @staticmethod
+    def defaults():
+        return (
+            MultiLayerPerceptron.defaults()
+            .hidden_dims([512, 1024, 1024, 1024, 1024, 1024])
+            .blocks.normalization(nn.LazyBatchNorm1d)
+        )

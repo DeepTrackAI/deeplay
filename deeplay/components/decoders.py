@@ -340,6 +340,7 @@ class _BaseSpatialBroadcastDecoder(DeeplayModule):
             .output_size(None)
             .input_block(nn.Identity)
             .decoder_blocks(Layer("layer") >> Layer("activation"))
+            .decoder_blocks.activation(nn.LeakyReLU, negative_slope=0.1)
         )
 
     def __init__(
@@ -433,7 +434,7 @@ class SpatialBroadcastDecoder1d(_BaseSpatialBroadcastDecoder):
             .merge(None, _BaseSpatialBroadcastDecoder.defaults())
             .encoding(PositionalEncodingLinear1d)
             .decoder_blocks.layer(
-                nn.LazyConv1d, kernel_size=1, padding=0, out_channels=128
+                nn.LazyConv1d, kernel_size=3, padding=1, out_channels=128
             )
         )
 
@@ -446,7 +447,7 @@ class SpatialBroadcastDecoder2d(_BaseSpatialBroadcastDecoder):
             .merge(None, _BaseSpatialBroadcastDecoder.defaults())
             .encoding(PositionalEncodingLinear2d)
             .decoder_blocks.layer(
-                nn.LazyConv2d, kernel_size=1, padding=0, out_channels=128
+                nn.LazyConv2d, kernel_size=3, padding=1, out_channels=128
             )
         )
 
@@ -459,6 +460,6 @@ class SpatialBroadcastDecoder3d(_BaseSpatialBroadcastDecoder):
             .merge(None, _BaseSpatialBroadcastDecoder.defaults())
             .encoding(PositionalEncodingLinear3d)
             .decoder_blocks.layer(
-                nn.LazyConv3d, kernel_size=1, padding=0, out_channels=128
+                nn.LazyConv3d, kernel_size=3, padding=1, out_channels=128
             )
         )
