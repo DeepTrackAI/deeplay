@@ -1,5 +1,5 @@
 import unittest
-from ..utils import safe_call
+from ..core.utils import safe_call
 
 
 class TestUtils(unittest.TestCase):

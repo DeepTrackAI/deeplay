@@ -1,14 +1,15 @@
 import unittest
 import re
-from ..config import (
+from ..core.config import (
     Config,
     ClassSelector,
     IndexSelector,
     WildcardSelector,
     DoubleWildcardSelector,
-    ParentalRelation,
     Ref,
 )
+
+from ..core.selectors import ParentalRelation
 
 
 class TestConfig(unittest.TestCase):

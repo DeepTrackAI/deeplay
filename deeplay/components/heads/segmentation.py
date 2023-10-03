@@ -1,4 +1,4 @@
-from ... import Layer, DeeplayModule, Config, Ref
+from ...core import Layer, DeeplayModule, Config, Ref
 
 import torch.nn as nn
 

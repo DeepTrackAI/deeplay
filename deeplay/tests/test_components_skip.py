@@ -1,7 +1,8 @@
 import unittest
 import torch
 import torch.nn as nn
-from .. import Config, Layer, Skip, Concatenate, OutputOf
+from .. import Config, Layer, Skip, Concatenate
+from ..core import OutputOf
 
 
 # class TestComponentsSkip(unittest.TestCase):

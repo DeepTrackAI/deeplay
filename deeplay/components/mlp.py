@@ -1,6 +1,6 @@
-from ..templates import Layer
-from ..core import DeeplayModule
-from ..config import Config, Ref
+from ..core.templates import Layer
+from ..core.core import DeeplayModule
+from ..core.config import Config, Ref
 
 import torch.nn as nn
 
@@ -12,16 +12,20 @@ class MultiLayerPerceptron(DeeplayModule):
 
     Configurables
     -------------
-    - depth (int): Number of layers in the MLP. (Default: 2)
-    - blocks (template-like): Specification for the blocks of the MLP. (Default: "layer" >> "activation")
-        - layer (template-like): Specification for the layer of the block. (Default: nn.LazyLinear)
+    - in_features (int): Number of input features. If None, the input shape is inferred from the first forward pass. (Default: None)
+    - hidden_dims (list[int]): Number of hidden units in each layer. (Default: [32, 32])
+    - out_features (int): Number of output features. (Default: 1)
+    - blocks (template-like): Specification for the blocks of the MLP. (Default: "layer" >> "activation" >> "normalization" >> "dropout")
+        - layer (template-like): Specification for the layer of the block. (Default: nn.Linear)
         - activation (template-like): Specification for the activation of the block. (Default: nn.ReLU)
+        - normalization (template-like): Specification for the normalization of the block. (Default: nn.Identity)
+        - dropout (template-like): Specification for the dropout of the block. (Default: nn.Identity)
+    
 
     Constraints
     -----------
     - input shape: (batch_size, ch_in)
     - output shape: (batch_size, ch_out)
-    - depth >= 1
 
     Evaluation
     ----------
@@ -32,14 +36,17 @@ class MultiLayerPerceptron(DeeplayModule):
     Examples
     --------
     >>> # Using default values
-    >>> mlp = MultiLayerPerceptron()
-    >>> # Customizing depth and activation
-    >>> mlp = MultiLayerPerceptron(depth=4, blocks=Config().activation(nn.Sigmoid))
+    >>> mlp = MultiLayerPerceptron(28 * 28, [128], 10)
+    >>> # Customizing output activation
+    >>> mlp = MultiLayerPerceptron(28 * 28, [128], 1, nn.Sigmoid)
     >>> # Using from_config with custom normalization
     >>> mlp = MultiLayerPerceptron.from_config(
     >>>     Config()
-    >>>     .blocks(Layer("layer") >> Layer("activation") >> Layer("normalization"))
-    >>>     .blocks.normalization(nn.LazyBatchNorm1d)
+    >>>     .in_features(28 * 28)
+    >>>     .hidden_dims([128])
+    >>>     .out_features(1)
+    >>>     .out_activation(nn.Sigmoid)
+    >>>     .blocks[0].normalization(nn.BatchNorm1d, num_features=128)
     >>> )
 
     Return Values
@@ -83,6 +90,51 @@ class MultiLayerPerceptron(DeeplayModule):
         out_activation=None,
         blocks=None,
     ):
+        """Multi-layer perceptron module.
+
+        Also commonly known as a fully-connected neural network, or a dense neural network.
+
+        Configurables
+        -------------
+        - depth (int): Number of layers in the MLP. (Default: 2)
+        - blocks (template-like): Specification for the blocks of the MLP. (Default: "layer" >> "activation")
+            - layer (template-like): Specification for the layer of the block. (Default: nn.LazyLinear)
+            - activation (template-like): Specification for the activation of the block. (Default: nn.ReLU)
+
+        Constraints
+        -----------
+        - input shape: (batch_size, ch_in)
+        - output shape: (batch_size, ch_out)
+        - depth >= 1
+
+        Evaluation
+        ----------
+        >>> for block in mlp.blocks:
+        >>>    x = block(x)
+        >>> return x
+
+        Examples
+        --------
+        >>> # Using default values
+        >>> mlp = MultiLayerPerceptron()
+        >>> # Customizing depth and activation
+        >>> mlp = MultiLayerPerceptron(depth=4, blocks=Config().activation(nn.Sigmoid))
+        >>> # Using from_config with custom normalization
+        >>> mlp = MultiLayerPerceptron.from_config(
+        >>>     Config()
+        >>>     .blocks(Layer("layer") >> Layer("activation") >> Layer("normalization"))
+        >>>     .blocks.normalization(nn.LazyBatchNorm1d)
+        >>> )
+
+        Return Values
+        -------------
+        The forward method returns the processed tensor.
+
+        Additional Notes
+        ----------------
+        The `Config` and `Layer` classes are used for configuring the blocks of the MLP. For more details refer to [Config Documentation](#) and [Layer Documentation](#).
+
+        """
         super().__init__(
             in_features=in_features,
             hidden_dims=hidden_dims,
