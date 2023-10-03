@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import pytorch_lightning as pl
 
-from torchmetrics import Accuracy
+import torchmetrics as tm
 from ..core.core import DeeplayModule
 from ..core.config import Config, Ref
 from ..core.templates import Layer
@@ -78,14 +78,20 @@ class Classifier(Application):
 
     """
 
-
     @staticmethod
     def defaults():
         return (
             Config()
+            .num_classes(None)
             .make_target_onehot(False)
             .optimizer(torch.optim.Adam, lr=1e-3)
             .loss(nn.CrossEntropyLoss)
+            .train_metrics[0](
+                tm.Accuracy, task="multiclass", num_classes=Ref("num_classes")
+            )
+            .val_metrics[0](
+                tm.Accuracy, task="multiclass", num_classes=Ref("num_classes")
+            )
         )
 
     def __init__(
@@ -103,10 +109,8 @@ class Classifier(Application):
 
         self.model = self.new("model")
         self.loss = self.new("loss")
-
-        # metrics temp hack
-        self.train_accuracy = Accuracy(task="multiclass", num_classes=10)
-        self.val_accuracy = Accuracy(task="multiclass", num_classes=10)
+        self.train_metrics = self.new("train_metrics")
+        self.val_metrics = self.new("val_metrics")
 
     def forward(self, x):
         return self.model(x)
@@ -121,15 +125,9 @@ class Classifier(Application):
         else:
             loss = self.loss(y_hat, y)
 
-        train_accuracy = self.train_accuracy(pred_class, y)
-        self.log_dict(
-            {
-                "train_loss": loss,
-                "train_accuracy": train_accuracy,
-            },
-            on_epoch=True,
-            prog_bar=True,
-        )
+        for metric in self.train_metrics:
+            metric.update(y_hat, y)
+
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -142,15 +140,9 @@ class Classifier(Application):
         else:
             loss = self.loss(y_hat, y)
 
-        val_accuracy = self.val_accuracy(pred_class, y)
-        self.log_dict(
-            {
-                "val_loss": loss,
-                "val_accuracy": val_accuracy,
-            },
-            on_epoch=True,
-            prog_bar=True,
-        )
+        for metric in self.val_metrics:
+            metric.update(y_hat, y)
+
         return loss
 
     def test_step(self, batch, batch_idx):
@@ -163,16 +155,43 @@ class Classifier(Application):
         else:
             loss = self.loss(y_hat, y)
 
-        val_accuracy = self.val_accuracy(pred_class, y)
-        self.log_dict(
-            {
-                "test_loss": loss,
-                "test_accuracy": val_accuracy,
-            },
-            on_epoch=True,
-            prog_bar=True,
-        )
+        for metric in self.val_metrics:
+            metric.update(y_hat, y)
+
         return loss
+
+    def on_train_epoch_end(self) -> None:
+        for metric in self.train_metrics:
+            self.log(
+                "train_" + metric.__class__.__name__,
+                metric.compute(),
+                on_epoch=True,
+                prog_bar=True,
+                logger=True,
+            )
+            metric.reset()
+
+    def on_validation_epoch_end(self) -> None:
+        for metric in self.val_metrics:
+            self.log(
+                "val_" + metric.__class__.__name__,
+                metric.compute(),
+                on_epoch=True,
+                prog_bar=True,
+                logger=True,
+            )
+            metric.reset()
+
+    def on_test_epoch_end(self) -> None:
+        for metric in self.val_metrics:
+            self.log(
+                "test_" + metric.__class__.__name__,
+                metric.compute(),
+                on_epoch=True,
+                prog_bar=True,
+                logger=True,
+            )
+            metric.reset()
 
 
 class MLPClassifier(Application):

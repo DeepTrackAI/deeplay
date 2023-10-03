@@ -719,7 +719,15 @@ To populate more, specify the length with .populate(..., length=desired_length)"
         from ..core.templates import Layer
 
         if isinstance(template, (list, tuple)):
-            return [self[i].build_object(template[i]) for i in range(len(template))]
+            obj_list = [self[i].build_object(template[i]) for i in range(len(template))]
+
+            if all(isinstance(obj, torch.nn.Module) for obj in obj_list):
+                return torch.nn.ModuleList(obj_list)
+            if any(isinstance(obj, torch.nn.Module) for obj in obj_list):
+                raise ValueError(
+                    "Cannot build a list with both modules and non-modules"
+                )
+            return obj_list
         elif isinstance(template, Layer):
             return template.from_config(self)
         elif inspect.isclass(template) and hasattr(template, "from_config"):
@@ -733,7 +741,6 @@ To populate more, specify the length with .populate(..., length=desired_length)"
             else:
                 _factory_kwargs = _match_signature(template, [], subparams)
             # recurse.
-
             _factory_kwargs = self._initialize_classes(_factory_kwargs)
             return template(**_factory_kwargs)
         else:

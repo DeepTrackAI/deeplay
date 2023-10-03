@@ -51,10 +51,15 @@ def match_signature(func, args, kwargs):
     This can be used to find the names of arguments passed positionally.
     """
     sig = inspect.signature(func)
+
     # remove 'self' from the signature if present
     # TODO: has to be a better way to do this. What if the first argument is not called 'self'?
     if "self" in sig.parameters:
         sig = sig.replace(parameters=list(sig.parameters.values())[1:])
+
+    # if accepts **kwargs, then pass all kwargs
+    if any(param.kind == param.VAR_KEYWORD for param in sig.parameters.values()):
+        return kwargs
 
     kwargs = {k: v for k, v in kwargs.items() if k in sig.parameters}
 

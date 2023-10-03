@@ -137,6 +137,7 @@ class DeeplayModule(nn.Module):
             # If the module is not a nn.Module, we need to add it to the extra attributes
             # so that it is properly printed.
             self._extra_attributes[key] = lazy
+
         return lazy
 
     def set_config(self, config: Config):

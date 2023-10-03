@@ -7,7 +7,7 @@ from .. import Config, Layer, MultiLayerPerceptron
 class TestComponentMLP(unittest.TestCase):
     def test_mlp_defaults(self):
         mlp = MultiLayerPerceptron(2, [4], 3)
-        self.assertEqual(mlp.depth, 2)
+        self.assertEqual(len(mlp.blocks), 1)
 
         first_layer = mlp.blocks[0]["layer"]
         self.assertEqual(first_layer.in_features, 2)
@@ -24,7 +24,7 @@ class TestComponentMLP(unittest.TestCase):
 
     def test_mlp_lazy_input(self):
         mlp = MultiLayerPerceptron(None, [4], 3)
-        self.assertEqual(mlp.depth, 2)
+        self.assertEqual(len(mlp.blocks), 1)
 
         first_layer = mlp.blocks[0]["layer"]
         self.assertEqual(first_layer.in_features, 0)
@@ -41,7 +41,7 @@ class TestComponentMLP(unittest.TestCase):
 
     def test_mlp_custom_depth(self):
         mlp = MultiLayerPerceptron(2, [4, 5, 6], 3)
-        self.assertEqual(mlp.depth, 4)
+        self.assertEqual(len(mlp.blocks), 3)
 
         first_layer = mlp.blocks[0]["layer"]
         self.assertEqual(first_layer.in_features, 2)

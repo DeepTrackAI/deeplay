@@ -21,7 +21,8 @@ class MultiLayerPerceptron(DeeplayModule):
         - activation (template-like): Specification for the activation of the block. (Default: nn.ReLU)
         - normalization (template-like): Specification for the normalization of the block. (Default: nn.Identity)
         - dropout (template-like): Specification for the dropout of the block. (Default: nn.Identity)
-
+    - out_layer (template-like): Specification for the output layer of the MLP. (Default: nn.Linear)
+    - out_activation (template-like): Specification for the output activation of the MLP. (Default: nn.Identity)
 
     Constraints
     -----------
