@@ -7,8 +7,8 @@ from ..components import (
     UNet,
     ImageSegmentationHead,
 )
-from ..config import Config
-from ..utils import center_pad_to_largest, center_crop
+from ..core.config import Config
+from ..core.utils import center_pad_to_largest, center_crop
 from .applications import Application
 
 # from ..backbones.encoders import Encoder2d

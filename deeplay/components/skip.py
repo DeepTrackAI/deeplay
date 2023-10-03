@@ -1,7 +1,7 @@
-from ..templates import Layer
-from ..core import DeeplayModule
-from ..config import Config
-from ..utils import center_pad_to_largest, center_crop_to_smallest
+from ..core.templates import Layer
+from ..core.core import DeeplayModule
+from ..core.config import Config
+from ..core.utils import center_pad_to_largest, center_crop_to_smallest
 
 import torch
 import torch.nn as nn

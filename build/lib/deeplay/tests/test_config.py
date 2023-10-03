@@ -1,6 +1,6 @@
 import unittest
 import re
-from ..config import (
+from ..core.config import (
     Config,
     ClassSelector,
     IndexSelector,

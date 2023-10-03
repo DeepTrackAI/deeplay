@@ -1,9 +1,9 @@
 from . import EncoderDecoder
 from ..encoders import ImageToImageEncoder
 from ..decoders import ImageToImageDecoder
-from ...templates import Layer
-from ...core import DeeplayModule
-from ...config import Config, Ref
+from ...core.templates import Layer
+from ...core.core import DeeplayModule
+from ...core.config import Config, Ref
 
 import torch.nn as nn
 

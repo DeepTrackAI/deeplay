@@ -1,7 +1,7 @@
 from ..applications import Application
 from ..classification import Classifier
-from ...config import Config, Ref
-from ...templates import Layer, MultiInputLayer
+from ...core.config import Config, Ref
+from ...core.templates import Layer, MultiInputLayer
 from ...components import (
     SpatialBroadcastDecoder2d,
     PositionalEncodingSinusoidal2d,

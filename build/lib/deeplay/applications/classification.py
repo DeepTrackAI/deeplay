@@ -4,9 +4,9 @@ import torch.nn.functional as F
 import pytorch_lightning as pl
 
 from torchmetrics import Accuracy
-from ..core import DeeplayModule
-from ..config import Config, Ref
-from ..templates import Layer
+from ..core.core import DeeplayModule
+from ..core.config import Config, Ref
+from ..core.templates import Layer
 from ..components import (
     ConvolutionalEncoder,
     DenseEncoder,

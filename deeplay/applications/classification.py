@@ -4,9 +4,9 @@ import torch.nn.functional as F
 import pytorch_lightning as pl
 
 from torchmetrics import Accuracy
-from ..core import DeeplayModule
-from ..config import Config, Ref
-from ..templates import Layer
+from ..core.core import DeeplayModule
+from ..core.config import Config, Ref
+from ..core.templates import Layer
 from ..components import (
     ImageToVectorEncoder,
     CategoricalClassificationHead,
@@ -31,6 +31,54 @@ __all__ = [
 
 
 class Classifier(Application):
+    """Trainable module for classification tasks.
+
+    This module is a trainable application designed for classification tasks. It is structured to work seamlessly with PyTorch Lightning's training loop, providing additional configurables suitable for classification.
+
+    Configurables
+    -------------
+    - model (nn.Module): The neural network model to be used for classification. It should produce un-normalized output of shape (batch_size, num_classes). No activation should be applied to the output. (Required)
+    - make_target_onehot (bool): Determines whether to convert the target to one-hot encoding before computing the loss. This is useful if using a loss that does not support sparse targets. (Default: False)
+    - optimizer (torch.optim): The optimizer to be used for training the model. (Default: torch.optim.Adam, lr=1e-3)
+    - loss (nn.Module): The loss function to be used for training. (Default: nn.CrossEntropyLoss)
+
+    Constraints
+    -----------
+    - model: The model should produce un-normalized output of shape (batch_size, num_classes). No activation should be applied to the output.
+
+    Metrics
+    -------
+    Beyond loss, the following metrics are logged during training, validation, and testing:
+    - train_accuracy: The accuracy of the model on the training set.
+    - val_accuracy: The accuracy of the model on the validation set.
+    - test_accuracy: The accuracy of the model on the test set.
+
+    Examples
+    --------
+    >>> # Classifying MNIST digits using a Multi-Layer Perceptron
+    >>> mnist_mlp_classifier = Classifier(model=MultiLayerPerceptron(28 * 28, [64], 10))
+    >>> # Using from_config with custom configurables
+    >>> classifier = Classifier.from_config(
+    >>>     Config()
+    >>>     .model(MultiLayerPerceptron, in_features=28 * 28, hidden_dims=[64], out_features=10)
+    >>>     .optimizer(torch.optim.RMSprop, lr=1e-3)
+    >>> )
+
+    Return Values
+    -------------
+    The loss is returned after each of the training, validation, and test steps, and the metrics are logged accordingly.
+
+    Additional Notes
+    ----------------
+    The `Config` class is used for configuring the Classifier. For more details refer to [Config Documentation](#). For a deeper understanding of trainable modules and classification tasks, refer to [External Reference](#).
+
+    Dependencies
+    ------------
+    - Application: The Classifier extends the Application to incorporate specific configurations suitable for classification tasks.
+
+    """
+
+
     @staticmethod
     def defaults():
         return (
@@ -56,9 +104,9 @@ class Classifier(Application):
         self.model = self.new("model")
         self.loss = self.new("loss")
 
-        # metrics
-        self.train_accuracy = Accuracy()
-        self.val_accuracy = Accuracy()
+        # metrics temp hack
+        self.train_accuracy = Accuracy(task="multiclass", num_classes=10)
+        self.val_accuracy = Accuracy(task="multiclass", num_classes=10)
 
     def forward(self, x):
         return self.model(x)
