@@ -12,3 +12,4 @@ from .applications import *
 from . import tests
 
 from pytorch_lightning import Trainer
+from torch.utils.data import DataLoader

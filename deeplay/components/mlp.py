@@ -12,7 +12,6 @@ class MultiLayerPerceptron(DeeplayModule):
 
     Configurables
     -------------
-    - depth (int): Number of layers in the MLP. (Default: 2)
     - blocks (template-like): Specification for the blocks of the MLP. (Default: "layer" >> "activation")
         - layer (template-like): Specification for the layer of the block. (Default: nn.LazyLinear)
         - activation (template-like): Specification for the activation of the block. (Default: nn.ReLU)
@@ -94,7 +93,6 @@ class MultiLayerPerceptron(DeeplayModule):
         self.in_features = self.attr("in_features")
         self.hidden_dims = self.attr("hidden_dims")
         self.out_features = self.attr("out_features")
-        self.depth = self.attr("depth")
 
         blocks = nn.ModuleList()
         for i, out_features in enumerate(self.hidden_dims):
@@ -138,13 +136,29 @@ class MultiLayerPerceptron(DeeplayModule):
 class MLPTiny(MultiLayerPerceptron):
     @staticmethod
     def defaults():
-        return MultiLayerPerceptron.defaults().hidden_dims([32, 32])
+        # 97% accuracy on MNIST
+        return (
+            MultiLayerPerceptron.defaults()
+            .hidden_dims([16, 256])
+            .blocks[0]
+            .normalization(nn.LazyBatchNorm1d, num_features=16)
+            .blocks[1]
+            .normalization(nn.LazyBatchNorm1d, num_features=256)
+            .blocks.activation(nn.LeakyReLU, negative_slope=0.1)
+        )
 
 
 class MLPSmall(MultiLayerPerceptron):
+    # 98.1% accuracy on MNIST
     @staticmethod
     def defaults():
-        return MultiLayerPerceptron.defaults().hidden_dims([64, 128, 64])
+        return (
+            MultiLayerPerceptron.defaults()
+            .hidden_dims([100, 200])
+            .blocks.activation(nn.GELU)
+            .blocks[0]
+            .normalization(nn.LazyBatchNorm1d, num_features=100)
+        )
 
 
 class MLPMedium(MultiLayerPerceptron):
@@ -152,8 +166,9 @@ class MLPMedium(MultiLayerPerceptron):
     def defaults():
         return (
             MultiLayerPerceptron.defaults()
-            .hidden_dims([128, 256, 512, 1024])
+            .hidden_dims([500, 700, 200])
             .blocks.normalization(nn.LazyBatchNorm1d)
+            .blocks.activation(nn.GELU)
         )
 
 
@@ -162,7 +177,7 @@ class MLPLarge(MultiLayerPerceptron):
     def defaults():
         return (
             MultiLayerPerceptron.defaults()
-            .hidden_dims([256, 512, 1024, 1024, 1024])
+            .hidden_dims([2500, 2000, 1500, 1000, 500])
             .blocks.normalization(nn.LazyBatchNorm1d)
         )
 

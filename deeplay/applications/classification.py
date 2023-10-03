@@ -79,7 +79,6 @@ class Classifier(Application):
                 "train_loss": loss,
                 "train_accuracy": train_accuracy,
             },
-            on_step=True,
             on_epoch=True,
             prog_bar=True,
         )
@@ -101,7 +100,6 @@ class Classifier(Application):
                 "val_loss": loss,
                 "val_accuracy": val_accuracy,
             },
-            on_step=True,
             on_epoch=True,
             prog_bar=True,
         )
@@ -123,7 +121,6 @@ class Classifier(Application):
                 "test_loss": loss,
                 "test_accuracy": val_accuracy,
             },
-            on_step=True,
             on_epoch=True,
             prog_bar=True,
         )
