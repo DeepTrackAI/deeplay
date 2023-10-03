@@ -8,4 +8,4 @@ tensorflow_datasets
 build
 dist
 *.egg-info
-examples/**/*.png
+mnist
