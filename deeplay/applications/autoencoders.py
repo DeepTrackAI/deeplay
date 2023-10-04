@@ -226,7 +226,7 @@ class VariationalAutoencoder(Autoencoder):
         )
         self.log("kl_loss", kl_loss, prog_bar=True, on_step=True)
 
-        return reconstruction_loss * x[0].numel() + kl_loss
+        return reconstruction_loss + kl_loss
 
 
 class BetaVAE(VariationalAutoencoder):
