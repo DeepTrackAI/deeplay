@@ -176,31 +176,31 @@ class MLPRegressor(Regressor):
         super().__init__(**kwargs)
 
 
-class MLPRegressorTiny(MLPRegressor):
+class MLPRegressorTiny(Regressor):
     @staticmethod
     def defaults():
-        return MLPRegressor.defaults().model(MLPTiny)
+        return Regressor.defaults().model(MLPTiny)
 
 
-class MLPRegressorSmall(MLPRegressor):
+class MLPRegressorSmall(Regressor):
     @staticmethod
     def defaults():
-        return MLPRegressor.defaults().model(MLPSmall)
+        return Regressor.defaults().model(MLPSmall)
 
 
-class MLPRegressorMedium(MLPRegressor):
+class MLPRegressorMedium(Regressor):
     @staticmethod
     def defaults():
-        return MLPRegressor.defaults().model(MLPMedium)
+        return Regressor.defaults().model(MLPMedium)
 
 
-class MLPRegressorLarge(MLPRegressor):
+class MLPRegressorLarge(Regressor):
     @staticmethod
     def defaults():
-        return MLPRegressor.defaults().model(MLPLarge)
+        return Regressor.defaults().model(MLPLarge)
 
 
-class MLPRegressorMassive(MLPRegressor):
+class MLPRegressorMassive(Regressor):
     @staticmethod
     def defaults():
-        return MLPRegressor.defaults().model(MLPMassive)
+        return Regressor.defaults().model(MLPMassive)
