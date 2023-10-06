@@ -1,7 +1,7 @@
 import unittest
-from ..core import DeeplayModule
-from ..templates import Layer
-from ..config import Config
+from ..core.core import DeeplayModule
+from ..core.templates import Layer
+from ..core.config import Config
 
 
 class TestCore(unittest.TestCase):

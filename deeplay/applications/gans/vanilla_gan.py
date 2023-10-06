@@ -1,7 +1,7 @@
-from ..applications import DeeplayLightningModule
-from ..classification import ImageClassifier
-from ...config import Config
-from ...templates import Layer
+from ..applications import Application
+from ..classification import Classifier
+from ...core.config import Config
+from ...core.templates import Layer
 from ...components import (
     SpatialBroadcastDecoder2d,
     PositionalEncodingSinusoidal2d,
@@ -13,7 +13,7 @@ import torch.nn as nn
 from torch.optim import Adam
 
 
-class VanillaGAN(DeeplayLightningModule):
+class VanillaGAN(Application):
     @staticmethod
     def defaults():
         return (
@@ -23,7 +23,7 @@ class VanillaGAN(DeeplayLightningModule):
             .generator.backbone(SpatialBroadcastDecoder2d)
             .generator.backbone.encoding(PositionalEncodingLinear2d)
             .generator.head(ImageRegressionHead)
-            .discriminator(ImageClassifier)
+            .discriminator(Classifier)
             .discriminator.num_classes(1)
             .discriminator.on_first_forward(
                 "generator.backbone.output_size", lambda _, x: x.shape[2:]
@@ -45,7 +45,7 @@ class VanillaGAN(DeeplayLightningModule):
         discriminator_optimizer=None,
         generator_optimizer=None,
     ):
-        DeeplayLightningModule.__init__(
+        Application.__init__(
             self,
             hidden_dim=hidden_dim,
             generator=generator,

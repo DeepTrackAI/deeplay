@@ -1,4 +1,4 @@
-from ....core import DeeplayModule
+from ....core.core import DeeplayModule
 import torch
 import torch.nn as nn
 import warnings

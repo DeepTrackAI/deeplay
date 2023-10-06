@@ -9,7 +9,7 @@ from .. import (
 )
 
 
-class DeeplayLightningModule(DeeplayModule, pl.LightningModule):
+class Application(DeeplayModule, pl.LightningModule):
     config = Config().optimizer(torch.optim.Adam, lr=1e-3)
 
     def __init__(self, optimizer=None, **kwargs):
@@ -36,17 +36,10 @@ class DeeplayLightningModule(DeeplayModule, pl.LightningModule):
         )
         return loss
 
-    def test_step(self, batch, batch_idx):
-        x, y = batch
-        y_hat = self(x)
-        loss = self.loss(y_hat, y)
-        self.log(
-            "test_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
-        )
-        return loss
-
     def configure_optimizers(self):
-        return torch.optim.Adam(self.parameters(), lr=0.001)
+        return self.new(
+            "optimizer", extra_kwargs={"params": self.parameters()}, now=True
+        )
 
     def predict_step(self, batch, batch_idx, dataloader_idx=None):
         x, y = batch

@@ -1,6 +1,6 @@
-from ..templates import Layer
-from ..core import DeeplayModule
-from ..config import Config, Ref
+from ..core.templates import Layer
+from ..core.core import DeeplayModule
+from ..core.config import Config, Ref
 
 import torch.nn as nn
 
@@ -100,13 +100,15 @@ class Base2dConvolutionalEncoder(_BaseEncoder):
             .encoder_blocks(Layer("pool") >> Layer("layer") >> Layer("activation"))
             .output_block(nn.Identity)
             # Layer configs. "_" is a wildcard that matches any name (in this case "input_block", "encoder_blocks", and "output_block")
-            ._.layer(nn.LazyConv2d, kernel_size=3, padding=1)
-            ._.activation(nn.ReLU)
-            ._.pool(nn.MaxPool2d, kernel_size=2)
+            .input_block.layer(nn.LazyConv2d, kernel_size=3, padding=1)
+            .input_block.activation(nn.ReLU)
+            .encoder_blocks.layer(nn.LazyConv2d, kernel_size=3, padding=1)
+            .encoder_blocks.activation(nn.ReLU)
+            .encoder_blocks.pool(nn.MaxPool2d, kernel_size=2)
             # populate out_channels for each block
-            .input_block.layer.out_channels(8)
+            .input_block.layer.out_channels(16)
             .encoder_blocks.populate(
-                "layer.out_channels", lambda i: 16 * 2**i, length=8
+                "layer.out_channels", lambda i: 32 * 2**i, length=8
             )
         )
 
@@ -179,9 +181,9 @@ class Base3dConvolutionalEncoder(_BaseEncoder):
             .encoder_blocks(Layer("pool") >> Layer("layer") >> Layer("activation"))
             .output_block(nn.Identity)
             # Layer configs. "_" is a wildcard that matches any name (in this case "input_block", "encoder_blocks", and "output_block")
-            ._.layer(nn.LazyConv3d, kernel_size=3, padding=1)
-            ._.activation(nn.ReLU)
-            ._.pool(nn.MaxPool3d, kernel_size=2)
+            .input_block.layer(nn.LazyConv3d, kernel_size=3, padding=1)
+            .input_block.activation(nn.ReLU)
+            .input_block.pool(nn.MaxPool3d, kernel_size=2)
             # populate out_channels for each block
             .input_block.layer.out_channels(8)
             .encoder_blocks.populate(

@@ -3,3 +3,9 @@ lightning_logs
 *ubyte*
 data
 tensorflow_datasets
+.pytest_cache
+
+build
+dist
+*.egg-info
+mnist

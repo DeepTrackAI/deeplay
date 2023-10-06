@@ -1,9 +1,9 @@
 import torch.nn as nn
 import uuid
 
-from ...config import Config, Ref
-from ...core import DeeplayModule
-from ...templates import Layer, OutputOf, MultiInputLayer
+from ...core.config import Config, Ref
+from ...core.core import DeeplayModule
+from ...core.templates import Layer, OutputOf, MultiInputLayer
 from ..decoders import ImageToImageDecoder
 from ..encoders import ImageToImageEncoder
 from ..skip import Concatenate

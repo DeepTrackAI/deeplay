@@ -1,5 +1,5 @@
-from ....core import DeeplayModule
-from ....config import Config
+from ....core.core import DeeplayModule
+from ....core.config import Config
 import torch
 import torch.nn as nn
 import numpy as np

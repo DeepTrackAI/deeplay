@@ -16,7 +16,7 @@ from .. import (
     Layer,
 )
 
-from .applications import DeeplayLightningModule
+from .applications import Application
 
 # from ..backbones.encoders import Encoder2d
 # from ..backbones.decoders import Decoder2d
@@ -38,7 +38,7 @@ def _prod(x):
     return p
 
 
-class SimpleAutoencoder(DeeplayLightningModule):
+class SimpleAutoencoder(Application):
     @staticmethod
     def defaults():
         return (
@@ -133,7 +133,7 @@ class Autoencoder(SimpleAutoencoder):
     def __init__(
         self, hidden_dim=2, encoder=None, bottleneck=None, decoder=None, head=None
     ):
-        DeeplayLightningModule.__init__(
+        Application.__init__(
             self,
             hidden_dim=hidden_dim,
             encoder=encoder,
@@ -226,7 +226,7 @@ class VariationalAutoencoder(Autoencoder):
         )
         self.log("kl_loss", kl_loss, prog_bar=True, on_step=True)
 
-        return reconstruction_loss * x[0].numel() + kl_loss
+        return reconstruction_loss + kl_loss
 
 
 class BetaVAE(VariationalAutoencoder):

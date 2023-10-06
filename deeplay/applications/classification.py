@@ -3,151 +3,247 @@ import torch.nn as nn
 import torch.nn.functional as F
 import pytorch_lightning as pl
 
-from torchmetrics import Accuracy
-from ..core import DeeplayModule
-from ..config import Config, Ref
-from ..templates import Layer
+import torchmetrics as tm
+from ..core.core import DeeplayModule
+from ..core.config import Config, Ref
+from ..core.templates import Layer
 from ..components import (
     ImageToVectorEncoder,
     CategoricalClassificationHead,
+    MultiLayerPerceptron,
+    MLPTiny,
+    MLPSmall,
+    MLPMedium,
+    MLPLarge,
+    MLPMassive,
 )
+from ..applications import Application
 
-__all__ = ["ImageClassifier"]
+__all__ = [
+    "Classifier",
+    "MLPClassifier",
+    "MLPClassifierTiny",
+    "MLPClassifierSmall",
+    "MLPClassifierMedium",
+    "MLPClassifierLarge",
+    "MLPClassifierMassive",
+]
 
 
-class ImageClassifier(DeeplayModule, pl.LightningModule):
-    defaults = (
-        Config()
-        .backbone(ImageToVectorEncoder)
-        .head(CategoricalClassificationHead, num_classes=Ref("num_classes"))
-        .head.output.activation(
-            Ref(
-                "num_classes",
-                lambda num_classes: nn.Sigmoid()
-                if num_classes == 1
-                else nn.LogSoftmax(),
+class Classifier(Application):
+    """Trainable module for classification tasks.
+
+    This module is a trainable application designed for classification tasks. It is structured to work seamlessly with PyTorch Lightning's training loop, providing additional configurables suitable for classification.
+
+    Configurables
+    -------------
+    - model (nn.Module): The neural network model to be used for classification. It should produce un-normalized output of shape (batch_size, num_classes). No activation should be applied to the output. (Required)
+    - make_target_onehot (bool): Determines whether to convert the target to one-hot encoding before computing the loss. This is useful if using a loss that does not support sparse targets. (Default: False)
+    - optimizer (torch.optim): The optimizer to be used for training the model. (Default: torch.optim.Adam, lr=1e-3)
+    - loss (nn.Module): The loss function to be used for training. (Default: nn.CrossEntropyLoss)
+
+    Constraints
+    -----------
+    - model: The model should produce un-normalized output of shape (batch_size, num_classes). No activation should be applied to the output.
+
+    Metrics
+    -------
+    Beyond loss, the following metrics are logged during training, validation, and testing:
+    - train_accuracy: The accuracy of the model on the training set.
+    - val_accuracy: The accuracy of the model on the validation set.
+    - test_accuracy: The accuracy of the model on the test set.
+
+    Examples
+    --------
+    >>> # Classifying MNIST digits using a Multi-Layer Perceptron
+    >>> mnist_mlp_classifier = Classifier(model=MultiLayerPerceptron(28 * 28, [64], 10))
+    >>> # Using from_config with custom configurables
+    >>> classifier = Classifier.from_config(
+    >>>     Config()
+    >>>     .model(MultiLayerPerceptron, in_features=28 * 28, hidden_dims=[64], out_features=10)
+    >>>     .optimizer(torch.optim.RMSprop, lr=1e-3)
+    >>> )
+
+    Return Values
+    -------------
+    The loss is returned after each of the training, validation, and test steps, and the metrics are logged accordingly.
+
+    Additional Notes
+    ----------------
+    The `Config` class is used for configuring the Classifier. For more details refer to [Config Documentation](#). For a deeper understanding of trainable modules and classification tasks, refer to [External Reference](#).
+
+    Dependencies
+    ------------
+    - Application: The Classifier extends the Application to incorporate specific configurations suitable for classification tasks.
+
+    """
+
+    @staticmethod
+    def defaults():
+        return (
+            Config()
+            .num_classes(None)
+            .make_target_onehot(False)
+            .optimizer(torch.optim.Adam, lr=1e-3)
+            .loss(nn.CrossEntropyLoss)
+            .train_metrics[0](
+                tm.Accuracy, task="multiclass", num_classes=Ref("num_classes")
+            )
+            .val_metrics[0](
+                tm.Accuracy, task="multiclass", num_classes=Ref("num_classes")
             )
         )
-        .optimizer(torch.optim.Adam, lr=1e-3)
-        .loss(nn.NLLLoss)
-    )
 
     def __init__(
-        self, num_classes, backbone=None, head=None, optimizer=None, loss=None, **kwargs
+        self, model=None, make_target_onehot=False, optimizer=None, loss=None, **kwargs
     ):
-        """Image classifier.
-
-        Parameters
-        ----------
-        num_classes : int
-            Number of classes.
-        backbone : None, Config, nn.Module, optional
-            Backbone config. If None, a default Encoder backbone is used.
-            If nn.Module, it is used as the backbone.
-        head : None, Dict, nn.Module, optional
-            Head config. If None, a default CategoricalClassificationHead head is used.
-            If Dict, it is used as kwargs for the head class.
-            If nn.Module, it is used as the head.
-        optimizer : None, Config, nn.Module, optional
-            Optimizer config. If None, a default Adam optimizer is used.
-            If nn.Module, it is used as the optimizer.
-        loss : None, Config, nn.Module, optional
-            Loss config. If None, a default CrossEntropyLoss loss is used.
-            If nn.Module, it is used as the loss.
-
-        """
         super().__init__(
-            num_classes=num_classes,
-            backbone=backbone,
-            head=head,
+            model=model,
+            make_target_onehot=make_target_onehot,
             optimizer=optimizer,
             loss=loss,
             **kwargs
         )
 
-        self.num_classes = self.attr("num_classes")
-        self.backbone = self.new("backbone")
-        self.head = self.new("head")
+        self.make_target_onehot = self.attr("make_target_onehot")
 
+        self.model = self.new("model")
         self.loss = self.new("loss")
-        self.val_accuracy = Accuracy()
+        self.train_metrics = self.new("train_metrics")
+        self.val_metrics = self.new("val_metrics")
 
     def forward(self, x):
-        """Forward pass.
-
-        Parameters
-        ----------
-        x : torch.Tensor
-            Input tensor, (batch_size, channels, width, height)
-
-        Returns
-        -------
-        torch.Tensor
-            Output tensor.
-        """
-        x = self.backbone(x)
-        x = self.head(x)
-        return x
-
-    def classify(self, x):
-        """Classify input tensor.
-
-        Parameters
-        ----------
-        x : torch.Tensor
-            Input tensor, (batch_size, channels, width, height)
-
-        Returns
-        -------
-        torch.Tensor
-            Output tensor.
-        """
-        y = self.forward(x)
-        y = torch.argmax(y, dim=1)
-        return y
-
-    def configure_optimizers(self):
-        optimizer = self.new("optimizer", extra_kwargs={"params": self.parameters()})
-        return optimizer
+        return self.model(x)
 
     def training_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self(x)
+        _, pred_class = y_hat.max(1)
 
-        # one-hot encode y
-        y = F.one_hot(y, num_classes=self.num_classes).float()
+        if self.make_target_onehot:
+            loss = self.loss(y_hat, F.one_hot(y, num_classes=y_hat.size(1)).float())
+        else:
+            loss = self.loss(y_hat, y)
 
-        loss = F.cross_entropy(y_hat, y)
-        self.log("train_loss", loss)
+        for metric in self.train_metrics:
+            metric.update(y_hat, y)
+
         return loss
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
-        y_hat = self.forward(x)
+        y_hat = self(x)
+        _, pred_class = y_hat.max(1)
 
-        # one-hot encode y
-        y_one_hot = F.one_hot(y, num_classes=self.num_classes).float()
-        loss = F.cross_entropy(y_hat, y_one_hot)
+        if self.make_target_onehot:
+            loss = self.loss(y_hat, F.one_hot(y, num_classes=y_hat.size(1)).float())
+        else:
+            loss = self.loss(y_hat, y)
 
-        classification = torch.argmax(y_hat, dim=1)
-        self.val_accuracy.update(classification, y)
+        for metric in self.val_metrics:
+            metric.update(y_hat, y)
 
-        self.log("val_acc", self.val_accuracy, prog_bar=True)
-        self.log("val_loss", loss, prog_bar=True)
         return loss
 
     def test_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self(x)
+        _, pred_class = y_hat.max(1)
 
-        # one-hot encode y
-        y_one_hot = F.one_hot(y, num_classes=self.num_classes).float()
-        loss = F.cross_entropy(y_hat, y_one_hot)
+        if self.make_target_onehot:
+            loss = self.loss(y_hat, F.one_hot(y, num_classes=y_hat.size(1)).float())
+        else:
+            loss = self.loss(y_hat, y)
 
-        classification = torch.argmax(y_hat, dim=1)
-        self.val_accuracy.update(classification, y)
-
-        self.log("test_acc", self.val_accuracy, prog_bar=True)
-        self.log("test_loss", loss, prog_bar=True)
+        for metric in self.val_metrics:
+            metric.update(y_hat, y)
 
         return loss
+
+    def on_train_epoch_end(self) -> None:
+        for metric in self.train_metrics:
+            self.log(
+                "train_" + metric.__class__.__name__,
+                metric.compute(),
+                on_epoch=True,
+                prog_bar=True,
+                logger=True,
+            )
+            metric.reset()
+
+    def on_validation_epoch_end(self) -> None:
+        for metric in self.val_metrics:
+            self.log(
+                "val_" + metric.__class__.__name__,
+                metric.compute(),
+                on_epoch=True,
+                prog_bar=True,
+                logger=True,
+            )
+            metric.reset()
+
+    def on_test_epoch_end(self) -> None:
+        for metric in self.val_metrics:
+            self.log(
+                "test_" + metric.__class__.__name__,
+                metric.compute(),
+                on_epoch=True,
+                prog_bar=True,
+                logger=True,
+            )
+            metric.reset()
+
+
+class MLPClassifier(Application):
+    @staticmethod
+    def defaults():
+        return (
+            Classifier.defaults()
+            .in_features(None)
+            .model(MultiLayerPerceptron)
+            .model.in_features(Ref("in_features"))
+            .model.hidden_dims(Ref("hidden_dims"))
+            .model.out_features(Ref("num_classes"))
+        )
+
+    def __init__(
+        self,
+        in_features: int or None,
+        hidden_dims: list[int],
+        num_classes: int,
+        **kwargs
+    ):
+        self.in_features = self.attr("in_features")
+        self.hidden_dims = self.attr("hidden_dims")
+        self.num_classes = self.attr("num_classes")
+        super().__init__(**kwargs)
+
+
+class MLPClassifierTiny(MLPClassifier):
+    @staticmethod
+    def defaults():
+        return MLPClassifier.defaults().model(MLPTiny)
+
+
+class MLPClassifierSmall(MLPClassifier):
+    @staticmethod
+    def defaults():
+        return MLPClassifier.defaults().model(MLPSmall)
+
+
+class MLPClassifierMedium(MLPClassifier):
+    @staticmethod
+    def defaults():
+        return MLPClassifier.defaults().model(MLPMedium)
+
+
+class MLPClassifierLarge(MLPClassifier):
+    @staticmethod
+    def defaults():
+        return MLPClassifier.defaults().model(MLPLarge)
+
+
+class MLPClassifierMassive(MLPClassifier):
+    @staticmethod
+    def defaults():
+        return MLPClassifier.defaults().model(MLPMassive)
