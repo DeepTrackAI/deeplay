@@ -209,7 +209,7 @@ class MLPClassifier(Application):
     def __init__(
         self,
         in_features: int or None,
-        hidden_dims: list[int],
+        hidden_dims,
         num_classes: int,
         **kwargs
     ):

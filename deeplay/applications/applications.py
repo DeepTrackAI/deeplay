@@ -42,6 +42,7 @@ class Application(DeeplayModule, pl.LightningModule):
         )
 
     def predict_step(self, batch, batch_idx, dataloader_idx=None):
-        x, y = batch
-        y_hat = self(x)
+        if isinstance(batch, (list, tuple)):
+            batch = batch[0]
+        y_hat = self(batch)
         return y_hat

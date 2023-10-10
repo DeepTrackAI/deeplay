@@ -87,7 +87,7 @@ class MultiLayerPerceptron(DeeplayModule):
     def __init__(
         self,
         in_features: int or None,
-        hidden_dims: list[int],
+        hidden_dims,
         out_features: int,
         out_activation=None,
         blocks=None,

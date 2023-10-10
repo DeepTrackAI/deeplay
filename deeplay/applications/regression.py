@@ -51,18 +51,8 @@ class Regressor(Application):
     def defaults():
         return Config().optimizer(torch.optim.Adam, lr=1e-3).loss(nn.L1Loss)
 
-    def __init__(
-        self, model=None, make_target_onehot=False, optimizer=None, loss=None, **kwargs
-    ):
-        super().__init__(
-            model=model,
-            make_target_onehot=make_target_onehot,
-            optimizer=optimizer,
-            loss=loss,
-            **kwargs
-        )
-
-        self.make_target_onehot = self.attr("make_target_onehot")
+    def __init__(self, model=None, optimizer=None, loss=None, **kwargs):
+        super().__init__(model=model, optimizer=optimizer, loss=loss, **kwargs)
 
         self.model = self.new("model")
         self.loss = self.new("loss")
@@ -71,84 +61,6 @@ class Regressor(Application):
 
     def forward(self, x):
         return self.model(x)
-
-    def training_step(self, batch, batch_idx):
-        x, y = batch
-        y_hat = self(x)
-        _, pred_class = y_hat.max(1)
-
-        if self.make_target_onehot:
-            loss = self.loss(y_hat, F.one_hot(y, num_classes=y_hat.size(1)).float())
-        else:
-            loss = self.loss(y_hat, y)
-
-        for metric in self.train_metrics:
-            metric.update(y_hat, y)
-
-        return loss
-
-    def validation_step(self, batch, batch_idx):
-        x, y = batch
-        y_hat = self(x)
-        _, pred_class = y_hat.max(1)
-
-        if self.make_target_onehot:
-            loss = self.loss(y_hat, F.one_hot(y, num_classes=y_hat.size(1)).float())
-        else:
-            loss = self.loss(y_hat, y)
-
-        for metric in self.val_metrics:
-            metric.update(y_hat, y)
-
-        return loss
-
-    def test_step(self, batch, batch_idx):
-        x, y = batch
-        y_hat = self(x)
-        _, pred_class = y_hat.max(1)
-
-        if self.make_target_onehot:
-            loss = self.loss(y_hat, F.one_hot(y, num_classes=y_hat.size(1)).float())
-        else:
-            loss = self.loss(y_hat, y)
-
-        for metric in self.val_metrics:
-            metric.update(y_hat, y)
-
-        return loss
-
-    def on_train_epoch_end(self) -> None:
-        for metric in self.train_metrics:
-            self.log(
-                "train_" + metric.__class__.__name__,
-                metric.compute(),
-                on_epoch=True,
-                prog_bar=True,
-                logger=True,
-            )
-            metric.reset()
-
-    def on_validation_epoch_end(self) -> None:
-        for metric in self.val_metrics:
-            self.log(
-                "val_" + metric.__class__.__name__,
-                metric.compute(),
-                on_epoch=True,
-                prog_bar=True,
-                logger=True,
-            )
-            metric.reset()
-
-    def on_test_epoch_end(self) -> None:
-        for metric in self.val_metrics:
-            self.log(
-                "test_" + metric.__class__.__name__,
-                metric.compute(),
-                on_epoch=True,
-                prog_bar=True,
-                logger=True,
-            )
-            metric.reset()
 
 
 class MLPRegressor(Regressor):
@@ -166,7 +78,7 @@ class MLPRegressor(Regressor):
     def __init__(
         self,
         in_features: int or None,
-        hidden_dims: list[int],
+        hidden_dims,
         num_classes: int,
         **kwargs
     ):

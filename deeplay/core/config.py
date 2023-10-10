@@ -543,13 +543,12 @@ To populate more, specify the length with .populate(..., length=desired_length)"
         return Config(self._rules, self._refs, self._context + selectors)
 
     def __getattr__(self, name) -> Config:
-        match name:
-            case "_":
-                selector = WildcardSelector()
-            case "__":
-                selector = DoubleWildcardSelector()
-            case _:
-                selector = ClassSelector(name)
+        if name == "_":
+            selector = WildcardSelector()
+        elif name == "__":
+            selector = DoubleWildcardSelector()
+        else:
+            selector = ClassSelector(name)
         return Config(self._rules, self._refs, self._context + selector)
 
     def __getitem__(self, index):
