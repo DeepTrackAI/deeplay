@@ -1,6 +1,5 @@
 # Byte-compiled / optimized / DLL files
 *.pyc
-*/__pycache__/
 
 # Datasets
 *ubyte*
@@ -18,3 +17,6 @@ lightning_logs/
 build/
 dist/
 *.egg-info
+
+# Mac
+*.DS_Store
