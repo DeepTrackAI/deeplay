@@ -1,5 +1,6 @@
 # Byte-compiled / optimized / DLL files
 *.pyc
+*/__pycache__/
 
 # Datasets
 *ubyte*
