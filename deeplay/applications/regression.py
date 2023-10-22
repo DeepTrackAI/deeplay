@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import pytorch_lightning as pl
+import lightning as L
 
 import torchmetrics as tm
 from ..core.core import DeeplayModule
@@ -76,11 +76,7 @@ class MLPRegressor(Regressor):
         )
 
     def __init__(
-        self,
-        in_features: int or None,
-        hidden_dims,
-        num_classes: int,
-        **kwargs
+        self, in_features: int or None, hidden_dims, num_classes: int, **kwargs
     ):
         self.in_features = self.attr("in_features")
         self.hidden_dims = self.attr("hidden_dims")
