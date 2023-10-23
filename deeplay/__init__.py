@@ -12,5 +12,5 @@ from .applications import *
 from . import datasets, tests
 
 # temporary imports until we implement our own
-from pytorch_lightning import Trainer
+from lightning import Trainer
 from torch.utils.data import DataLoader
