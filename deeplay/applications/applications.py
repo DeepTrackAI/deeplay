@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import pytorch_lightning as pl
+import lightning as L
 
 from .. import (
     Config,
@@ -9,7 +9,7 @@ from .. import (
 )
 
 
-class Application(DeeplayModule, pl.LightningModule):
+class Application(DeeplayModule, L.LightningModule):
     config = Config().optimizer(torch.optim.Adam, lr=1e-3)
 
     def __init__(self, optimizer=None, **kwargs):
@@ -42,6 +42,7 @@ class Application(DeeplayModule, pl.LightningModule):
         )
 
     def predict_step(self, batch, batch_idx, dataloader_idx=None):
-        x, y = batch
-        y_hat = self(x)
+        if isinstance(batch, (list, tuple)):
+            batch = batch[0]
+        y_hat = self(batch)
         return y_hat
