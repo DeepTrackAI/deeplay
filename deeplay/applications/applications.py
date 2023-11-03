@@ -46,3 +46,22 @@ class Application(DeeplayModule, L.LightningModule):
             batch = batch[0]
         y_hat = self(batch)
         return y_hat
+
+    @L.LightningModule.trainer.setter
+    def trainer(self, trainer):
+        # Call the original setter
+        L.LightningModule.trainer.fset(self, trainer)
+
+        # Overrides default implementation to do a deep search for all
+        # submodules that have a trainer attribute and set it to the
+        # same trainer instead for just direct children.
+        for module in self.modules():
+            if module is self:
+                continue
+            try:
+                if hasattr(module, "trainer") and module.trainer is not trainer:
+                    module.trainer = trainer
+            except RuntimeError:
+                # hasattr can raise RuntimeError if the module is not attached to a trainer
+                if isinstance(module, L.LightningModule):
+                    module.trainer = trainer

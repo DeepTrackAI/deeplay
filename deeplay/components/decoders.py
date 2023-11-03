@@ -239,7 +239,7 @@ class ImageToImageDecoder(BaseDecoder):
     def defaults():
         return (
             Config()
-            .merge(None, BaseDecoder.defaults)
+            .merge(None, BaseDecoder.defaults())
             .blocks(Layer("upsample") >> Layer("layer") >> Layer("activation"))
             .blocks.populate("layer.out_channels", lambda i: 8 * 2 ** (3 - i), length=8)
             .blocks.layer(nn.LazyConv2d, kernel_size=3, padding=1)
@@ -310,18 +310,18 @@ class VectorToImageDecoder(BaseDecoder):
     def defaults():
         return (
             Config()
-            .merge(None, BaseDecoder.defaults)
+            .merge(None, BaseDecoder.defaults())
             .output_size(None)
             .input_block(SpatialBroadcastDecoder2d, depth=0)
             # In case user provides output_size as (ch, height, width) instead of (height, width)
             # we need to remove the channel dimension.
             .input_block.output_size(Ref("output_size", lambda size: size[-2:]))
             # No upsample layer required since we are already broadcasting to the required size.
-            .encoder_blocks(Layer("layer") >> Layer("activation"))
-            .encoder_blocks.layer(
+            .decoder_blocks(Layer("layer") >> Layer("activation"))
+            .decoder_blocks.layer(
                 nn.LazyConv2d, kernel_size=3, padding=1, out_channels=128
             )
-            .encoder_blocks.activation(nn.ReLU)
+            .decoder_blocks.activation(nn.ReLU)
             .output_block(Ref("output_size", lambda size: nn.LazyConv2d(size[0], 1, 1)))
         )
 

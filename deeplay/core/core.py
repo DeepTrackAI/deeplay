@@ -6,6 +6,7 @@ from typing import Any, Union
 from torch.nn.modules.module import Module
 from .config import Config, NoneSelector, IndexSelector
 
+
 from .utils import safe_call, match_signature as _match_signature
 
 __all__ = ["DeeplayModule", "UninitializedModule"]
@@ -83,6 +84,7 @@ class DeeplayModule(nn.Module):
 
     config: Config
     _extra_attributes: dict
+    _scheduled_attributes: dict
 
     def __init__(self, **kwargs):
         super().__init__()
@@ -97,6 +99,7 @@ class DeeplayModule(nn.Module):
         obj = object.__new__(cls)
         obj.set_config(config)
         obj._extra_attributes = {}
+        obj._scheduled_attributes = {}
 
         return obj
 
@@ -106,14 +109,32 @@ class DeeplayModule(nn.Module):
             self._any_uninitialized_submodules = True
         return super().__setattr__(name, value)
 
+    def __getattr__(self, name: str) -> Tensor | Module:
+        if name == "_scheduled_attributes":
+            return super().__getattr__(name)
+
+        _scheduled_attributes = getattr(self, "_scheduled_attributes", {})
+        if name in _scheduled_attributes:
+            return _scheduled_attributes[name].__get__(self, type(self))
+
+        return super().__getattr__(name)
+
     def attr(self, key) -> Any:
         """Get an attribute from the config."""
+
+        from deeplay.schedulers import BaseScheduler
 
         value = self.config.get(key)
         if not isinstance(value, nn.Module):
             # If the module is not a nn.Module, we need to add it to the extra attributes
             # so that it is properly printed.
             self._extra_attributes[key] = value
+
+        if isinstance(value, BaseScheduler):
+            # If the value is a scheduler, we need to add it to the scheduled attributes
+            # so that it is properly updated.
+            self._scheduled_attributes[key] = value
+
         return value
 
     def new(
@@ -183,6 +204,7 @@ class DeeplayModule(nn.Module):
         obj = object.__new__(cls)
         obj.set_config(config)
         obj._extra_attributes = {}
+        obj._scheduled_attributes = {}
 
         # if obj.__init__ has any required positional arguments, we need to pass them.
         _factory_kwargs = _match_signature(

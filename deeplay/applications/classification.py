@@ -194,7 +194,7 @@ class Classifier(Application):
             metric.reset()
 
 
-class MLPClassifier(Application):
+class MLPClassifier(Classifier):
     @staticmethod
     def defaults():
         return (
