@@ -99,7 +99,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     #     self.build()
     #     self._is_constructing = False
 
-    def configure(self, *args: str, **kwargs):
+    def configure(self, *args: Any, **kwargs: Any):
         if len(args) == 0:
             self._configure_kwargs(kwargs)
 
