@@ -11,10 +11,10 @@ import torch.nn as nn
 
 
 from ..module import DeeplayModule
-from .block import Block
+from .sequential import SequentialBlock
 
 
-class LayerActivationBlock(Block):
+class LayerActivationBlock(SequentialBlock):
     layer: DeeplayModule
     activation: DeeplayModule
     order: List[str]
