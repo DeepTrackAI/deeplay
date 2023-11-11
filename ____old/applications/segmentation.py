@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import lightning as L
 
-from ..components import (
+from ...deeplay.components import (
     UNet,
     ImageSegmentationHead,
 )

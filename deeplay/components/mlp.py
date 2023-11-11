@@ -1,4 +1,4 @@
-from typing import List, Optional, Literal, Any
+from typing import List, Optional, Literal, Any, Sequence
 
 from deeplay import DeeplayModule, Layer, LayerList, LayerActivationNormalizationBlock
 
@@ -69,7 +69,7 @@ class MultiLayerPerceptron(DeeplayModule):
     def __init__(
         self,
         in_features: Optional[int],
-        hidden_features: List[Optional[int]],
+        hidden_features: Sequence[Optional[int]],
         out_features: int,
         out_activation: Optional[nn.Module] = None,
     ):

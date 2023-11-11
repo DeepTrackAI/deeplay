@@ -7,7 +7,7 @@ import torchmetrics as tm
 from ..core.core import DeeplayModule
 from ..core.config import Config, Ref
 from ..core.templates import Layer
-from ..components import (
+from ...deeplay.components import (
     ImageToVectorEncoder,
     CategoricalClassificationHead,
     MultiLayerPerceptron,
