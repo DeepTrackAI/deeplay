@@ -1,6 +1,6 @@
-from typing import List, Optional, Literal, Any, Sequence
+from typing import List, Optional, Literal, Any, Sequence, Type, overload
 
-from deeplay import DeeplayModule, Layer, LayerList, LayerActivationNormalizationBlock
+from .. import DeeplayModule, Layer, LayerList, LayerActivationNormalizationBlock
 
 import torch.nn as nn
 
@@ -61,7 +61,7 @@ class MultiLayerPerceptron(DeeplayModule):
     """
 
     in_features: Optional[int]
-    hidden_dims: List[int]
+    hidden_dims: Sequence[Optional[int]]
     out_features: int
     blocks: LayerList[LayerActivationNormalizationBlock]
     out_layer: LayerActivationNormalizationBlock
@@ -71,7 +71,7 @@ class MultiLayerPerceptron(DeeplayModule):
         in_features: Optional[int],
         hidden_features: Sequence[Optional[int]],
         out_features: int,
-        out_activation: Optional[nn.Module] = None,
+        out_activation: Type[nn.Module] | nn.Module | None = None,
     ):
         super().__init__()
 
@@ -81,14 +81,8 @@ class MultiLayerPerceptron(DeeplayModule):
 
         if out_activation is None:
             out_activation = Layer(nn.Identity)
-        elif isinstance(out_activation, nn.Module):
+        elif isinstance(out_activation, type) and issubclass(out_activation, nn.Module):
             out_activation = Layer(out_activation)
-        elif isinstance(out_activation, DeeplayModule):
-            ...
-        else:
-            raise ValueError(
-                f"out_activation must be a nn.Module or a DeeplayModule or None, got {out_activation}"
-            )
 
         self.blocks = LayerList()
         for i, f_out in enumerate(self.hidden_dims):
@@ -98,7 +92,7 @@ class MultiLayerPerceptron(DeeplayModule):
                 LayerActivationNormalizationBlock(
                     Layer(nn.Linear, f_in, f_out)
                     if f_in
-                    else Layer(nn.Linear, f_in, f_out),
+                    else Layer(nn.LazyLinear, f_out),
                     Layer(nn.ReLU),
                     # We can give num_features as an argument to nn.Identity
                     # because it is ignored. This means that users do not have
@@ -109,7 +103,7 @@ class MultiLayerPerceptron(DeeplayModule):
 
         self.out_layer = LayerActivationNormalizationBlock(
             Layer(nn.Linear, self.hidden_dims[-1], self.out_features),
-            Layer(out_activation or nn.Identity),
+            out_activation,
             Layer(nn.Identity, num_features=self.out_features),
         )
 
@@ -119,3 +113,41 @@ class MultiLayerPerceptron(DeeplayModule):
             x = block(x)
         x = self.out_layer(x)
         return x
+
+    @overload
+    def configure(
+        self,
+        /,
+        in_features: int | None = None,
+        hidden_dims: List[int] | None = None,
+        out_features: int | None = None,
+        out_activation: Type[nn.Module] | nn.Module | None = None,
+    ) -> None:
+        ...
+
+    @overload
+    def configure(
+        self,
+        name: Literal["out_layer", "blocks"],
+        order: Optional[Sequence[str]] = None,
+        layer: Optional[Type[nn.Module]] = None,
+        activation: Optional[Type[nn.Module]] = None,
+        normalization: Optional[Type[nn.Module]] = None,
+        **kwargs: Any,
+    ) -> None:
+        ...
+
+    @overload
+    def configure(
+        self,
+        name: Literal["blocks"],
+        index: int | slice | List[int | slice] | None = None,
+        order: Optional[Sequence[str]] = None,
+        layer: Optional[Type[nn.Module]] = None,
+        activation: Optional[Type[nn.Module]] = None,
+        normalization: Optional[Type[nn.Module]] = None,
+        **kwargs: Any,
+    ) -> None:
+        ...
+
+    configure = DeeplayModule.configure
