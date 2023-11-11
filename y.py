@@ -2,7 +2,7 @@
 # To create an __init__ method that accepts both positional and keyword arguments like a dataclass,
 # we can use the signature from the class annotations. Here is an example implementation:
 
-import deeplay.core.v3 as v3
+import deeplay as v3
 import inspect
 import torch.nn as nn
 from typing import overload, Literal, Type

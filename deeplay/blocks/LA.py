@@ -10,7 +10,7 @@ from typing import (
 import torch.nn as nn
 
 
-from deeplay.core.v3 import DeeplayModule
+from deeplay import DeeplayModule
 from .block import Block
 
 

@@ -10,7 +10,7 @@ import torch.nn as nn
 
 import warnings
 
-from deeplay.core.v3 import DeeplayModule
+from deeplay import DeeplayModule
 
 
 T = TypeVar("T")

@@ -1,6 +1,6 @@
 import unittest
 import torch.nn as nn
-from deeplay.core import v3
+import deeplay as dl
 
 
 class DummyClass:
@@ -10,17 +10,17 @@ class DummyClass:
         self.c = c
 
 
-class Module(v3.DeeplayModule):
+class Module(dl.DeeplayModule):
     def __init__(self, a=0, b=0, c="0", **kwargs):
         super().__init__()
         self.a = a
         self.b = b
         self.c = c
-        self.x = v3.External(DummyClass, a, b, c)
-        self.y = v3.Layer(nn.Linear, a, b)
+        self.x = dl.External(DummyClass, a, b, c)
+        self.y = dl.Layer(nn.Linear, a, b)
 
 
-class Module2(v3.DeeplayModule):
+class Module2(dl.DeeplayModule):
     def __init__(self, foo):
         super().__init__()
         self.foo = foo
@@ -139,11 +139,11 @@ import torch.nn as nn
 nn.Linear
 
 
-class ModelWithLayer(v3.DeeplayModule):
+class ModelWithLayer(dl.DeeplayModule):
     def __init__(self, in_features=10, out_features=20):
         super().__init__()
-        self.layer_1 = v3.Layer(nn.Linear, in_features, out_features)
-        self.layer_2 = v3.Layer(nn.Sigmoid)
+        self.layer_1 = dl.Layer(nn.Linear, in_features, out_features)
+        self.layer_2 = dl.Layer(nn.Sigmoid)
 
     def forward(self, x):
         return self.layer_2(self.layer_1(x))
@@ -151,17 +151,17 @@ class ModelWithLayer(v3.DeeplayModule):
 
 class TestLayer(unittest.TestCase):
     def test_create(self):
-        layer = v3.Layer(nn.Identity).build()
+        layer = dl.Layer(nn.Identity).build()
         self.assertIsInstance(layer, nn.Identity)
 
     def test_create_with_args(self):
-        layer = v3.Layer(nn.BatchNorm1d, num_features=10).build()
+        layer = dl.Layer(nn.BatchNorm1d, num_features=10).build()
 
         self.assertIsInstance(layer, nn.BatchNorm1d)
         self.assertEqual(layer.num_features, 10)
 
     def test_configure(self):
-        layer = v3.Layer(nn.Identity)
+        layer = dl.Layer(nn.Identity)
         layer.configure(nn.BatchNorm1d, num_features=10)
         layer = layer.create()
 
@@ -169,7 +169,7 @@ class TestLayer(unittest.TestCase):
         self.assertEqual(layer.num_features, 10)
 
     def test_configure_2(self):
-        layer = v3.Layer(nn.BatchNorm1d, num_features=10)
+        layer = dl.Layer(nn.BatchNorm1d, num_features=10)
         layer.configure(num_features=20)
         layer = layer.create()
 
@@ -177,17 +177,17 @@ class TestLayer(unittest.TestCase):
         self.assertEqual(layer.num_features, 20)
 
     def test_configure_3(self):
-        layer = v3.Layer(nn.BatchNorm1d, num_features=10)
+        layer = dl.Layer(nn.BatchNorm1d, num_features=10)
         with self.assertRaises(ValueError):
             layer.configure(missdefined=10)
 
     def test_configure_4(self):
-        layer = v3.Layer(nn.Identity)
+        layer = dl.Layer(nn.Identity)
         with self.assertRaises(ValueError):
             layer.configure(nn.Identity, num_features=20)
 
     def test_forward(self):
-        layer = v3.Layer(nn.BatchNorm1d, num_features=10)
+        layer = dl.Layer(nn.BatchNorm1d, num_features=10)
         layer = layer.create()
         x = torch.randn(10, 10)
         y = layer(x)
