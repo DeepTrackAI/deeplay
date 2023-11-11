@@ -1,6 +1,7 @@
 from .block import Block
 
 from typing import List, Optional, overload, Literal, Any
+from ..module import DeeplayModule
 
 
 class SequentialBlock(Block):
