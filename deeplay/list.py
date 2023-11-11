@@ -22,8 +22,7 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
         else:
             input_layers: tuple[T] = layers
         layers = layers + _args
-        if _args:
-            print(_args)
+
         super().__pre_init__(_args=input_layers)
 
     def __init__(self, *layers: T):
@@ -65,7 +64,6 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
                 self[args[0]].configure(*args[1:], **kwargs)
             elif isinstance(args[0], slice):
                 for layer in self[args[0]]:
-                    print(args[1:], kwargs)
                     layer.configure(*args[1:], **kwargs)
             elif isinstance(args[0], list):
                 for arg in args[0]:
