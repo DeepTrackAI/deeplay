@@ -1,50 +1,39 @@
 from typing import (
     List,
+    TypeVar,
     overload,
-    Optional,
     Literal,
+    Optional,
     Any,
 )
 
 import torch.nn as nn
 
 
-from deeplay.core.v3 import DeeplayModule
+from ..module import DeeplayModule
 from .block import Block
 
 
-class LayerActivationNormalizationBlock(Block):
+class LayerActivationBlock(Block):
     layer: DeeplayModule
     activation: DeeplayModule
-    normalization: DeeplayModule
     order: List[str]
 
     def __init__(
         self,
         layer: DeeplayModule,
         activation: DeeplayModule,
-        normalization: DeeplayModule,
-        order: List[str] = ["layer", "activation", "normalization"],
+        order=["layer", "activation"],
         **kwargs: DeeplayModule,
     ):
-        super().__init__(
-            layer=layer,
-            activation=activation,
-            normalization=normalization,
-            order=order,
-            **kwargs,
-        )
-
-    @overload
-    def configure(self, **kwargs: DeeplayModule) -> None:
-        ...
+        super().__init__(layer=layer, activation=activation, order=order, **kwargs)
 
     @overload
     def configure(
         self,
-        order: Optional[List[str]],
-        layer: Optional[DeeplayModule],
-        activation: Optional[DeeplayModule],
+        order: Optional[List[str]] = None,
+        layer: Optional[DeeplayModule] = None,
+        activation: Optional[DeeplayModule] = None,
         **kwargs: DeeplayModule,
     ) -> None:
         ...
@@ -55,10 +44,6 @@ class LayerActivationNormalizationBlock(Block):
 
     @overload
     def configure(self, name: Literal["activation"], *args, **kwargs) -> None:
-        ...
-
-    @overload
-    def configure(self, name: Literal["normalization"], *args, **kwargs) -> None:
         ...
 
     @overload

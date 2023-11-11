@@ -1,6 +1,6 @@
 import unittest
 import torch.nn as nn
-from deeplay.core import v3
+import deeplay as v3
 
 
 class DummyClass:

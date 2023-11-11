@@ -81,20 +81,20 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
     def __iter__(self) -> Iterator[T]:
         return super().__iter__()  # type: ignore
 
-    def __getattr__(self, name: str) -> "LayerList[T]":
-        try:
-            return super().__getattr__(name)
-        except AttributeError:
-            submodules = [
-                getattr(layer, name)
-                for layer in self
-                if hasattr(layer, name)
-                and isinstance(getattr(layer, name), DeeplayModule)
-            ]
-            if len(submodules) > 0:
-                return LayerList(*submodules)
-            else:
-                raise
+    # def __getattr__(self, name: str) -> "LayerList[T]":
+    #     try:
+    #         return super().__getattr__(name)
+    #     except AttributeError:
+    #         submodules = [
+    #             getattr(layer, name)
+    #             for layer in self
+    #             if hasattr(layer, name)
+    #             and isinstance(getattr(layer, name), DeeplayModule)
+    #         ]
+    #         if len(submodules) > 0:
+    #             return LayerList(*submodules)
+    #         else:
+    #             raise
 
     @overload
     def __getitem__(self, index: int) -> "T":

@@ -1,7 +1,7 @@
 import unittest
 import torch
 import torch.nn as nn
-from deeplay.core.v3 import LayerList, DeeplayModule, Layer
+from deeplay import LayerList, DeeplayModule, Layer
 import itertools
 
 
