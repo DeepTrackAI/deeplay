@@ -119,6 +119,17 @@ class DeeplayModule(nn.Module):
 
         return super().__getattr__(name)
 
+    def configure(self, name: str, value: Any = None, **kwargs: Any) -> None:
+        """Configure a module."""
+        self.config = getattr(self.config, name)(value, **kwargs)
+
+        # Rebuild the module
+        _factory_kwargs = _match_signature(
+            type(self).__init__, [], self.config.get_parameters(create=False)
+        )
+
+        self.__init__(**_factory_kwargs)  # ignore: c2*
+
     def attr(self, key) -> Any:
         """Get an attribute from the config."""
 

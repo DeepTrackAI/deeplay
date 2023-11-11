@@ -5,6 +5,10 @@ from ..core.config import Config, Ref
 import torch.nn as nn
 
 
+class ModuleList(DeeplayModule, nn.ModuleList):
+    ...
+
+
 class MultiLayerPerceptron(DeeplayModule):
     """Multi-layer perceptron module.
 

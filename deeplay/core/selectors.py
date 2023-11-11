@@ -15,19 +15,10 @@ __all__ = [
 ]
 
 
-class NoneSelector:
-    def __add__(self, other):
-        return other
-
-    def __radd__(self, other):
-        return other
-
-    def __str__(self) -> str:
-        return "#"
-
-
 class Selector:
     def __add__(self, other):
+        if isinstance(other, NoneSelector):
+            return self
         if isinstance(other, Selector):
             return ParentalRelation(self, other)
         return NotImplemented
@@ -51,6 +42,26 @@ class Selector:
 
     def pop(self):
         return NoneSelector(), self
+
+
+class NoneSelector(Selector):
+    def __add__(self, other):
+        return other
+
+    def __radd__(self, other):
+        return other
+
+    def __str__(self) -> str:
+        return ""
+
+    def _regex(self):
+        return "(\\[\\d+\\])??"
+
+    def key(self):
+        return ""
+
+    def __iter__(self):
+        yield from [""]
 
 
 class ClassSelector(Selector):
@@ -210,6 +221,8 @@ def parse_selectors(x) -> Selector:
         return parse_selectors_from_tuple(x)
     if isinstance(x, str):
         return parse_selectors_from_string(x)
+    if isinstance(x, int):
+        return IndexSelector(NoneSelector(), x)
     if x is None:
         return NoneSelector()
     raise TypeError(f"Cannot parse {x} as a selector")

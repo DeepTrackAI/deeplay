@@ -98,7 +98,8 @@ class ConfigRule:
         Returns:
             bool: True if the rule matches the context, False otherwise.
         """
-        head = ClassSelector(self.key) if allow_indexed else self.head
+        # print("mat", self.selector, context)
+        head = ClassSelector(self.key) if allow_indexed and self.key else self.head
         if match_key:
             full_selector = self.selector + head
         else:
@@ -109,8 +110,9 @@ class ConfigRule:
         context_is_none = isinstance(context, NoneSelector)
         if full_selector_is_none and context_is_none:
             return True
-        if full_selector_is_none or context_is_none:
-            return False
+        # if full_selector_is_none or context_is_none:
+        #     print("here", full_selector, context)
+        #     return False
 
         regex = full_selector.regex()
 
@@ -355,7 +357,7 @@ class Config:
     """
 
     def __init__(self, rules=None, refs=None, context=NoneSelector()):
-        self._rules = [] if rules is None else rules.copy()
+        self._rules = [] if rules is None else rules
         self._refs = {} if refs is None else refs
         self._context = context
 
@@ -402,8 +404,9 @@ class Config:
 
         if isinstance(selectors, NoneSelector):
             if isinstance(self._context, NoneSelector):
-                raise ValueError("Cannot set a value with no context and no selector.")
-            selectors, key = self._context.pop()
+                selectors, key = NoneSelector(), NoneSelector()
+            else:
+                selectors, key = self._context.pop()
         else:
             selectors, key = selectors.pop()
             selectors = self._context + selectors
@@ -478,9 +481,10 @@ To populate more, specify the length with .populate(..., length=desired_length)"
             additional_rules.append(wrapped_rule)
 
         if prepend:
-            self._rules = additional_rules + self._rules
+            for rule in additional_rules:
+                self._rules.insert(0, rule)
         else:
-            self._rules = self._rules + additional_rules
+            self._rules.extend(additional_rules)
 
         return Config(self._rules, self._refs)
 
@@ -552,11 +556,6 @@ To populate more, specify the length with .populate(..., length=desired_length)"
         return Config(self._rules, self._refs, self._context + selector)
 
     def __getitem__(self, index):
-        if isinstance(self._context, NoneSelector):
-            raise ValueError(
-                "Cannot index a config with no context. Use a class selector first"
-            )
-
         if isinstance(index, tuple):
             index, length = index
         else:

@@ -493,3 +493,12 @@ class TestConfig(unittest.TestCase):
 
         config = Config().foo(foo, bar=[bar_1, bar_2])
         self.assertEqual(config.get_parameters().get("foo"), 4)
+
+    def test_naked_rule(self):
+        config = Config()(1)
+        self.assertEqual(config.get(None), 1)
+
+    # def test_naked_index_rule(self):
+    #     config = Config()[0](1)[1](1)
+    #     self.assertEqual(config[0].get(None), 1)
+    #     self.assertEqual(config.get(None), [1])
