@@ -14,8 +14,8 @@ class ExtendedConstructorMeta(type):
 
         __user_config = kwargs.pop("__user_config", None)
         obj = cls.__new__(cls, *args, **kwargs)
-        if isinstance(obj, cls):
-            cls.__pre_init__(obj, *args, **kwargs)
+        # if isinstance(obj, cls):
+        cls.__pre_init__(obj, *args, **kwargs)
 
         if __user_config is not None:
             obj._user_config = __user_config
