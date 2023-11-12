@@ -1,15 +1,17 @@
 from typing import Optional, Sequence
 
 from ..application import Application
-from ...external import External, Optimizer, Adam
+from ...external import Optimizer, Adam
 
 
 import torch
 import torch.nn.functional as F
 import torchmetrics as tm
 
+from .classifier import Classifier
 
-class Classifier(Application):
+
+class CategoricalClassifier(Classifier):
     model: torch.nn.Module
     loss: torch.nn.Module
     metrics: list
@@ -26,12 +28,12 @@ class Classifier(Application):
     ):
         if num_classes is not None and kwargs.get("metrics", None) is None:
             kwargs["metrics"] = [tm.Accuracy("multiclass", num_classes=num_classes)]
-        
+
         super().__init__(loss=loss, **kwargs)
 
         self.model = model
         self.optimizer = optimizer or Adam(lr=1e-3)
-        self.make_targets_one_hot = make_targets_one_hot        
+        self.make_targets_one_hot = make_targets_one_hot
 
         @self.optimizer.params
         def params():
