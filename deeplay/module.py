@@ -99,7 +99,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     #     self.build()
     #     self._is_constructing = False
 
-    def configure(self, *args: str, **kwargs):
+    def configure(self, *args: Any, **kwargs: Any):
         if len(args) == 0:
             self._configure_kwargs(kwargs)
 
@@ -121,7 +121,6 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
     def _configure_kwargs(self, kwargs):
         for name, value in kwargs.items():
-            print(name, value)
             if name not in self.configurables:
                 raise ValueError(
                     f"Unknown configurable {name} for {self.__class__.__name__}. Available configurables are {self.configurables}."

@@ -9,23 +9,23 @@ from typing import (
 import torch.nn as nn
 
 
-from deeplay import DeeplayModule
-from .block import Block
+from ..module import DeeplayModule
+from .sequential import SequentialBlock
 
 
-class LayerActivationNormalizationBlock(Block):
-    layer: DeeplayModule
-    activation: DeeplayModule
-    normalization: DeeplayModule
+class LayerActivationNormalizationBlock(SequentialBlock):
+    layer: nn.Module
+    activation: nn.Module
+    normalization: nn.Module
     order: List[str]
 
     def __init__(
         self,
-        layer: DeeplayModule,
-        activation: DeeplayModule,
-        normalization: DeeplayModule,
+        layer: nn.Module,
+        activation: nn.Module,
+        normalization: nn.Module,
         order: List[str] = ["layer", "activation", "normalization"],
-        **kwargs: DeeplayModule,
+        **kwargs: nn.Module,
     ):
         super().__init__(
             layer=layer,
@@ -36,16 +36,16 @@ class LayerActivationNormalizationBlock(Block):
         )
 
     @overload
-    def configure(self, **kwargs: DeeplayModule) -> None:
+    def configure(self, **kwargs: nn.Module) -> None:
         ...
 
     @overload
     def configure(
         self,
         order: Optional[List[str]],
-        layer: Optional[DeeplayModule],
-        activation: Optional[DeeplayModule],
-        **kwargs: DeeplayModule,
+        layer: Optional[nn.Module],
+        activation: Optional[nn.Module],
+        **kwargs: nn.Module,
     ) -> None:
         ...
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Any, Callable, Optional, TypeVar, overload, ParamSpec
 import inspect
-from deeplay import DeeplayModule
+from ..module import DeeplayModule
 
 import torch.nn as nn
 
