@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="deeplay",
-    version="0.0.4",
+    version="0.0.5",
     license="MIT",
     author="Benjamin Midtvedt",
     author_email="email@example.com",
