@@ -129,7 +129,15 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         self.__construct__()
 
     def take_user_configuration(self, config):
-        self._user_config = config.copy()
+        # Update instead of replace to ensure that configurations
+        # done before passsing the module to some wrapper are not lost.
+        # Example:
+        # module = ExampleModule(a=0)
+        # module.configure(a=1)
+        # module = Wrapper(module=module)
+        # module.build()
+        # module.module.a == 1 # True
+        self._user_config.update(config)
         self.__construct__()
 
     def get_user_configuration(self):
