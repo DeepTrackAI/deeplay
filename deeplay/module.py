@@ -7,6 +7,71 @@ from .meta import ExtendedConstructorMeta, not_top_level
 
 
 class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
+    """
+    A base class for creating configurable, extensible modules with dynamic initialization
+    and argument management. This class is designed to be subclassed for specific functional
+    implementations. It extends `nn.Module` and utilizes a custom meta-class, `ExtendedConstructorMeta`,
+    for enhanced construction logic.
+
+    Attributes
+    ----------
+    __extra_configurables__ : list[str]
+        List of additional configurable attributes.
+    configurables : set[str]
+        A property that returns a set of configurable attributes for the module.
+    kwargs : dict
+        A property to get or set keyword arguments.
+
+
+    Methods
+    -------
+
+    configure(*args: Any, **kwargs: Any)
+        Configures the module with given arguments and keyword arguments.
+
+    create()
+        This method creates and returns a new instance of the module.
+        Unlike build, which modifies the module in place, create
+        initializes a fresh instance with the current configuration and state,
+        ensuring that the original module remains unchanged
+
+    build()
+        build: "This method modifies the current instance of the module in place.
+        It finalizes the setup of the module, applying any necessary configurations
+        or adjustments directly to the existing instance."
+
+    new()
+        Creates a new instance of the module with collected user configuration.
+
+    get_user_configuration()
+        Retrieves the current user configuration of the module.
+
+    get_argspec()
+        Class method to get the argument specification of the module's initializer.
+
+    get_signature()
+        Class method to get the signature of the module's initializer.
+
+    Example Usage
+    -------------
+    To subclass `DeeplayModule`, define an `__init__` method and other necessary methods:
+
+    ```
+    class MyModule(DeeplayModule):
+        def __init__(self, param1, param2):
+            super().__init__()
+            # Initialize your module here
+    ```
+
+    To use the module:
+
+    ```
+    module = MyModule(param1=value1, param2=value2)
+    module.configure(param1=some_value, param2=some_other_value)
+    built_module = module.build()
+    ```
+    """
+
     _user_config: Dict[Tuple[str, ...], Any]
     _is_constructing: bool = False
     _is_building: bool = False
@@ -52,7 +117,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
             "kwargs": kwargs,
         }
 
-        self._kwargs = self.build_arguments_from(*args, **kwargs)
+        self._kwargs = self._build_arguments_from(*args, **kwargs)
 
         # Arguments provided as args are not configurable (though they themselves can be).
         self._args = _args
@@ -71,7 +136,238 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     def __post_init__(self):
         ...
 
-    def build_arguments_from(self, *args, **kwargs):
+    def configure(self, *args: Any, **kwargs: Any):
+        """
+        Configures the module with specified arguments.
+
+        This method allows dynamic configuration of the module's properties and behaviors. It can be
+        used to set or modify the attributes and parameters of the module and, if applicable, its child
+        modules. The method intelligently handles both direct attribute configuration and delegation to
+        child modules' `configure` methods.
+
+        Parameters
+        ----------
+        *args : Any
+            Positional arguments specifying the configuration settings. When the first argument is a
+            string matching a configurable attribute, the method expects either one or two arguments:
+            the attribute name and, optionally, its value. If the attribute is itself a `DeeplayModule`,
+            subsequent arguments are passed to its `configure` method.
+
+        **kwargs : Any
+            Keyword arguments for configuration settings. If provided, these are used to update the
+            module's configuration directly.
+
+        Raises
+        ------
+        ValueError
+            Raised if a configuration key is not recognized as a valid configurable for the module or
+            if the provided arguments do not match the expected pattern for configuration.
+
+        Example Usage
+        -------------
+        To configure a single attribute:
+        ```
+        module.configure('attribute_name', attribute_value) # or
+        module.configure(attribute_name=attribute_value)
+        ```
+
+        To configure multiple attributes using keyword arguments:
+        ```
+        module.configure(attribute1=value1, attribute2=value2)
+        ```
+
+        To configure a child module's attribute:
+        ```
+        module.configure('child_module_attribute', child_attribute=child_attribute_value) # or
+        module.child_module.configure(child_attribute=child_attribute_value)
+        ```
+        """
+        if len(args) == 0:
+            self._configure_kwargs(kwargs)
+
+        else:
+            if args[0] not in self.configurables:
+                raise ValueError(
+                    f"Unknown configurable {args[0]} for {self.__class__.__name__}. Available configurables are {self.configurables}."
+                )
+
+            if hasattr(getattr(self, args[0]), "configure"):
+                getattr(self, args[0]).configure(*args[1:], **kwargs)
+            elif len(args) == 2 and not kwargs:
+                self._configure_kwargs({args[0]: args[1]})
+
+            else:
+                raise ValueError(
+                    f"Unknown configurable {args[0]} for {self.__class__.__name__}. Available configurables are {self.configurables}."
+                )
+
+    def create(self):
+        """
+        Creates and returns a new instance of the module, fully initialized with the current configuration.
+
+        This method differs from `build` in that it generates a new, independent instance of the module,
+        rather than modifying the existing one. It's particularly relevant for subclasses of `dl.External`,
+        where actual torch layers (like Linear, Sigmoid, ReLU, etc.) are instantiated during the build
+        process. For these subclasses, `create` not only configures but also instantiates the specified
+        torch layers. For most other objects, the `.build()` step, which is internally called in `create`,
+        has no additional effect beyond configuration.
+
+        Returns
+        -------
+        DeeplayModule
+            A new instance of the `DeeplayModule` (or its subclass), initialized with the current module's
+            configuration and, for `dl.External` subclasses, with instantiated torch layers.
+
+        Example Usage
+        -------------
+        Creating a `dl.Layer` instance and then fully initializing it with `create`:
+        ```
+        layer = dl.Layer(nn.Linear, in_features=20, out_features=40)
+        # At this point, `layer` has not instantiated nn.Linear
+        built_layer = layer.create()
+        # Now, `built_layer` is an instance of nn.Linear(in_features=20, out_features=40)
+        ```
+        """
+        obj = self.new()
+        obj = obj.build()
+        return obj
+
+    def build(self):
+        """
+        Modifies the current instance of the module in place, finalizing its setup.
+
+        The `build` method is essential for completing the initialization of the module. It applies
+        the necessary configurations and adjustments directly to the existing instance. Unlike `create`,
+        which generates a new module instance, `build` works on the current module instance. This method
+        is particularly crucial for subclasses of `dl.External`, as it triggers the instantiation of
+        actual torch layers (like Linear, Sigmoid, ReLU, etc.) within the module. For most other objects,
+        `build` primarily serves to finalize their configuration.
+
+        Note that `build` is automatically called within the `create` method, ensuring that newly created
+        instances are fully initialized and ready for use.
+
+        Returns
+        -------
+        DeeplayModule
+            The current instance of the module after applying all configurations and adjustments.
+
+        Example Usage
+        -------------
+        Finalizing the setup of a module instance with `build`:
+        ```
+        module = ExampleModule(a=0)
+        module.configure(a=1)
+        built_module = module.build()
+        # `built_module` is the same instance as `module`, now fully configured and initialized
+        ```
+        """
+        for name, value in self.named_children():
+            if isinstance(value, DeeplayModule):
+                value = value.build()
+                if value is not None:
+                    try:
+                        setattr(self, name, value)
+                    except TypeError:
+                        # torch will complain if we try to set an attribute
+                        # that is not a nn.Module.
+                        # We circumvent this by setting the attribute using object.__setattr__
+                        object.__setattr__(self, name, value)
+
+        self._has_built = True
+        return self
+
+    def new(self):
+        user_config = self._collect_user_configuration()
+        args = self._actual_init_args["args"]
+        _args = self._args
+        kwargs = self._actual_init_args["kwargs"]
+        obj = ExtendedConstructorMeta.__call__(
+            type(self),
+            *args,
+            __user_config=user_config,
+            _args=_args,
+            **kwargs,
+        )
+        return obj
+
+    def get_user_configuration(self):
+        """
+        Retrieves the current user configuration of the module.
+
+        This method returns a dictionary containing the configuration settings provided by the user
+        for this module. It is useful for inspecting the current state of module configuration,
+        especially after multiple configurations have been applied or when the module's configuration
+        needs to be examined or debugged.
+
+        Returns
+        -------
+        dict
+            A dictionary containing the current user configuration settings. The keys are tuples
+            representing the configuration attributes, and the values are the corresponding settings.
+
+        Example Usage
+        -------------
+        To retrieve the current configuration of a module:
+        ```
+        module = ExampleModule(a=0)
+        module.configure(a=1)
+        current_config = module.get_user_configuration()
+        # current_config == {('a',): 1}
+        ```
+        """
+        return self._user_config
+
+    def _configure_kwargs(self, kwargs):
+        for name, value in kwargs.items():
+            if name not in self.configurables:
+                raise ValueError(
+                    f"Unknown configurable {name} for {self.__class__.__name__}. Available configurables are {self.configurables}."
+                )
+            self._user_config[(name,)] = value
+        self.__construct__()
+
+    def _take_user_configuration(self, config):
+        # Update instead of replace to ensure that configurations
+        # done before passsing the module to some wrapper are not lost.
+        # Example:
+        # module = ExampleModule(a=0)
+        # module.configure(a=1)
+        # module = Wrapper(module=module)
+        # module.build()
+        # module.module.a == 1 # True
+        self._user_config.update(config)
+        self.__construct__()
+
+    def _give_user_configuration(self, receiver: "DeeplayModule", name):
+        if self._user_config is not None:
+            sub_config = {}
+            for key, value in self._user_config.items():
+                if len(key) > 1 and key[0] == name:
+                    sub_config[key[1:]] = value
+            receiver._take_user_configuration(sub_config)
+
+    def _collect_user_configuration(self):
+        config = self.get_user_configuration()
+        for name, value in self.named_modules():
+            if name == "":
+                continue
+            if isinstance(value, DeeplayModule):
+                name_as_tuple = tuple(name.split("."))
+                local_user_config = value.get_user_configuration()
+                for key, value in local_user_config.items():
+                    config[name_as_tuple + key] = value
+
+        return config
+
+    def __setattr__(self, name, value):
+        if self._is_constructing:
+            if isinstance(value, DeeplayModule):
+                self._give_user_configuration(value, name)
+                value.__construct__()
+            self._setattr_recording.add(name)
+        super().__setattr__(name, value)
+
+    def _build_arguments_from(self, *args, **kwargs):
         params = self.get_signature().parameters
 
         arguments = {}
@@ -93,119 +389,6 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
             self.__init__(*self._args, **self.kwargs)
             self._is_constructing = False
             self.__post_init__()
-
-    # def __build__(self):
-    #     self._is_constructing = True
-    #     self.build()
-    #     self._is_constructing = False
-
-    def configure(self, *args: Any, **kwargs: Any):
-        if len(args) == 0:
-            self._configure_kwargs(kwargs)
-
-        else:
-            if args[0] not in self.configurables:
-                raise ValueError(
-                    f"Unknown configurable {args[0]} for {self.__class__.__name__}. Available configurables are {self.configurables}."
-                )
-
-            if hasattr(getattr(self, args[0]), "configure"):
-                getattr(self, args[0]).configure(*args[1:], **kwargs)
-            elif len(args) == 2 and not kwargs:
-                self._configure_kwargs({args[0]: args[1]})
-
-            else:
-                raise ValueError(
-                    f"Unknown configurable {args[0]} for {self.__class__.__name__}. Available configurables are {self.configurables}."
-                )
-
-    def _configure_kwargs(self, kwargs):
-        for name, value in kwargs.items():
-            if name not in self.configurables:
-                raise ValueError(
-                    f"Unknown configurable {name} for {self.__class__.__name__}. Available configurables are {self.configurables}."
-                )
-            self._user_config[(name,)] = value
-        self.__construct__()
-
-    def take_user_configuration(self, config):
-        # Update instead of replace to ensure that configurations
-        # done before passsing the module to some wrapper are not lost.
-        # Example:
-        # module = ExampleModule(a=0)
-        # module.configure(a=1)
-        # module = Wrapper(module=module)
-        # module.build()
-        # module.module.a == 1 # True
-        self._user_config.update(config)
-        self.__construct__()
-
-    def get_user_configuration(self):
-        return self._user_config
-
-    def give_user_configuration(self, receiver: "DeeplayModule", name):
-        if self._user_config is not None:
-            sub_config = {}
-            for key, value in self._user_config.items():
-                if len(key) > 1 and key[0] == name:
-                    sub_config[key[1:]] = value
-            receiver.take_user_configuration(sub_config)
-
-    def collect_user_configuration(self):
-        config = self.get_user_configuration()
-        for name, value in self.named_modules():
-            if name == "":
-                continue
-            if isinstance(value, DeeplayModule):
-                name_as_tuple = tuple(name.split("."))
-                local_user_config = value.get_user_configuration()
-                for key, value in local_user_config.items():
-                    config[name_as_tuple + key] = value
-
-        return config
-
-    def __setattr__(self, name, value):
-        if self._is_constructing:
-            if isinstance(value, DeeplayModule):
-                self.give_user_configuration(value, name)
-                value.__construct__()
-            self._setattr_recording.add(name)
-        super().__setattr__(name, value)
-
-    def create(self):
-        obj = self.new()
-        obj = obj.build()
-        return obj
-
-    def build(self):
-        for name, value in self.named_children():
-            if isinstance(value, DeeplayModule):
-                value = value.build()
-                if value is not None:
-                    try:
-                        setattr(self, name, value)
-                    except TypeError:
-                        # torch will complain if we try to set an attribute
-                        # that is not a nn.Module.
-                        # We circumvent this by setting the attribute using object.__setattr__
-                        object.__setattr__(self, name, value)
-
-        self._has_built = True
-        return self
-
-    def new(self):
-        user_config = self.collect_user_configuration()
-        args = self._actual_init_args["args"]
-        _args = self._args
-        kwargs = self._actual_init_args["kwargs"]
-        obj = ExtendedConstructorMeta.__call__(
-            type(self),
-            *args,
-            __user_config=user_config,
-            _args=_args,
-            **kwargs,
-        )
-        return obj
 
     @classmethod
     def get_argspec(cls):
