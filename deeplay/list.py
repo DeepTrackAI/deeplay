@@ -33,7 +33,7 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
 
         for idx, layer in enumerate(layers):
             super().append(layer)
-            self.give_user_configuration(layer, self._get_abs_string_index(idx))
+            self._give_user_configuration(layer, self._get_abs_string_index(idx))
             layer.__construct__()
 
     def append(self, module: DeeplayModule) -> "LayerList[T]":

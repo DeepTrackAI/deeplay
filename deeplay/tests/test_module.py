@@ -227,3 +227,123 @@ class TestLayer(unittest.TestCase):
         model.build()
 
         self.assertEqual(model.foo.num_features, 20)
+
+
+import unittest
+from unittest.mock import Mock, patch
+from deeplay import (
+    DeeplayModule,
+)  # Import your actual module here
+
+import unittest
+from deeplay import DeeplayModule, ExtendedConstructorMeta
+import torch.nn as nn
+
+
+# A simple subclass for testing
+class TestModule(DeeplayModule):
+    def __init__(self, param1=None, param2=None):
+        super().__init__()
+        self.param1 = param1
+        self.param2 = param2
+
+
+# Unit tests for DeeplayModule
+class TestDeeplayModule(unittest.TestCase):
+    def test_initialization(self):
+        # Testing basic initialization and attribute setting
+        module = TestModule(param1=10, param2="test")
+        self.assertEqual(module.param1, 10)
+        self.assertEqual(module.param2, "test")
+
+    def test_configure(self):
+        # Testing the configure method
+        module = TestModule()
+        module.configure("param1", 20)
+        module.configure(param2="configured")
+        self.assertEqual(module.param1, 20)
+        self.assertEqual(module.param2, "configured")
+
+    def test_build(self):
+        # Testing the build method
+        module = TestModule()
+        module.configure(param1=30)
+        built_module = module.build()
+        self.assertEqual(built_module.param1, 30)
+        self.assertTrue(built_module._has_built)
+
+    def test_create(self):
+        # Testing the create method
+        module = TestModule(param1=40)
+        new_module = module.create()
+        self.assertIsInstance(new_module, TestModule)
+        self.assertEqual(new_module.param1, 40)
+        self.assertNotEqual(new_module, module)
+
+    def test_get_user_configuration(self):
+        # Testing retrieval of user configuration
+        module = TestModule(param1=50)
+        module.configure(param1=60)
+        config = module.get_user_configuration()
+        self.assertEqual(config[("param1",)], 60)
+
+    def test_invalid_configure(self):
+        # Testing configure method with invalid attribute
+        module = TestModule()
+        with self.assertRaises(ValueError):
+            module.configure("invalid_param", 100)
+
+    # Additional tests for other methods and edge cases can be added here
+
+
+# class TestModule(DeeplayModule):
+#     def __init__(self, param1=None, param2=None, child_module=None):
+#         super().__init__()
+#         self.param1 = param1
+#         self.param2 = param2
+#         self.child_module = child_module if child_module else TestModule()
+
+
+# class TestDeeplayModuleConfigure(unittest.TestCase):
+#     def test_configure_with_positional_args(self):
+#         # Test configuring with positional arguments
+#         module = TestModule()
+#         module.configure("param1", 10)
+#         self.assertEqual(module.param1, 10)
+
+#     def test_configure_with_keyword_args(self):
+#         # Test configuring with keyword arguments
+#         module = TestModule()
+#         module.configure(param2="value")
+#         self.assertEqual(module.param2, "value")
+
+#     def test_configure_with_multiple_kwargs(self):
+#         # Test configuring multiple attributes using keyword arguments
+#         module = TestModule()
+#         module.configure(param1=20, param2="another_value")
+#         self.assertEqual(module.param1, 20)
+#         self.assertEqual(module.param2, "another_value")
+
+#     def test_configure_child_module(self):
+#         # Test configuring an attribute which is itself a DeeplayModule
+#         parent_module = TestModule()
+#         child_module = TestModule()
+#         parent_module.configure("child_module", param1=30, param2="child_value")
+#         self.assertEqual(parent_module.child_module.param1, 30)
+#         self.assertEqual(parent_module.child_module.param2, "child_value")
+
+#     def test_configure_with_invalid_attribute(self):
+#         # Test configuring with an invalid attribute
+#         module = TestModule()
+#         with self.assertRaises(ValueError):
+#             module.configure("non_existent_param", 40)
+
+#     def test_configure_with_invalid_pattern(self):
+#         # Test configuring with a valid attribute but invalid pattern
+#         module = TestModule()
+#         with self.assertRaises(ValueError):
+#             module.configure("param1", 50, extra_arg="unexpected")
+
+
+if __name__ == "__main__":
+    unittest.main()
