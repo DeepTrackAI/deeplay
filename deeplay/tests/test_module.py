@@ -1,6 +1,6 @@
 import unittest
 import torch.nn as nn
-from deeplay.core import v3
+import deeplay as dl
 
 
 class DummyClass:
@@ -218,3 +218,12 @@ class TestLayer(unittest.TestCase):
         self.assertEqual(model_2.layer_1.out_features, 70)
 
         # print(model_2)
+
+    def test_config_is_sticky(self):
+        layer = dl.Layer(nn.BatchNorm1d, num_features=10)
+        layer.configure(num_features=20)
+
+        model = Module2(foo=layer)
+        model.build()
+
+        self.assertEqual(model.foo.num_features, 20)
