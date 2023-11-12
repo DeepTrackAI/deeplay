@@ -111,7 +111,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
             if hasattr(getattr(self, args[0]), "configure"):
                 getattr(self, args[0]).configure(*args[1:], **kwargs)
-            elif len(args) == 2 and kwargs == {}:
+            elif len(args) == 2 and not kwargs:
                 self._configure_kwargs({args[0]: args[1]})
 
             else:
