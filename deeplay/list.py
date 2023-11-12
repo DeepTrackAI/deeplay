@@ -58,6 +58,10 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
     def configure(self, *args: int | slice | List[int | slice], **kwargs: Any) -> None:
         ...
 
+    @overload
+    def configure(self, name: str, *args: Any, **kwargs: Any) -> None:
+        ...
+
     def configure(self, *args, **kwargs):
         if len(args) > 0:
             if isinstance(args[0], int):
@@ -79,20 +83,25 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
     def __iter__(self) -> Iterator[T]:
         return super().__iter__()  # type: ignore
 
-    # def __getattr__(self, name: str) -> "LayerList[T]":
-    #     try:
-    #         return super().__getattr__(name)
-    #     except AttributeError:
-    #         submodules = [
-    #             getattr(layer, name)
-    #             for layer in self
-    #             if hasattr(layer, name)
-    #             and isinstance(getattr(layer, name), DeeplayModule)
-    #         ]
-    #         if len(submodules) > 0:
-    #             return LayerList(*submodules)
-    #         else:
-    #             raise
+    def __getattr__(self, name: str) -> "LayerList[T]":
+        try:
+            return super().__getattr__(name)
+        except AttributeError:
+            # check if name is integer string
+            if name[0] in ("0", "1", "2", "3", "4", "5", "6", "7", "8", "9"):
+                # is an invalid attribute name so must be an index
+                raise
+
+            submodules = [
+                getattr(layer, name)
+                for layer in self
+                if hasattr(layer, name)
+                and isinstance(getattr(layer, name), DeeplayModule)
+            ]
+            if len(submodules) > 0:
+                return LayerList(*submodules)
+            else:
+                raise
 
     @overload
     def __getitem__(self, index: int) -> "T":
