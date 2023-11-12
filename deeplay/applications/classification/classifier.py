@@ -26,12 +26,12 @@ class Classifier(Application):
     ):
         if num_classes is not None and kwargs.get("metrics", None) is None:
             kwargs["metrics"] = [tm.Accuracy("multiclass", num_classes=num_classes)]
-        
+
         super().__init__(loss=loss, **kwargs)
 
         self.model = model
         self.optimizer = optimizer or Adam(lr=1e-3)
-        self.make_targets_one_hot = make_targets_one_hot        
+        self.make_targets_one_hot = make_targets_one_hot
 
         @self.optimizer.params
         def params():
