@@ -26,7 +26,6 @@ class Classifier(Application):
     ):
         if num_classes is not None and kwargs.get("metrics", None) is None:
             kwargs["metrics"] = [tm.Accuracy("multiclass", num_classes=num_classes)]
-
         super().__init__(loss=loss, **kwargs)
 
         self.model = model
