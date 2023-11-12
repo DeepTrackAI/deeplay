@@ -19,3 +19,8 @@ class Layer(External):
         ...
 
     configure = External.configure
+
+    def forward(self, x):
+        raise RuntimeError(
+            "Unexpected call to forward. Did you forget to `create` or `build`?"
+        )
