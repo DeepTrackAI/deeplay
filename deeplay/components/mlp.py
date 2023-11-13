@@ -67,7 +67,17 @@ class MultiLayerPerceptron(DeeplayModule):
     out_layer: LayerActivationNormalizationBlock
 
     @property
-    def out_layer(self):
+    def input(self):
+        """Return the input layer of the network."""
+        return self.blocks[0]
+
+    @property
+    def hidden(self):
+        """Return the hidden layers of the network (inclusive first, exclusive last)."""
+        return self.blocks[:-1]
+
+    @property
+    def output(self):
         """Return the last layer of the network."""
         return self.blocks[-1]
 
