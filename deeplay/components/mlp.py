@@ -66,6 +66,11 @@ class MultiLayerPerceptron(DeeplayModule):
     blocks: LayerList[LayerActivationNormalizationBlock]
     out_layer: LayerActivationNormalizationBlock
 
+    @property
+    def out_layer(self):
+        """Return the last layer of the network."""
+        return self.blocks[-1]
+
     def __init__(
         self,
         in_features: Optional[int],
@@ -101,17 +106,18 @@ class MultiLayerPerceptron(DeeplayModule):
                 )
             )
 
-        self.out_layer = LayerActivationNormalizationBlock(
-            Layer(nn.Linear, self.hidden_dims[-1], self.out_features),
-            out_activation,
-            Layer(nn.Identity, num_features=self.out_features),
+        self.blocks.append(
+            LayerActivationNormalizationBlock(
+                Layer(nn.Linear, self.hidden_dims[-1], self.out_features),
+                out_activation,
+                Layer(nn.Identity, num_features=self.out_features),
+            )
         )
 
     def forward(self, x):
         x = nn.Flatten()(x)
         for block in self.blocks:
             x = block(x)
-        x = self.out_layer(x)
         return x
 
     @overload
