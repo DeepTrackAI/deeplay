@@ -27,6 +27,9 @@ class MultiLayerPerceptron(DeeplayModule):
     - `input`: Equivalent to `.blocks[0]`.
     - `hidden`: Equivalent to `.blocks[:-1]`.
     - `output`: Equivalent to `.blocks[-1]`.
+    - `layer`: Equivalent to `.blocks.layer`.
+    - `activation`: Equivalent to `.blocks.activation`.
+    - `normalization`: Equivalent to `.blocks.normalization`.
 
     Evaluation
     ----------
@@ -68,6 +71,21 @@ class MultiLayerPerceptron(DeeplayModule):
     def output(self):
         """Return the last layer of the network. Equivalent to `.blocks[-1]`."""
         return self.blocks[-1]
+
+    @property
+    def layer(self) -> LayerList[Layer]:
+        """Return the layers of the network. Equivalent to `.blocks.layer`."""
+        return self.blocks.layer
+
+    @property
+    def activation(self) -> LayerList[Layer]:
+        """Return the activations of the network. Equivalent to `.blocks.activation`."""
+        return self.blocks.activation
+
+    @property
+    def normalization(self) -> LayerList[Layer]:
+        """Return the normalizations of the network. Equivalent to `.blocks.normalization`."""
+        return self.blocks.normalization
 
     def __init__(
         self,
@@ -115,7 +133,7 @@ class MultiLayerPerceptron(DeeplayModule):
                     # We can give num_features as an argument to nn.Identity
                     # because it is ignored. This means that users do not have
                     # to specify the number of features for nn.Identity.
-                    Layer(nn.Identity, num_features=out_features),
+                    Layer(nn.Identity, num_features=f_out),
                 )
             )
 
