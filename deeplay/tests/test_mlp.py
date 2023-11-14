@@ -70,3 +70,40 @@ class TestComponentMLP(unittest.TestCase):
         self.assertEqual(len(mlp.blocks), 1)
         self.assertEqual(mlp.blocks[0].layer.in_features, 2)
         self.assertEqual(mlp.blocks[0].layer.out_features, 3)
+
+    def test_configure_layers(self):
+        mlp = MultiLayerPerceptron(2, [4, 3, 5], 3)
+        mlp.layer.configure(bias=False)
+        mlp.build()
+        self.assertEqual(len(mlp.blocks), 4)
+        for idx, block in enumerate(mlp.blocks):
+            self.assertFalse(block.layer.bias)
+
+    def test_configure_activation(self):
+        mlp = MultiLayerPerceptron(2, [4, 3, 5], 3)
+        mlp.activation.configure(nn.Sigmoid)
+        mlp.build()
+        self.assertEqual(len(mlp.blocks), 4)
+        for idx, block in enumerate(mlp.blocks):
+            self.assertIsInstance(block.activation, nn.Sigmoid)
+
+    def test_configure_activation_with_argument(self):
+        mlp = MultiLayerPerceptron(2, [4, 3, 5], 3)
+        mlp.activation.configure(nn.Softmax, dim=4)
+        mlp.build()
+        self.assertEqual(len(mlp.blocks), 4)
+        for idx, block in enumerate(mlp.blocks):
+            self.assertIsInstance(block.activation, nn.Softmax)
+            self.assertEqual(block.activation.dim, 4)
+
+    def test_configure_normalization(self):
+        mlp = MultiLayerPerceptron(2, [4, 3, 5], 3)
+        mlp.normalization.configure(nn.BatchNorm1d)
+        mlp.build()
+        self.assertEqual(len(mlp.blocks), 4)
+        for idx, block in enumerate(mlp.blocks):
+            self.assertIsInstance(block.normalization, nn.BatchNorm1d)
+
+        x = torch.randn(2, 2)
+        y = mlp(x)
+        self.assertEqual(y.shape, (2, 3))
