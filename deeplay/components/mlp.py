@@ -40,9 +40,9 @@ class MultiLayerPerceptron(DeeplayModule):
     Examples
     --------
     >>> mlp = MultiLayerPerceptron(28 * 28, [128, 128], 10)
-    >>> mlp.input.layer.configure(kernel_size=5)
     >>> mlp.hidden.normalization.configure(nn.BatchNorm1d)
     >>> mlp.output.activation.configure(nn.Softmax)
+    >>> mlp.layer.configure(bias=False)
     >>> mlp.build()
 
 
