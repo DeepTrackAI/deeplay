@@ -14,7 +14,7 @@ class MultiLayerPerceptron(DeeplayModule):
     -------------
 
     - in_features (int): Number of input features. If None, the input shape is inferred in the first forward pass. (Default: None)
-    - hidden_dims (list[int]): Number of hidden units in each layer.
+    - hidden_features (list[int]): Number of hidden units in each layer.
     - out_features (int): Number of output features. (Default: 1)
     - blocks (template-like): Specification for the blocks of the MLP. (Default: "layer" >> "activation" >> "normalization" >> "dropout")
         - layer (template-like): Specification for the layer of the block. (Default: nn.Linear)
@@ -50,7 +50,7 @@ class MultiLayerPerceptron(DeeplayModule):
     """
 
     in_features: Optional[int]
-    hidden_dims: Sequence[Optional[int]]
+    hidden_features: Sequence[Optional[int]]
     out_features: int
     blocks: LayerList[LayerActivationNormalizationBlock]
 
@@ -79,7 +79,7 @@ class MultiLayerPerceptron(DeeplayModule):
         super().__init__()
 
         self.in_features = in_features
-        self.hidden_dims = hidden_features
+        self.hidden_features = hidden_features
         self.out_features = out_features
 
         if out_activation is None:
@@ -88,8 +88,8 @@ class MultiLayerPerceptron(DeeplayModule):
             out_activation = Layer(out_activation)
 
         self.blocks = LayerList()
-        for i, f_out in enumerate(self.hidden_dims):
-            f_in = self.in_features if i == 0 else self.hidden_dims[i - 1]
+        for i, f_out in enumerate(self.hidden_features):
+            f_in = self.in_features if i == 0 else self.hidden_features[i - 1]
 
             self.blocks.append(
                 LayerActivationNormalizationBlock(
@@ -106,7 +106,7 @@ class MultiLayerPerceptron(DeeplayModule):
 
         self.blocks.append(
             LayerActivationNormalizationBlock(
-                Layer(nn.Linear, self.hidden_dims[-1], self.out_features),
+                Layer(nn.Linear, self.hidden_features[-1], self.out_features),
                 out_activation,
                 Layer(nn.Identity, num_features=self.out_features),
             )
