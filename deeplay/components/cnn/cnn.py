@@ -85,24 +85,34 @@ class ConvolutionalNeuralNetwork(DeeplayModule):
         self.hidden_channels = hidden_channels
         self.out_channels = out_channels
 
+        if out_channels <= 0:
+            raise ValueError(f"out_channels must be positive, got {out_channels}")
+
+        if in_channels is not None and in_channels <= 0:
+            raise ValueError(f"in_channels must be positive, got {in_channels}")
+
+        if any(h <= 0 for h in hidden_channels):
+            raise ValueError(
+                f"all hidden_channels must be positive, got {hidden_channels}"
+            )
+
         if out_activation is None:
             out_activation = Layer(nn.Identity)
         elif isinstance(out_activation, type) and issubclass(out_activation, nn.Module):
             out_activation = Layer(out_activation)
 
         self.blocks = LayerList()
+
+        c_out = in_channels
+
         for i, c_out in enumerate(self.hidden_channels):
             c_in = self.in_channels if i == 0 else self.hidden_channels[i - 1]
 
             self.blocks.append(
                 LayerActivationNormalizationBlock(
-                    Layer(nn.Conv2d, c_in, c_out, 3)
+                    Layer(nn.Conv2d, c_in, c_out, 3, 1, 1)
                     if c_in
-                    else Layer(
-                        nn.LazyConv2d,
-                        c_out,
-                        3,
-                    ),
+                    else Layer(nn.LazyConv2d, c_out, 3, 1, 1),
                     Layer(nn.ReLU),
                     # We can give num_features as an argument to nn.Identity
                     # because it is ignored. This means that users do not have
@@ -113,7 +123,7 @@ class ConvolutionalNeuralNetwork(DeeplayModule):
 
         self.blocks.append(
             LayerActivationNormalizationBlock(
-                Layer(nn.Conv2d, self.hidden_channels[-1], self.out_channels, 3),
+                Layer(nn.Conv2d, c_out, self.out_channels, 3, 1, 1),
                 out_activation,
                 Layer(nn.Identity, num_channels=self.out_channels),
             )
