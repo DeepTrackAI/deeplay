@@ -35,18 +35,12 @@ class ConvolutionalNeuralNetwork(DeeplayModule):
     Examples
     --------
     >>> # Using default values
-    >>> mlp = MultiLayerPerceptron(28 * 28, [128], 10)
+    >>> cnn = ConvolutionalNeuralNetwork(3, [32, 64, 128], 1)
     >>> # Customizing output activation
-    >>> mlp = MultiLayerPerceptron(28 * 28, [128], 1, nn.Sigmoid)
-    >>> # Using from_config with custom normalization
-    >>> mlp = MultiLayerPerceptron.from_config(
-    >>>     Config()
-    >>>     .in_channels(28 * 28)
-    >>>     .hidden_channels([128])
-    >>>     .out_channels(1)
-    >>>     .out_activation(nn.Sigmoid)
-    >>>     .blocks[0].normalization(nn.BatchNorm1d, num_features=128)
-    >>> )
+    >>> cnn.output_block.activation(nn.Sigmoid)
+    >>> # Changing the kernel size of the first layer
+    >>> cnn.input_block.layer.kernel_size(5)
+
 
     Return Values
     -------------
@@ -64,17 +58,17 @@ class ConvolutionalNeuralNetwork(DeeplayModule):
     blocks: LayerList[LayerActivationNormalizationBlock]
 
     @property
-    def input(self):
+    def input_block(self):
         """Return the input layer of the network. Equivalent to `.blocks[0]`."""
         return self.blocks[0]
 
     @property
-    def hidden(self):
+    def hidden_blocks(self):
         """Return the hidden layers of the network. Equivalent to `.blocks[:-1]`"""
         return self.blocks[:-1]
 
     @property
-    def output(self):
+    def output_block(self):
         """Return the last layer of the network. Equivalent to `.blocks[-1]`."""
         return self.blocks[-1]
 
