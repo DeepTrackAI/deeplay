@@ -82,10 +82,25 @@ class MultiLayerPerceptron(DeeplayModule):
         self.hidden_features = hidden_features
         self.out_features = out_features
 
+        if out_features <= 0:
+            raise ValueError(
+                f"Number of output features must be positive, got {out_features}"
+            )
+
+        if in_features is not None and in_features <= 0:
+            raise ValueError(f"in_channels must be positive, got {in_features}")
+
+        if any(h <= 0 for h in hidden_features):
+            raise ValueError(
+                f"all hidden_channels must be positive, got {hidden_features}"
+            )
+
         if out_activation is None:
             out_activation = Layer(nn.Identity)
         elif isinstance(out_activation, type) and issubclass(out_activation, nn.Module):
             out_activation = Layer(out_activation)
+
+        f_out = in_features
 
         self.blocks = LayerList()
         for i, f_out in enumerate(self.hidden_features):
@@ -106,7 +121,7 @@ class MultiLayerPerceptron(DeeplayModule):
 
         self.blocks.append(
             LayerActivationNormalizationBlock(
-                Layer(nn.Linear, self.hidden_features[-1], self.out_features),
+                Layer(nn.Linear, f_out, self.out_features),
                 out_activation,
                 Layer(nn.Identity, num_features=self.out_features),
             )
