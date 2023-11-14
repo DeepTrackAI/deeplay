@@ -1,6 +1,6 @@
 from typing import List, Optional, Literal, Any, Sequence, Type, overload
 
-from ... import DeeplayModule, Layer, LayerList, LayerActivationNormalizationBlock
+from ... import DeeplayModule, Layer, LayerList, PoolLayerActivationNormalizationBlock
 
 import torch.nn as nn
 
@@ -55,7 +55,7 @@ class ConvolutionalNeuralNetwork(DeeplayModule):
     in_channels: Optional[int]
     hidden_channels: Sequence[Optional[int]]
     out_channels: int
-    blocks: LayerList[LayerActivationNormalizationBlock]
+    blocks: LayerList[PoolLayerActivationNormalizationBlock]
 
     @property
     def input_block(self):
@@ -109,7 +109,8 @@ class ConvolutionalNeuralNetwork(DeeplayModule):
             c_in = self.in_channels if i == 0 else self.hidden_channels[i - 1]
 
             self.blocks.append(
-                LayerActivationNormalizationBlock(
+                PoolLayerActivationNormalizationBlock(
+                    Layer(nn.Identity),
                     Layer(nn.Conv2d, c_in, c_out, 3, 1, 1)
                     if c_in
                     else Layer(nn.LazyConv2d, c_out, 3, 1, 1),
@@ -122,7 +123,8 @@ class ConvolutionalNeuralNetwork(DeeplayModule):
             )
 
         self.blocks.append(
-            LayerActivationNormalizationBlock(
+            PoolLayerActivationNormalizationBlock(
+                Layer(nn.Identity),
                 Layer(nn.Conv2d, c_out, self.out_channels, 3, 1, 1),
                 out_activation,
                 Layer(nn.Identity, num_channels=self.out_channels),
