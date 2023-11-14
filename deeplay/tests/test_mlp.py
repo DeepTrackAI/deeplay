@@ -63,3 +63,10 @@ class TestComponentMLP(unittest.TestCase):
         mlp.build()
         self.assertEqual(len(mlp.blocks), 2)
         self.assertIsInstance(mlp.output.activation, nn.Sigmoid)
+
+    def test_no_hidden_layers(self):
+        mlp = MultiLayerPerceptron(2, [], 3)
+        mlp.build()
+        self.assertEqual(len(mlp.blocks), 1)
+        self.assertEqual(mlp.blocks[0].layer.in_features, 2)
+        self.assertEqual(mlp.blocks[0].layer.out_features, 3)
