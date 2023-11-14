@@ -12,6 +12,7 @@ from .sequential import SequentialBlock
 
 
 class PoolLayerActivationNormalizationBlock(SequentialBlock):
+    pool: nn.Module
     layer: nn.Module
     activation: nn.Module
     normalization: nn.Module
