@@ -11,27 +11,27 @@ import torch.nn as nn
 from .sequential import SequentialBlock
 
 
-class PoolLayerActivationNormalizationBlock(SequentialBlock):
+class PoolLayerActNorm(SequentialBlock):
     pool: nn.Module
     layer: nn.Module
-    activation: nn.Module
-    normalization: nn.Module
+    act: nn.Module
+    norm: nn.Module
     order: List[str]
 
     def __init__(
         self,
         pool: nn.Module,
         layer: nn.Module,
-        activation: nn.Module,
-        normalization: nn.Module,
-        order: List[str] = ["pool", "layer", "activation", "normalization"],
+        act: nn.Module,
+        norm: nn.Module,
+        order: List[str] = ["pool", "layer", "act", "norm"],
         **kwargs: nn.Module,
     ):
         super().__init__(
             pool=pool,
             layer=layer,
-            activation=activation,
-            normalization=normalization,
+            act=act,
+            norm=norm,
             order=order,
             **kwargs,
         )
@@ -45,7 +45,7 @@ class PoolLayerActivationNormalizationBlock(SequentialBlock):
         self,
         order: Optional[List[str]],
         layer: Optional[nn.Module],
-        activation: Optional[nn.Module],
+        act: Optional[nn.Module],
         **kwargs: nn.Module,
     ) -> None:
         ...
@@ -55,11 +55,11 @@ class PoolLayerActivationNormalizationBlock(SequentialBlock):
         ...
 
     @overload
-    def configure(self, name: Literal["activation"], *args, **kwargs) -> None:
+    def configure(self, name: Literal["act"], *args, **kwargs) -> None:
         ...
 
     @overload
-    def configure(self, name: Literal["normalization"], *args, **kwargs) -> None:
+    def configure(self, name: Literal["norm"], *args, **kwargs) -> None:
         ...
 
     @overload
