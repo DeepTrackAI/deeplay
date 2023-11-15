@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import lightning as L
 
-from typing import Callable, List, Type, Optional, TypeVar, Sequence, Literal, Any
+from typing import Callable, List, Type, Optional, TypeVar, Sequence, Literal, Any, Dict
 
 from deeplay import DeeplayModule, External, Layer, Optimizer
 
@@ -41,30 +41,51 @@ class Application(DeeplayModule, L.LightningModule):
     def forward(self, *args, **kwargs):
         raise NotImplementedError
 
-    def compute_loss(self, y_hat, y):
-        return self.loss(y_hat, y)
+    def compute_loss(self, y_hat, y) -> torch.Tensor | Dict[str, torch.Tensor]:
+        if self.loss:
+            return self.loss(y_hat, y)
+        else:
+            raise NotImplementedError
 
     def training_step(self, batch, batch_idx):
         x, y = self.train_preprocess(batch)
         y_hat = self(x)
         loss = self.compute_loss(y_hat, y)
-        self.log(
-            "train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
-        )
+        if not isinstance(loss, dict):
+            loss = {"loss": loss}
+
+        for name, loss in loss.items():
+            self.log(
+                f"train_{name}",
+                loss,
+                on_step=True,
+                on_epoch=True,
+                prog_bar=True,
+                logger=True,
+            )
 
         self.log_metrics(
             "train", y_hat, y, on_step=True, on_epoch=True, prog_bar=True, logger=True
         )
 
-        return loss
+        return sum(loss.values())
 
     def validation_step(self, batch, batch_idx):
         x, y = self.val_preprocess(batch)
         y_hat = self(x)
         loss = self.compute_loss(y_hat, y)
-        self.log(
-            "val_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
-        )
+        if not isinstance(loss, dict):
+            loss = {"loss": loss}
+
+        for name, loss in loss.items():
+            self.log(
+                f"val_{name}",
+                loss,
+                on_step=True,
+                on_epoch=True,
+                prog_bar=True,
+                logger=True,
+            )
         self.log_metrics(
             "val",
             y_hat,
@@ -74,15 +95,24 @@ class Application(DeeplayModule, L.LightningModule):
             prog_bar=True,
             logger=True,
         )
-        return loss
+        return sum(loss.values())
 
     def test_step(self, batch, batch_idx):
         x, y = self.test_preprocess(batch)
         y_hat = self(x)
         loss = self.compute_loss(y_hat, y)
-        self.log(
-            "test_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
-        )
+        if not isinstance(loss, dict):
+            loss = {"loss": loss}
+
+        for name, loss in loss.items():
+            self.log(
+                f"test_{name}",
+                loss,
+                on_step=True,
+                on_epoch=True,
+                prog_bar=True,
+                logger=True,
+            )
         self.log_metrics(
             "test",
             y_hat,
@@ -93,7 +123,7 @@ class Application(DeeplayModule, L.LightningModule):
             logger=True,
         )
 
-        return loss
+        return sum(loss.values())
 
     def predict_step(self, batch, batch_idx, dataloader_idx=None):
         if isinstance(batch, (list, tuple)):
