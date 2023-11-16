@@ -340,7 +340,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
     def _give_user_configuration(self, receiver: "DeeplayModule", name):
         if self._user_config is not None:
-            sub_config = {}
+            sub_config = receiver._collect_user_configuration()
             for key, value in self._user_config.items():
                 if len(key) > 1 and key[0] == name:
                     sub_config[key[1:]] = value
@@ -383,12 +383,12 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         return arguments
 
     def __construct__(self):
-        with not_top_level(ExtendedConstructorMeta):
-            self._modules.clear()
-            self._is_constructing = True
-            self.__init__(*self._args, **self.kwargs)
-            self._is_constructing = False
-            self.__post_init__()
+        # with not_top_level(ExtendedConstructorMeta):
+        self._modules.clear()
+        self._is_constructing = True
+        self.__init__(*self._args, **self.kwargs)
+        self._is_constructing = False
+        self.__post_init__()
 
     @classmethod
     def get_argspec(cls):

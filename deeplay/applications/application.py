@@ -16,7 +16,7 @@ T = TypeVar("T")
 class Application(DeeplayModule, L.LightningModule):
     def __init__(
         self,
-        loss: Optional[nn.Module | Callable[..., torch.Tensor]],
+        loss: Optional[nn.Module | Callable[..., torch.Tensor]] = None,
         metrics: Optional[Sequence[tm.Metric]] = None,
         train_metrics: Optional[Sequence[tm.Metric]] = None,
         val_metrics: Optional[Sequence[tm.Metric]] = None,

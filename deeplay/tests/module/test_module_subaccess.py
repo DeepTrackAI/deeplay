@@ -1,26 +1,31 @@
 import unittest
 
-from deeplay import DeeplayModule
+from deeplay import DeeplayModule, LayerActivationBlock, Layer
+
+import torch.nn as nn
 
 
 class TestClass(DeeplayModule):
     def __init__(self):
         submodule = ChildClass()
-        value = submodule.attr
 
-        submodule.configure("attr", value + 1)
+        submodule.block.layer.configure(out_features=2)
 
         self.submodule = submodule
 
 
 class ChildClass(DeeplayModule):
-    def __init__(self, attr=1):
+    def __init__(self):
         super().__init__()
 
-        self.attr = attr
+        self.block = LayerActivationBlock(
+            Layer(nn.Linear, 1, 1),
+            Layer(nn.ReLU),
+        )
 
 
 class TestModuleSubaccess(unittest.TestCase):
     def test_subaccess(self):
         test = TestClass()
-        self.assertEqual(test.submodule.attr, 2)
+        test.build()
+        self.assertEqual(test.submodule.block.layer.out_features, 2)
