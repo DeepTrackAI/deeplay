@@ -14,26 +14,26 @@ from ..module import DeeplayModule
 from .sequential import SequentialBlock
 
 
-class LayerAct(SequentialBlock):
+class LayerActivation(SequentialBlock):
     layer: DeeplayModule
-    act: DeeplayModule
+    activation: DeeplayModule
     order: List[str]
 
     def __init__(
         self,
         layer: DeeplayModule,
-        act: DeeplayModule,
-        order=["layer", "act"],
+        activation: DeeplayModule,
+        order=["layer", "activation"],
         **kwargs: DeeplayModule,
     ):
-        super().__init__(layer=layer, act=act, order=order, **kwargs)
+        super().__init__(layer=layer, activation=activation, order=order, **kwargs)
 
     @overload
     def configure(
         self,
         order: Optional[List[str]] = None,
         layer: Optional[DeeplayModule] = None,
-        act: Optional[DeeplayModule] = None,
+        activation: Optional[DeeplayModule] = None,
         **kwargs: DeeplayModule,
     ) -> None:
         ...
@@ -43,7 +43,7 @@ class LayerAct(SequentialBlock):
         ...
 
     @overload
-    def configure(self, name: Literal["act"], *args, **kwargs) -> None:
+    def configure(self, name: Literal["activation"], *args, **kwargs) -> None:
         ...
 
     @overload

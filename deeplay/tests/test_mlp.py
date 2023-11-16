@@ -48,18 +48,18 @@ class TestComponentMLP(unittest.TestCase):
         mlp.configure(out_activation=nn.Sigmoid)
         mlp.build()
         self.assertEqual(len(mlp.blocks), 1)
-        self.assertIsInstance(mlp.out_layer.act, nn.Sigmoid)
+        self.assertIsInstance(mlp.out_layer.activation, nn.Sigmoid)
 
     def test_change_out_activation_Layer(self):
         mlp = MultiLayerPerceptron(2, [4], 3)
         mlp.configure(out_activation=Layer(nn.Sigmoid))
         mlp.build()
         self.assertEqual(len(mlp.blocks), 1)
-        self.assertIsInstance(mlp.out_layer.act, nn.Sigmoid)
+        self.assertIsInstance(mlp.out_layer.activation, nn.Sigmoid)
 
     def test_change_out_activation_instance(self):
         mlp = MultiLayerPerceptron(2, [4], 3)
         mlp.configure(out_activation=nn.Sigmoid())
         mlp.build()
         self.assertEqual(len(mlp.blocks), 1)
-        self.assertIsInstance(mlp.out_layer.act, nn.Sigmoid)
+        self.assertIsInstance(mlp.out_layer.activation, nn.Sigmoid)

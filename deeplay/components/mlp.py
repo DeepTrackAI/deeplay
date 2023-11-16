@@ -1,6 +1,6 @@
 from typing import List, Optional, Literal, Any, Sequence, Type, overload
 
-from .. import DeeplayModule, Layer, LayerList, LayerActNorm
+from .. import DeeplayModule, Layer, LayerList, LayerActivationNormalization
 
 import torch.nn as nn
 
@@ -16,12 +16,12 @@ class MultiLayerPerceptron(DeeplayModule):
     - in_features (int): Number of input features. If None, the input shape is inferred from the first forward pass. (Default: None)
     - hidden_dims (list[int]): Number of hidden units in each layer. (Default: [32, 32])
     - out_features (int): Number of output features. (Default: 1)
-    - blocks (template-like): Specification for the blocks of the MLP. (Default: "layer" >> "act" >> "norm" >> "dropout")
+    - blocks (template-like): Specification for the blocks of the MLP. (Default: "layer" >> "activation" >> "normalization" >> "dropout")
         - layer (template-like): Specification for the layer of the block. (Default: nn.Linear)
-        - act (template-like): Specification for the act of the block. (Default: nn.ReLU)
-        - norm (template-like): Specification for the norm of the block. (Default: nn.Identity)
+        - activation (template-like): Specification for the activation of the block. (Default: nn.ReLU)
+        - normalization (template-like): Specification for the normalization of the block. (Default: nn.Identity)
         - dropout (template-like): Specification for the dropout of the block. (Default: nn.Identity)
-    - out_activation (template-like): Specification for the output act of the MLP. (Default: nn.Identity)
+    - out_activation (template-like): Specification for the output activation of the MLP. (Default: nn.Identity)
 
     Constraints
     -----------
@@ -38,16 +38,16 @@ class MultiLayerPerceptron(DeeplayModule):
     --------
     >>> # Using default values
     >>> mlp = MultiLayerPerceptron(28 * 28, [128], 10)
-    >>> # Customizing output act
+    >>> # Customizing output activation
     >>> mlp = MultiLayerPerceptron(28 * 28, [128], 1, nn.Sigmoid)
-    >>> # Using from_config with custom norm
+    >>> # Using from_config with custom normalization
     >>> mlp = MultiLayerPerceptron.from_config(
     >>>     Config()
     >>>     .in_features(28 * 28)
     >>>     .hidden_dims([128])
     >>>     .out_features(1)
     >>>     .out_activation(nn.Sigmoid)
-    >>>     .blocks[0].norm(nn.BatchNorm1d, num_features=128)
+    >>>     .blocks[0].normalization(nn.BatchNorm1d, num_features=128)
     >>> )
 
     Return Values
@@ -63,8 +63,8 @@ class MultiLayerPerceptron(DeeplayModule):
     in_features: Optional[int]
     hidden_dims: Sequence[Optional[int]]
     out_features: int
-    blocks: LayerList[LayerActNorm]
-    out_layer: LayerActNorm
+    blocks: LayerList[LayerActivationNormalization]
+    out_layer: LayerActivationNormalization
 
     def __init__(
         self,
@@ -89,7 +89,7 @@ class MultiLayerPerceptron(DeeplayModule):
             f_in = self.in_features if i == 0 else self.hidden_dims[i - 1]
 
             self.blocks.append(
-                LayerActNorm(
+                LayerActivationNormalization(
                     Layer(nn.Linear, f_in, f_out)
                     if f_in
                     else Layer(nn.LazyLinear, f_out),
@@ -101,7 +101,7 @@ class MultiLayerPerceptron(DeeplayModule):
                 )
             )
 
-        self.out_layer = LayerActNorm(
+        self.out_layer = LayerActivationNormalization(
             Layer(nn.Linear, self.hidden_dims[-1], self.out_features),
             out_activation,
             Layer(nn.Identity, num_features=self.out_features),
@@ -131,8 +131,8 @@ class MultiLayerPerceptron(DeeplayModule):
         name: Literal["out_layer", "blocks"],
         order: Optional[Sequence[str]] = None,
         layer: Optional[Type[nn.Module]] = None,
-        act: Optional[Type[nn.Module]] = None,
-        norm: Optional[Type[nn.Module]] = None,
+        activation: Optional[Type[nn.Module]] = None,
+        normalization: Optional[Type[nn.Module]] = None,
         **kwargs: Any,
     ) -> None:
         ...
@@ -144,8 +144,8 @@ class MultiLayerPerceptron(DeeplayModule):
         index: int | slice | List[int | slice] | None = None,
         order: Optional[Sequence[str]] = None,
         layer: Optional[Type[nn.Module]] = None,
-        act: Optional[Type[nn.Module]] = None,
-        norm: Optional[Type[nn.Module]] = None,
+        activation: Optional[Type[nn.Module]] = None,
+        normalization: Optional[Type[nn.Module]] = None,
         **kwargs: Any,
     ) -> None:
         ...

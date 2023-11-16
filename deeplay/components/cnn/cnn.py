@@ -1,12 +1,12 @@
 from typing import List, Optional, Literal, Any, Sequence, Type, overload
 
-from ... import DeeplayModule, Layer, LayerList, PoolLayerActNorm
+from ... import DeeplayModule, Layer, LayerList, PoolLayerActivationNormalization
 
 import torch.nn as nn
 
 
 class ConvolutionalNeuralNetwork(DeeplayModule):
-        """Convolutional Neural Network (CNN) module.
+    """Convolutional Neural Network (CNN) module.
 
     Parameters
     ----------
@@ -17,7 +17,7 @@ class ConvolutionalNeuralNetwork(DeeplayModule):
     out_channels: int
         Number of output features
     out_activation: template-like
-        Specification for the output act of the MLP. (Default: nn.Identity)
+        Specification for the output activation of the MLP. (Default: nn.Identity)
     pool: template-like
         Specification for the pooling of the block. Is not applied to the first block. (Default: nn.Identity)
 
@@ -31,7 +31,7 @@ class ConvolutionalNeuralNetwork(DeeplayModule):
     out_channels: int
         Number of output features
     out_activation: template-like
-        Specification for the output act of the MLP. (Default: nn.Identity)
+        Specification for the output activation of the MLP. (Default: nn.Identity)
     pool: template-like
         Specification for the pooling of the block. Is not applied to the first block. (Default: nn.Identity)
 
@@ -41,13 +41,13 @@ class ConvolutionalNeuralNetwork(DeeplayModule):
     - in_channels (int): Number of input features. If None, the input shape is inferred from the first forward pass.
     - hidden_channels (list[int]): Number of hidden units in each layer.
     - out_channels (int): Number of output features.
-    - blocks (template-like): Specification for the blocks of the CNN. (Default: "layer" >> "act" >> "norm" >> "dropout")
+    - blocks (template-like): Specification for the blocks of the CNN. (Default: "layer" >> "activation" >> "normalization" >> "dropout")
         - pool (template-like): Specification for the pooling of the block. (Default: nn.Identity)
         - layer (template-like): Specification for the layer of the block. (Default: nn.Linear)
-        - act (template-like): Specification for the act of the block. (Default: nn.ReLU)
-        - norm (template-like): Specification for the norm of the block. (Default: nn.Identity)
+        - activation (template-like): Specification for the activation of the block. (Default: nn.ReLU)
+        - normalization (template-like): Specification for the normalization of the block. (Default: nn.Identity)
         - dropout (template-like): Specification for the dropout of the block. (Default: nn.Identity)
-    - out_activation (template-like): Specification for the output act of the MLP. (Default: nn.Identity)
+    - out_activation (template-like): Specification for the output activation of the MLP. (Default: nn.Identity)
 
     Constraints
     -----------
@@ -64,8 +64,8 @@ class ConvolutionalNeuralNetwork(DeeplayModule):
     --------
     >>> # Using default values
     >>> cnn = ConvolutionalNeuralNetwork(3, [32, 64, 128], 1)
-    >>> # Customizing output act
-    >>> cnn.output_block.act(nn.Sigmoid)
+    >>> # Customizing output activation
+    >>> cnn.output_block.activation(nn.Sigmoid)
     >>> # Changing the kernel size of the first layer
     >>> cnn.input_block.layer.kernel_size(5)
 
@@ -83,7 +83,7 @@ class ConvolutionalNeuralNetwork(DeeplayModule):
     in_channels: Optional[int]
     hidden_channels: Sequence[Optional[int]]
     out_channels: int
-    blocks: LayerList[PoolLayerActNorm]
+    blocks: LayerList[PoolLayerActivationNormalization]
 
     @property
     def input_block(self):
@@ -143,7 +143,7 @@ class ConvolutionalNeuralNetwork(DeeplayModule):
             c_in = self.in_channels if i == 0 else self.hidden_channels[i - 1]
 
             self.blocks.append(
-                PoolLayerActNorm(
+                PoolLayerActivationNormalization(
                     pool if i > 0 else Layer(nn.Identity),
                     Layer(nn.Conv2d, c_in, c_out, 3, 1, 1)
                     if c_in
@@ -157,7 +157,7 @@ class ConvolutionalNeuralNetwork(DeeplayModule):
             )
 
         self.blocks.append(
-            PoolLayerActNorm(
+            PoolLayerActivationNormalization(
                 pool if len(self.hidden_channels) > 0 else Layer(nn.Identity),
                 Layer(nn.Conv2d, c_out, self.out_channels, 3, 1, 1),
                 out_activation,
@@ -187,8 +187,8 @@ class ConvolutionalNeuralNetwork(DeeplayModule):
         name: Literal["blocks"],
         order: Optional[Sequence[str]] = None,
         layer: Optional[Type[nn.Module]] = None,
-        act: Optional[Type[nn.Module]] = None,
-        norm: Optional[Type[nn.Module]] = None,
+        activation: Optional[Type[nn.Module]] = None,
+        normalization: Optional[Type[nn.Module]] = None,
         **kwargs: Any,
     ) -> None:
         ...
@@ -200,8 +200,8 @@ class ConvolutionalNeuralNetwork(DeeplayModule):
         index: int | slice | List[int | slice],
         order: Optional[Sequence[str]] = None,
         layer: Optional[Type[nn.Module]] = None,
-        act: Optional[Type[nn.Module]] = None,
-        norm: Optional[Type[nn.Module]] = None,
+        activation: Optional[Type[nn.Module]] = None,
+        normalization: Optional[Type[nn.Module]] = None,
         **kwargs: Any,
     ) -> None:
         ...
