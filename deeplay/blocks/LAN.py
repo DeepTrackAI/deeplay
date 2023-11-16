@@ -13,24 +13,24 @@ from ..module import DeeplayModule
 from .sequential import SequentialBlock
 
 
-class LayerActivationNormalizationBlock(SequentialBlock):
+class LayerActNorm(SequentialBlock):
     layer: nn.Module
-    activation: nn.Module
-    normalization: nn.Module
+    act: nn.Module
+    norm: nn.Module
     order: List[str]
 
     def __init__(
         self,
         layer: nn.Module,
-        activation: nn.Module,
-        normalization: nn.Module,
-        order: List[str] = ["layer", "activation", "normalization"],
+        act: nn.Module,
+        norm: nn.Module,
+        order: List[str] = ["layer", "act", "norm"],
         **kwargs: nn.Module,
     ):
         super().__init__(
             layer=layer,
-            activation=activation,
-            normalization=normalization,
+            act=act,
+            norm=norm,
             order=order,
             **kwargs,
         )
@@ -44,7 +44,7 @@ class LayerActivationNormalizationBlock(SequentialBlock):
         self,
         order: Optional[List[str]],
         layer: Optional[nn.Module],
-        activation: Optional[nn.Module],
+        act: Optional[nn.Module],
         **kwargs: nn.Module,
     ) -> None:
         ...
@@ -54,11 +54,11 @@ class LayerActivationNormalizationBlock(SequentialBlock):
         ...
 
     @overload
-    def configure(self, name: Literal["activation"], *args, **kwargs) -> None:
+    def configure(self, name: Literal["act"], *args, **kwargs) -> None:
         ...
 
     @overload
-    def configure(self, name: Literal["normalization"], *args, **kwargs) -> None:
+    def configure(self, name: Literal["norm"], *args, **kwargs) -> None:
         ...
 
     @overload
