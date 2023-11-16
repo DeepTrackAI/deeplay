@@ -12,7 +12,6 @@ import scipy.ndimage
 import scipy
 
 
-
 class LodeSTAR(Application):
     def __init__(
         self, model=None, num_outputs=2, between_loss=None, within_loss=None, **kwargs
@@ -89,7 +88,7 @@ class LodeSTAR(Application):
             y_reduced = f(y_reduced)
         return y_reduced
 
-    def detect(self, x, alpha=0.5, beta=.5, cutoff=0.97, mode="quantile")
+    def detect(self, x, alpha=0.5, beta=0.5, cutoff=0.97, mode="quantile"):
         y = self.model(x.to(self.device))
         y_pred, weights = y[:, :-1], y[:, -1]
         detections = [
@@ -98,15 +97,19 @@ class LodeSTAR(Application):
         ]
 
         return detections
-    
+
     def pooled(self, x, mask=1):
         y = self.model(x.to(self.device))
         y_pred, weights = y[:, :-1], y[:, -1]
-        masked
+        masked_weights = weights * mask
+
+        pooled = self.reduce(y_pred, self.normalize(masked_weights))
 
         return pooled
-    
-    def detect_single(self, y_pred, weights, alpha=0.5, beta=.5, cutoff=0.97, mode="quantile"):
+
+    def detect_single(
+        self, y_pred, weights, alpha=0.5, beta=0.5, cutoff=0.97, mode="quantile"
+    ):
         score = self.get_detection_score(y_pred, weights, alpha, beta)
         return self.find_local_maxima(y_pred, score, cutoff, mode)
 
@@ -145,13 +148,13 @@ class LodeSTAR(Application):
             first output from model
         """
         pred = pred.permute(0, 2, 3, 1).cpu().detach().numpy()
-        kernel = np.ones((1, 3, 3)) / 3 ** 2
+        kernel = np.ones((1, 3, 3)) / 3**2
         pred_local_squared = scipy.signal.convolve(pred, kernel, "same") ** 2
-        squared_pred_local = scipy.signal.convolve(pred ** 2, kernel, "same")
+        squared_pred_local = scipy.signal.convolve(pred**2, kernel, "same")
         squared_diff = (squared_pred_local - pred_local_squared).sum(-1)
         np.clip(squared_diff, 0, np.inf, squared_diff)
         return 1 / (1e-6 + squared_diff)
-    
+
     @classmethod
     def get_detection_score(cls, pred, weights, alpha=0.5, beta=0.5):
         """Calculates the detection score as weights^alpha * consistency ^ beta.
