@@ -6,20 +6,34 @@ import torch.nn as nn
 
 
 class ConvolutionalNeuralNetwork(DeeplayModule):
-    """Convolutional Neural Network (CNN) module.
+        """Convolutional Neural Network (CNN) module.
+
+    Parameters
+    ----------
+    in_channels: int or None
+        Number of input features. If None, the input shape is inferred from the first forward pass
+    hidden_channels: list[int]
+        Number of hidden units in each layer
+    out_channels: int
+        Number of output features
+    out_activation: template-like
+        Specification for the output act of the MLP. (Default: nn.Identity)
+    pool: template-like
+        Specification for the pooling of the block. Is not applied to the first block. (Default: nn.Identity)
+
 
     Configurables
     -------------
-
-    - in_channels (int): Number of input features. If None, the input shape is inferred from the first forward pass. (Default: None)
-    - hidden_channels (list[int]): Number of hidden units in each layer. (Default: [32, 32])
-    - out_channels (int): Number of output features. (Default: 1)
-    - blocks (template-like): Specification for the blocks of the MLP. (Default: "layer" >> "activation" >> "normalization" >> "dropout")
+    - in_channels (int): Number of input features. If None, the input shape is inferred from the first forward pass.
+    - hidden_channels (list[int]): Number of hidden units in each layer.
+    - out_channels (int): Number of output features.
+    - blocks (template-like): Specification for the blocks of the CNN. (Default: "layer" >> "act" >> "norm" >> "dropout")
+        - pool (template-like): Specification for the pooling of the block. (Default: nn.Identity)
         - layer (template-like): Specification for the layer of the block. (Default: nn.Linear)
-        - activation (template-like): Specification for the activation of the block. (Default: nn.ReLU)
-        - normalization (template-like): Specification for the normalization of the block. (Default: nn.Identity)
+        - act (template-like): Specification for the act of the block. (Default: nn.ReLU)
+        - norm (template-like): Specification for the norm of the block. (Default: nn.Identity)
         - dropout (template-like): Specification for the dropout of the block. (Default: nn.Identity)
-    - out_activation (template-like): Specification for the output activation of the MLP. (Default: nn.Identity)
+    - out_activation (template-like): Specification for the output act of the MLP. (Default: nn.Identity)
 
     Constraints
     -----------
@@ -36,8 +50,8 @@ class ConvolutionalNeuralNetwork(DeeplayModule):
     --------
     >>> # Using default values
     >>> cnn = ConvolutionalNeuralNetwork(3, [32, 64, 128], 1)
-    >>> # Customizing output activation
-    >>> cnn.output_block.activation(nn.Sigmoid)
+    >>> # Customizing output act
+    >>> cnn.output_block.act(nn.Sigmoid)
     >>> # Changing the kernel size of the first layer
     >>> cnn.input_block.layer.kernel_size(5)
 
