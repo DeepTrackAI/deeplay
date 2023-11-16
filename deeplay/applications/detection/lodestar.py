@@ -6,7 +6,6 @@ import torch.nn as nn
 
 import numpy as np
 
-
 from skimage import morphology
 import scipy.ndimage
 import scipy
@@ -102,9 +101,8 @@ class LodeSTAR(Application):
     def pooled(self, x, mask=1):
         y = self.model(x.to(self.device))
         y_pred, weights = y[:, :-1], y[:, -1]
-        masked
 
-        return pooled
+        ...
     
     def detect_single(self, y_pred, weights, alpha=0.5, beta=.5, cutoff=0.97, mode="quantile"):
         score = self.get_detection_score(y_pred, weights, alpha, beta)
