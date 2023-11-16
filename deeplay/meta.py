@@ -20,10 +20,10 @@ class ExtendedConstructorMeta(type):
         if __user_config is not None:
             obj._user_config = __user_config
 
-        if cls._is_top_level["value"]:
-            with not_top_level(cls):
-                obj.__construct__()
-                obj.__post_init__()
+        # if cls._is_top_level["value"]:
+        with not_top_level(cls):
+            obj.__construct__()
+            obj.__post_init__()
 
         return obj
 
