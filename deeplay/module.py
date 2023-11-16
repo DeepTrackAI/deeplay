@@ -76,7 +76,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     _is_constructing: bool = False
     _is_building: bool = False
 
-    __extra_configurables__: Liststr] = []
+    __extra_configurables__: List[str] = []
 
     _args: tuple
     _kwargs: dict
