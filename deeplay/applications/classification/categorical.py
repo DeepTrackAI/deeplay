@@ -11,7 +11,7 @@ import torchmetrics as tm
 from .classifier import Classifier
 
 
-class CategoricalClassifier(Classifier):
+class CategoricalClassifier(Application):
     model: torch.nn.Module
     loss: torch.nn.Module
     metrics: list
