@@ -1,5 +1,5 @@
 import inspect
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Tuple, List
 
 import torch.nn as nn
 
@@ -76,7 +76,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     _is_constructing: bool = False
     _is_building: bool = False
 
-    __extra_configurables__: list[str] = []
+    __extra_configurables__: Liststr] = []
 
     _args: tuple
     _kwargs: dict
