@@ -132,11 +132,29 @@ class TestDeeplayModule(unittest.TestCase):
         self.assertEqual(module.foo.b, 2)
         self.assertEqual(module.foo.c, "C")
 
+    def test_create_independency_args(self):
+        child = Module(a=1, b=2, c="C")
+        parent = Module2(foo=child)
+        created = parent.create()
+
+        self.assertEqual(created.foo.a, 1)
+        self.assertEqual(created.foo.b, 2)
+        self.assertEqual(created.foo.c, "C")
+
+        parent.child.configure(a=3)
+
+        created_2 = parent.create()
+
+        self.assertEqual(created_2.foo.a, 3)
+        self.assertEqual(created_2.foo.b, 2)
+        self.assertEqual(created_2.foo.c, "C")
+        self.assertEqual(created.foo.a, 1)
+
+        self.assertIsNot(created.foo, created_2.foo)
+
 
 import torch
 import torch.nn as nn
-
-nn.Linear
 
 
 class ModelWithLayer(dl.DeeplayModule):
@@ -292,57 +310,6 @@ class TestDeeplayModule(unittest.TestCase):
         module = TestModule()
         with self.assertRaises(ValueError):
             module.configure("invalid_param", 100)
-
-    # Additional tests for other methods and edge cases can be added here
-
-
-# class TestModule(DeeplayModule):
-#     def __init__(self, param1=None, param2=None, child_module=None):
-#         super().__init__()
-#         self.param1 = param1
-#         self.param2 = param2
-#         self.child_module = child_module if child_module else TestModule()
-
-
-# class TestDeeplayModuleConfigure(unittest.TestCase):
-#     def test_configure_with_positional_args(self):
-#         # Test configuring with positional arguments
-#         module = TestModule()
-#         module.configure("param1", 10)
-#         self.assertEqual(module.param1, 10)
-
-#     def test_configure_with_keyword_args(self):
-#         # Test configuring with keyword arguments
-#         module = TestModule()
-#         module.configure(param2="value")
-#         self.assertEqual(module.param2, "value")
-
-#     def test_configure_with_multiple_kwargs(self):
-#         # Test configuring multiple attributes using keyword arguments
-#         module = TestModule()
-#         module.configure(param1=20, param2="another_value")
-#         self.assertEqual(module.param1, 20)
-#         self.assertEqual(module.param2, "another_value")
-
-#     def test_configure_child_module(self):
-#         # Test configuring an attribute which is itself a DeeplayModule
-#         parent_module = TestModule()
-#         child_module = TestModule()
-#         parent_module.configure("child_module", param1=30, param2="child_value")
-#         self.assertEqual(parent_module.child_module.param1, 30)
-#         self.assertEqual(parent_module.child_module.param2, "child_value")
-
-#     def test_configure_with_invalid_attribute(self):
-#         # Test configuring with an invalid attribute
-#         module = TestModule()
-#         with self.assertRaises(ValueError):
-#             module.configure("non_existent_param", 40)
-
-#     def test_configure_with_invalid_pattern(self):
-#         # Test configuring with a valid attribute but invalid pattern
-#         module = TestModule()
-#         with self.assertRaises(ValueError):
-#             module.configure("param1", 50, extra_arg="unexpected")
 
 
 if __name__ == "__main__":
