@@ -13,6 +13,7 @@ from typing import (
     Sequence,
     Literal,
     Any,
+    Dict,
 )
 
 from torch.nn.modules.module import Module

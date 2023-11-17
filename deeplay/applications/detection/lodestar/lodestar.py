@@ -1,5 +1,5 @@
-from ..application import Application
-from ...components import ConvolutionalNeuralNetwork
+from ...application import Application
+from ....components import ConvolutionalNeuralNetwork
 
 import torch
 import torch.nn as nn
