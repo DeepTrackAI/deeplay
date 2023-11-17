@@ -3,7 +3,20 @@ import torch.nn as nn
 import torch.nn.functional as F
 import lightning as L
 
-from typing import Callable, List, Type, Optional, TypeVar, Sequence, Literal, Any
+from typing import (
+    Callable,
+    Iterator,
+    List,
+    Tuple,
+    Type,
+    Optional,
+    TypeVar,
+    Sequence,
+    Literal,
+    Any,
+)
+
+from torch.nn.modules.module import Module
 
 from deeplay import DeeplayModule, External, Layer, Optimizer
 
@@ -17,13 +30,19 @@ class Application(DeeplayModule, L.LightningModule):
     def __init__(
         self,
         loss: Optional[nn.Module | Callable[..., torch.Tensor]],
+        optimizer: Optional[Optimizer] = None,
         metrics: Optional[Sequence[tm.Metric]] = None,
         train_metrics: Optional[Sequence[tm.Metric]] = None,
         val_metrics: Optional[Sequence[tm.Metric]] = None,
         test_metrics: Optional[Sequence[tm.Metric]] = None,
     ):
         super().__init__()
-        self.loss = loss
+        if loss:
+            self.loss = loss
+        if optimizer:
+            self.optimizer = optimizer
+            self._provide_paramaters_if_has_none(optimizer)
+
         metrics = metrics or []
         self.train_metrics = tm.MetricCollection(
             [*self.clone_metrics(metrics), *(train_metrics or [])],
@@ -43,6 +62,14 @@ class Application(DeeplayModule, L.LightningModule):
 
     def compute_loss(self, y_hat, y):
         return self.loss(y_hat, y)
+
+    def configure_optimizers(self):
+        try:
+            return self.optimizer
+        except AttributeError as e:
+            raise AttributeError(
+                "Application has no configured optimizer. Make sure to pass optimizer=... to the constructor."
+            ) from e
 
     def training_step(self, batch, batch_idx):
         x, y = self.train_preprocess(batch)
@@ -148,3 +175,29 @@ class Application(DeeplayModule, L.LightningModule):
 
     def test_preprocess(self, batch):
         return batch
+
+    def _provide_paramaters_if_has_none(self, optimizer):
+        if isinstance(optimizer, Optimizer):
+            if "params" in optimizer.kwargs:
+                return
+            else:
+
+                @optimizer.params
+                def f():
+                    return self.parameters()
+
+    def named_children(self) -> Iterator[Tuple[str, Module]]:
+        name_child_iterator = list(super().named_children())
+        # optimizers last
+        not_optimizers = [
+            (name, child)
+            for name, child in name_child_iterator
+            if not isinstance(child, Optimizer)
+        ]
+        optimizers = [
+            (name, child)
+            for name, child in name_child_iterator
+            if isinstance(child, Optimizer)
+        ]
+
+        yield from (not_optimizers + optimizers)

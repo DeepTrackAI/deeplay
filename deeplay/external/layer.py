@@ -7,8 +7,8 @@ P = ParamSpec("P")
 
 
 class Layer(External):
-    def __pre_init__(self, cls: Type[nn.Module], *args, **kwargs):
-        super().__pre_init__(cls, *args, **kwargs)
+    def __pre_init__(self, classtype: Type[nn.Module], *args, **kwargs):
+        super().__pre_init__(classtype, *args, **kwargs)
 
     @overload
     def configure(self, **kwargs: Any) -> None:
