@@ -1,8 +1,3 @@
-from torch import Tensor, nn
-from torch.nn.modules.container import ModuleList
-from torch.nn.modules.module import Module
-from .module import DeeplayModule
-
 from typing import (
     Any,
     overload,
@@ -12,7 +7,11 @@ from typing import (
     TypeVar,
 )
 
-T = TypeVar("T", bound=DeeplayModule)
+from torch import nn
+from .module import DeeplayModule
+
+
+T = TypeVar("T", bound=nn.Module)
 
 
 class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
@@ -33,8 +32,9 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
 
         for idx, layer in enumerate(layers):
             super().append(layer)
-            self._give_user_configuration(layer, self._get_abs_string_index(idx))
-            layer.__construct__()
+            if isinstance(layer, DeeplayModule):
+                self._give_user_configuration(layer, self._get_abs_string_index(idx))
+                layer.__construct__()
 
     def append(self, module: DeeplayModule) -> "LayerList[T]":
         if not self._has_built:
