@@ -157,3 +157,10 @@ class TestLayerList(unittest.TestCase):
                 self.assertEqual(list_33.layers[i][j][k].in_features, 4)
             else:
                 self.assertEqual(list_33.layers[i][j][k].in_features, 1)
+
+    def test_with_instantiated(self):
+        llist = LayerList(nn.Linear(1, 1), nn.Linear(1, 1))
+        llist.build()
+        self.assertEqual(len(llist), 2)
+        self.assertIsInstance(llist[0], nn.Linear)
+        self.assertIsInstance(llist[1], nn.Linear)
