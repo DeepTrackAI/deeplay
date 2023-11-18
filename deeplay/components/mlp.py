@@ -1,6 +1,6 @@
-from ..core.templates import Layer
-from ..core.core import DeeplayModule
-from ..core.config import Config, Ref
+from typing import List, Optional, Literal, Any, Sequence, Type, overload
+
+from .. import DeeplayModule, Layer, LayerList, LayerActivationNormalization
 
 import torch.nn as nn
 
@@ -13,21 +13,23 @@ class MultiLayerPerceptron(DeeplayModule):
     Configurables
     -------------
 
-    - in_features (int): Number of input features. If None, the input shape is inferred from the first forward pass. (Default: None)
-    - hidden_dims (list[int]): Number of hidden units in each layer. (Default: [32, 32])
+    - in_features (int): Number of input features. If None, the input shape is inferred in the first forward pass. (Default: None)
+    - hidden_features (list[int]): Number of hidden units in each layer.
     - out_features (int): Number of output features. (Default: 1)
     - blocks (template-like): Specification for the blocks of the MLP. (Default: "layer" >> "activation" >> "normalization" >> "dropout")
         - layer (template-like): Specification for the layer of the block. (Default: nn.Linear)
         - activation (template-like): Specification for the activation of the block. (Default: nn.ReLU)
         - normalization (template-like): Specification for the normalization of the block. (Default: nn.Identity)
-        - dropout (template-like): Specification for the dropout of the block. (Default: nn.Identity)
-    - out_layer (template-like): Specification for the output layer of the MLP. (Default: nn.Linear)
     - out_activation (template-like): Specification for the output activation of the MLP. (Default: nn.Identity)
 
-    Constraints
-    -----------
-    - input shape: (batch_size, ch_in)
-    - output shape: (batch_size, ch_out)
+    Shorthands
+    ----------
+    - `input`: Equivalent to `.blocks[0]`.
+    - `hidden`: Equivalent to `.blocks[:-1]`.
+    - `output`: Equivalent to `.blocks[-1]`.
+    - `layer`: Equivalent to `.blocks.layer`.
+    - `activation`: Equivalent to `.blocks.activation`.
+    - `normalization`: Equivalent to `.blocks.normalization`.
 
     Evaluation
     ----------
@@ -37,211 +39,140 @@ class MultiLayerPerceptron(DeeplayModule):
 
     Examples
     --------
-    >>> # Using default values
-    >>> mlp = MultiLayerPerceptron(28 * 28, [128], 10)
-    >>> # Customizing output activation
-    >>> mlp = MultiLayerPerceptron(28 * 28, [128], 1, nn.Sigmoid)
-    >>> # Using from_config with custom normalization
-    >>> mlp = MultiLayerPerceptron.from_config(
-    >>>     Config()
-    >>>     .in_features(28 * 28)
-    >>>     .hidden_dims([128])
-    >>>     .out_features(1)
-    >>>     .out_activation(nn.Sigmoid)
-    >>>     .blocks[0].normalization(nn.BatchNorm1d, num_features=128)
-    >>> )
+    >>> mlp = MultiLayerPerceptron(28 * 28, [128, 128], 10)
+    >>> mlp.hidden.normalization.configure(nn.BatchNorm1d)
+    >>> mlp.output.activation.configure(nn.Softmax)
+    >>> mlp.layer.configure(bias=False)
+    >>> mlp.build()
+
 
     Return Values
     -------------
     The forward method returns the processed tensor.
 
-    Additional Notes
-    ----------------
-    The `Config` and `Layer` classes are used for configuring the blocks of the MLP. For more details refer to [Config Documentation](#) and [Layer Documentation](#).
-
     """
 
-    @staticmethod
-    def defaults():
-        return (
-            Config()
-            .in_features(None)
-            .depth(Ref("hidden_dims", lambda s: len(s) + 1))
-            .blocks(
-                Layer("layer")
-                >> Layer("normalization")
-                >> Layer("activation")
-                >> Layer("dropout")
-            )
-            .blocks.layer(nn.Linear)
-            .blocks.activation(nn.ReLU)
-            .blocks.normalization(nn.Identity)
-            .blocks.dropout(nn.Identity)
-            .out_layer(nn.Linear)
-            .out_layer.in_features(Ref("hidden_dims", lambda s: s[-1]))
-            .out_layer.out_features(Ref("out_features"))
-            .out_activation(nn.Identity)
-            # If in_features is not specified, we do lazy initialization
-        )
+    in_features: Optional[int]
+    hidden_features: Sequence[Optional[int]]
+    out_features: int
+    blocks: LayerList[LayerActivationNormalization]
+
+    @property
+    def input(self):
+        """Return the input layer of the network. Equivalent to `.blocks[0]`."""
+        return self.blocks[0]
+
+    @property
+    def hidden(self):
+        """Return the hidden layers of the network. Equivalent to `.blocks[:-1]`"""
+        return self.blocks[:-1]
+
+    @property
+    def output(self):
+        """Return the last layer of the network. Equivalent to `.blocks[-1]`."""
+        return self.blocks[-1]
+
+    @property
+    def layer(self) -> LayerList[Layer]:
+        """Return the layers of the network. Equivalent to `.blocks.layer`."""
+        return self.blocks.layer
+
+    @property
+    def activation(self) -> LayerList[Layer]:
+        """Return the activations of the network. Equivalent to `.blocks.activation`."""
+        return self.blocks.activation
+
+    @property
+    def normalization(self) -> LayerList[Layer]:
+        """Return the normalizations of the network. Equivalent to `.blocks.normalization`."""
+        return self.blocks.normalization
 
     def __init__(
         self,
-        in_features: int or None,
-        hidden_dims,
+        in_features: Optional[int],
+        hidden_features: Sequence[Optional[int]],
         out_features: int,
-        out_activation=None,
-        blocks=None,
+        out_activation: Type[nn.Module] | nn.Module | None = None,
     ):
-        """Multi-layer perceptron module.
+        super().__init__()
 
-        Also commonly known as a fully-connected neural network, or a dense neural network.
+        self.in_features = in_features
+        self.hidden_features = hidden_features
+        self.out_features = out_features
 
-        Configurables
-        -------------
-        - depth (int): Number of layers in the MLP. (Default: 2)
-        - blocks (template-like): Specification for the blocks of the MLP. (Default: "layer" >> "activation")
-            - layer (template-like): Specification for the layer of the block. (Default: nn.LazyLinear)
-            - activation (template-like): Specification for the activation of the block. (Default: nn.ReLU)
-
-        Constraints
-        -----------
-        - input shape: (batch_size, ch_in)
-        - output shape: (batch_size, ch_out)
-        - depth >= 1
-
-        Evaluation
-        ----------
-        >>> for block in mlp.blocks:
-        >>>    x = block(x)
-        >>> return x
-
-        Examples
-        --------
-        >>> # Using default values
-        >>> mlp = MultiLayerPerceptron()
-        >>> # Customizing depth and activation
-        >>> mlp = MultiLayerPerceptron(depth=4, blocks=Config().activation(nn.Sigmoid))
-        >>> # Using from_config with custom normalization
-        >>> mlp = MultiLayerPerceptron.from_config(
-        >>>     Config()
-        >>>     .blocks(Layer("layer") >> Layer("activation") >> Layer("normalization"))
-        >>>     .blocks.normalization(nn.LazyBatchNorm1d)
-        >>> )
-
-        Return Values
-        -------------
-        The forward method returns the processed tensor.
-
-        Additional Notes
-        ----------------
-        The `Config` and `Layer` classes are used for configuring the blocks of the MLP. For more details refer to [Config Documentation](#) and [Layer Documentation](#).
-
-        """
-        super().__init__(
-            in_features=in_features,
-            hidden_dims=hidden_dims,
-            out_features=out_features,
-            out_activation=out_activation,
-            blocks=blocks,
-        )
-
-        self.in_features = self.attr("in_features")
-        self.hidden_dims = self.attr("hidden_dims")
-        self.out_features = self.attr("out_features")
-
-        blocks = nn.ModuleList()
-        for i, out_features in enumerate(self.hidden_dims):
-            in_features = self.in_features if i == 0 else self.hidden_dims[i - 1]
-
-            if in_features is None:
-                kwargs = {
-                    "layer": nn.LazyLinear,
-                    "layer.out_features": out_features,
-                }
-            else:
-                kwargs = {
-                    "layer.in_features": in_features,
-                    "layer.out_features": out_features,
-                }
-
-            block = self.new(
-                "blocks",
-                i,
-                extra_kwargs=kwargs,
-                now=True,
+        if out_features <= 0:
+            raise ValueError(
+                f"Number of output features must be positive, got {out_features}"
             )
-            blocks.append(block)
 
-        self.blocks = blocks
+        if in_features is not None and in_features <= 0:
+            raise ValueError(f"in_channels must be positive, got {in_features}")
 
-        # Underscored to represent that it is not a configurable attribute
-        self.out_layer = self.new("out_layer")
+        if any(h <= 0 for h in hidden_features):
+            raise ValueError(
+                f"all hidden_channels must be positive, got {hidden_features}"
+            )
 
-        self.out_activation = self.new("out_activation")
+        if out_activation is None:
+            out_activation = Layer(nn.Identity)
+        elif isinstance(out_activation, type) and issubclass(out_activation, nn.Module):
+            out_activation = Layer(out_activation)
+
+        f_out = in_features
+
+        self.blocks = LayerList()
+        for i, f_out in enumerate(self.hidden_features):
+            f_in = self.in_features if i == 0 else self.hidden_features[i - 1]
+
+            self.blocks.append(
+                LayerActivationNormalization(
+                    Layer(nn.Linear, f_in, f_out)
+                    if f_in
+                    else Layer(nn.LazyLinear, f_out),
+                    Layer(nn.ReLU),
+                    # We can give num_features as an argument to nn.Identity
+                    # because it is ignored. This means that users do not have
+                    # to specify the number of features for nn.Identity.
+                    Layer(nn.Identity, num_features=f_out),
+                )
+            )
+
+        self.blocks.append(
+            LayerActivationNormalization(
+                Layer(nn.Linear, f_out, self.out_features),
+                out_activation,
+                Layer(nn.Identity, num_features=self.out_features),
+            )
+        )
 
     def forward(self, x):
         x = nn.Flatten()(x)
         for block in self.blocks:
             x = block(x)
-        x = self.out_layer(x)
-        x = self.out_activation(x)
         return x
 
+    @overload
+    def configure(
+        self,
+        /,
+        in_features: int | None = None,
+        hidden_features: List[int] | None = None,
+        out_features: int | None = None,
+        out_activation: Type[nn.Module] | nn.Module | None = None,
+    ) -> None:
+        ...
 
-class MLPTiny(MultiLayerPerceptron):
-    @staticmethod
-    def defaults():
-        # 97% accuracy on MNIST
-        return (
-            MultiLayerPerceptron.defaults()
-            .hidden_dims([16, 256])
-            .blocks[0]
-            .normalization(nn.LazyBatchNorm1d, num_features=16)
-            .blocks[1]
-            .normalization(nn.LazyBatchNorm1d, num_features=256)
-            .blocks.activation(nn.LeakyReLU, negative_slope=0.1)
-        )
+    @overload
+    def configure(
+        self,
+        name: Literal["blocks"],
+        index: int | slice | List[int | slice] | None = None,
+        order: Optional[Sequence[str]] = None,
+        layer: Optional[Type[nn.Module]] = None,
+        activation: Optional[Type[nn.Module]] = None,
+        normalization: Optional[Type[nn.Module]] = None,
+        **kwargs: Any,
+    ) -> None:
+        ...
 
-
-class MLPSmall(MultiLayerPerceptron):
-    # 98.1% accuracy on MNIST
-    @staticmethod
-    def defaults():
-        return (
-            MultiLayerPerceptron.defaults()
-            .hidden_dims([100, 200])
-            .blocks.activation(nn.GELU)
-            .blocks[0]
-            .normalization(nn.LazyBatchNorm1d, num_features=100)
-        )
-
-
-class MLPMedium(MultiLayerPerceptron):
-    @staticmethod
-    def defaults():
-        return (
-            MultiLayerPerceptron.defaults()
-            .hidden_dims([500, 700, 200])
-            .blocks.normalization(nn.LazyBatchNorm1d)
-            .blocks.activation(nn.GELU)
-        )
-
-
-class MLPLarge(MultiLayerPerceptron):
-    @staticmethod
-    def defaults():
-        return (
-            MultiLayerPerceptron.defaults()
-            .hidden_dims([2500, 2000, 1500, 1000, 500])
-            .blocks.normalization(nn.LazyBatchNorm1d)
-        )
-
-
-class MLPMassive(MultiLayerPerceptron):
-    @staticmethod
-    def defaults():
-        return (
-            MultiLayerPerceptron.defaults()
-            .hidden_dims([512, 1024, 1024, 1024, 1024, 1024])
-            .blocks.normalization(nn.LazyBatchNorm1d)
-        )
+    configure = DeeplayModule.configure
