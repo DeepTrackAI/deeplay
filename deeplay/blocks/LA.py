@@ -14,7 +14,7 @@ from ..module import DeeplayModule
 from .sequential import SequentialBlock
 
 
-class LayerActivationBlock(SequentialBlock):
+class LayerActivation(SequentialBlock):
     layer: DeeplayModule
     activation: DeeplayModule
     order: List[str]

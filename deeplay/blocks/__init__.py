@@ -1,3 +1,4 @@
 from .block import Block
-from .LA import LayerActivationBlock
-from .LAN import LayerActivationNormalizationBlock
+from .LA import LayerActivation
+from .LAN import LayerActivationNormalization
+from .PLAN import PoolLayerActivationNormalization
