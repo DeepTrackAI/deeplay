@@ -1,11 +1,4 @@
-from typing import (
-    Any,
-    overload,
-    Iterator,
-    List,
-    Generic,
-    TypeVar,
-)
+from typing import Any, overload, Iterator, List, Generic, TypeVar, Union
 
 from torch import nn
 from .module import DeeplayModule
@@ -15,7 +8,7 @@ T = TypeVar("T", bound=nn.Module)
 
 
 class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
-    def __pre_init__(self, *layers: T | List[T], _args: tuple[T, ...] = ()):
+    def __pre_init__(self, *layers: Union[T, List[T]], _args: tuple[T, ...] = ()):
         if len(layers) == 1 and isinstance(layers[0], list):
             input_layers: tuple[T] = layers[0]
         else:
