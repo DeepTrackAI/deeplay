@@ -426,3 +426,8 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         # remove the first parameter
         sig = sig.replace(parameters=list(sig.parameters.values())[1:])
         return sig
+
+    def forward(self, *args, **kwargs):
+        raise NotImplementedError(
+            "forward method not implemented for {}".format(self.__class__.__name__)
+        )
