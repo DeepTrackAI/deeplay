@@ -16,7 +16,9 @@ class LodeSTAR(Application):
     def __init__(
         self,
         model=None,
+        num_outputs=2,
         transforms=None,
+        n_transforms=2,
         between_loss=None,
         within_loss=None,
         between_loss_weight=1,
@@ -37,6 +39,7 @@ class LodeSTAR(Application):
             ]
 
         self.num_outputs = num_outputs
+        self.transforms = transforms
         self.model = model or self._build_default_model()
         self.between_loss = between_loss or nn.L1Loss(reduction="mean")
         self.within_loss = within_loss or nn.L1Loss(reduction="mean")
@@ -54,6 +57,11 @@ class LodeSTAR(Application):
         cnn.blocks[2].pool.configure(nn.MaxPool2d, kernel_size=2)
 
         return cnn
+
+    def transform_data(self, batch):
+        repeated = batch.repeat_interleave(self.n_transforms, dim=0)
+        transformed, inverse = self.transforms(repeated)
+        return transformed, inverse
 
     def forward(self, x):
         _, _, Hx, Wx = x.shape
@@ -83,7 +91,7 @@ class LodeSTAR(Application):
     def reduce(self, X, weights):
         return (X * weights).sum(dim=(2, 3)) / weights.sum(dim=(2, 3))
 
-    def compute_loss(self, y_hat, y):
+    def compute_loss(self, y_hat, inverse_fn):
         y_pred, weights = y_hat[:, :-1], y_hat[:, -1]
 
         weights = self.normalize(weights)
@@ -92,7 +100,7 @@ class LodeSTAR(Application):
         consistency = (y_pred - y_reduced[..., None, None]) * weights
         consistency_loss = self.within_loss(consistency, torch.zeros_like(consistency))
 
-        y_reduced_on_initial = self.apply_inverse(y_reduced, y)
+        y_reduced_on_initial = inverse_fn(y_reduced)
 
         average_on_initial = y_reduced_on_initial.mean(dim=0, keepdim=True)
 
@@ -100,16 +108,13 @@ class LodeSTAR(Application):
             y_reduced_on_initial, average_on_initial
         )
 
-        return {
-            "between_image_disagreement": consistency_loss * self.within_loss_weight,
-            "within_image_disagreement": inter_consistency_loss
-            * self.between_loss_weight,
-        }
+        weighted_between_loss = inter_consistency_loss * self.between_loss
+        weighted_within_loss = consistency_loss * self.within_loss
 
-    def apply_inverse(self, y_reduced, y):
-        for f in reversed(y):
-            y_reduced = f(y_reduced)
-        return y_reduced
+        return {
+            "between_image_disagreement": weighted_between_loss,
+            "within_image_disagreement": weighted_within_loss,
+        }
 
     def detect(self, x, alpha=0.5, beta=0.5, cutoff=0.97, mode="quantile"):
         y = self.model(x.to(self.device))
@@ -192,6 +197,11 @@ class LodeSTAR(Application):
         return weights[..., 0] ** alpha * cls.local_consistency(pred) ** beta
 
     def train_preprocess(self, batch):
-        x, *_ = batch
+        if isinstance(batch, (list, tuple)):
+            batch = batch[0]
 
-        return super().train_preprocess(batch)
+        x, inverse = self.transform_data(batch)
+        return x, inverse
+
+    val_preprocess = train_preprocess
+    test_preprocess = train_preprocess
