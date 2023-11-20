@@ -164,3 +164,21 @@ class TestLayerList(unittest.TestCase):
         self.assertEqual(len(llist), 2)
         self.assertIsInstance(llist[0], nn.Linear)
         self.assertIsInstance(llist[1], nn.Linear)
+
+    def test_with_instantiated(self):
+        class Item(DeeplayModule):
+            def __init__(self):
+                self.net = Layer(nn.Linear, 1, 1)
+
+        llist = LayerList(Item(), Item())
+
+        nets = llist.net
+        self.assertEqual(len(nets), 2)
+        self.assertIsInstance(nets[0], Layer)
+        self.assertIsInstance(nets[1], Layer)
+
+        llist.build()
+        nets = llist.net
+        self.assertEqual(len(nets), 2)
+        self.assertIsInstance(nets[0], nn.Linear)
+        self.assertIsInstance(nets[1], nn.Linear)
