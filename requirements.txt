@@ -1,3 +1,4 @@
 lightning
 torchmetrics
 torchvision
+kornia

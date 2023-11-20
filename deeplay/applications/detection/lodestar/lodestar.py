@@ -10,6 +10,8 @@ from skimage import morphology
 import scipy.ndimage
 import scipy
 
+from .transforms import RandomRotation2d, RandomTranslation2d, Transform, Transforms  
+
 
 class LodeSTAR(Application):
     def __init__(
@@ -24,28 +26,24 @@ class LodeSTAR(Application):
         within_loss_weight=0.01,
         **kwargs
     ):
-        try:
-            import deeptrack as dt
-        except ImportError as e:
-            raise ImportError(
-                "LodeSTAR requires deeptrack to be installed. "
-                "Please install deeptrack by running `pip install deeptrack`."
-            ) from e
 
         if transforms is None:
-            transforms = [
-                dt.Affine(rotation_range=360, translation_range=0.1, zoom_range=0.1),
-            ]
+            
+            transforms = Transforms([
+                RandomTranslation2d(),
+                RandomRotation2d(),
+            ])
 
         self.num_outputs = num_outputs
         self.transforms = transforms
+        self.n_transforms = n_transforms
         self.model = model or self._build_default_model()
         self.between_loss = between_loss or nn.L1Loss(reduction="mean")
         self.within_loss = within_loss or nn.L1Loss(reduction="mean")
         self.between_loss_weight = between_loss_weight
         self.within_loss_weight = within_loss_weight
 
-        super().__init__(**kwargs)
+        super().__init__(loss=None, **kwargs)
 
     def _build_default_model(self):
         cnn = ConvolutionalNeuralNetwork(
@@ -196,7 +194,7 @@ class LodeSTAR(Application):
         return weights[..., 0] ** alpha * cls.local_consistency(pred) ** beta
 
     def train_preprocess(self, batch):
-        if isinstance(batch, (list, tuple)):
+        if isinstance(batch, tuple):
             batch = batch[0]
 
         x, inverse = self.transform_data(batch)
