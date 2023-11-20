@@ -292,7 +292,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
         # Make sure that we don't modify the original arguments
         args = (a.new() if isinstance(a, DeeplayModule) else a for a in args)
-        _args = (_a.new() if isinstance(_a, DeeplayModule) else _a for _a in _args)
+        _args = (_a if isinstance(_a, DeeplayModule) else _a for _a in _args)
         kwargs = {
             k: v.new() if isinstance(v, DeeplayModule) else v for k, v in kwargs.items()
         }
