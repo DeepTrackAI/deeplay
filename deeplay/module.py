@@ -185,7 +185,8 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
         if self._has_built:
             raise RuntimeError(
-                "Module has already been built. Please use create() to create a new instance of the module."
+                "Module has already been built. "
+                "Please use create() to create a new instance of the module."
             )
 
         if len(args) == 0:
@@ -194,7 +195,8 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         else:
             if args[0] not in self.configurables:
                 raise ValueError(
-                    f"Unknown configurable {args[0]} for {self.__class__.__name__}. Available configurables are {self.configurables}."
+                    f"Unknown configurable {args[0]} for {self.__class__.__name__}. "
+                    f"Available configurables are {self.configurables}."
                 )
 
             if hasattr(getattr(self, args[0]), "configure"):
@@ -204,25 +206,30 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
             else:
                 raise ValueError(
-                    f"Unknown configurable {args[0]} for {self.__class__.__name__}. Available configurables are {self.configurables}."
+                    f"Unknown configurable {args[0]} for {self.__class__.__name__}. "
+                    "Available configurables are {self.configurables}."
                 )
 
     def create(self):
         """
-        Creates and returns a new instance of the module, fully initialized with the current configuration.
+        Creates and returns a new instance of the module, fully initialized
+        with the current configuration.
 
-        This method differs from `build` in that it generates a new, independent instance of the module,
-        rather than modifying the existing one. It's particularly relevant for subclasses of `dl.External`,
-        where actual torch layers (like Linear, Sigmoid, ReLU, etc.) are instantiated during the build
-        process. For these subclasses, `create` not only configures but also instantiates the specified
-        torch layers. For most other objects, the `.build()` step, which is internally called in `create`,
-        has no additional effect beyond configuration.
+        This method differs from `build` in that it generates a new,
+        independent instance of the module, rather than modifying the
+        existing one. It's particularly relevant for subclasses of
+        `dl.External`, where actual torch layers (like Linear, Sigmoid, ReLU,
+        etc.) are instantiated during the build process. For these subclasses,
+        `create` not only configures but also instantiates the specified torch
+        layers. For most other objects, the `.build()` step, which is internally
+        called in `create`, has no additional effect beyond configuration.
 
         Returns
         -------
         DeeplayModule
-            A new instance of the `DeeplayModule` (or its subclass), initialized with the current module's
-            configuration and, for `dl.External` subclasses, with instantiated torch layers.
+            A new instance of the `DeeplayModule` (or its subclass), initialized
+            with the current module's configuration and, for `dl.External` subclasses,
+            with instantiated torch layers.
 
         Example Usage
         -------------

@@ -1,27 +1,13 @@
+import copy
+from typing import Callable, Iterator, Literal, Optional, Sequence, Tuple, TypeVar
+
+import lightning as L
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-import lightning as L
-
-from typing import (
-    Callable,
-    Iterator,
-    List,
-    Tuple,
-    Type,
-    Optional,
-    TypeVar,
-    Sequence,
-    Literal,
-    Any,
-)
-
+import torchmetrics as tm
 from torch.nn.modules.module import Module
 
-from deeplay import DeeplayModule, External, Layer, Optimizer
-
-import torchmetrics as tm
-import copy
+from deeplay import DeeplayModule, Optimizer
 
 T = TypeVar("T")
 
