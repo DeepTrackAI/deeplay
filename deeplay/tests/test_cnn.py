@@ -3,6 +3,8 @@ import torch
 import torch.nn as nn
 from deeplay import ConvolutionalNeuralNetwork, Layer, LayerList
 
+import itertools
+
 
 class TestComponentCNN(unittest.TestCase):
     ...
@@ -88,3 +90,27 @@ class TestComponentCNN(unittest.TestCase):
             ConvolutionalNeuralNetwork(
                 in_channels=3, hidden_channels=[32, 64], out_channels=0
             )
+
+    def test_all_cnn_blocks_are_not_same_object(self):
+        cnn_with_default = ConvolutionalNeuralNetwork(3, [4, 4, 4], 1)
+        cnn_with_pool_module = ConvolutionalNeuralNetwork(
+            3, [4, 4, 4], 1, pool=nn.MaxPool2d
+        )
+        cnn_with_pool_class = ConvolutionalNeuralNetwork(
+            3, [4, 4, 4], 1, pool=nn.MaxPool2d(2)
+        )
+        cnn_with_pool_layer = ConvolutionalNeuralNetwork(
+            3, [4, 4, 4], 1, pool=Layer(nn.MaxPool2d)
+        )
+
+        for a, b in itertools.combinations(cnn_with_default.blocks, 2):
+            self.assertIsNot(a.pool, b.pool)
+
+        for a, b in itertools.combinations(cnn_with_pool_module.blocks, 2):
+            self.assertIsNot(a.pool, b.pool)
+
+        for a, b in itertools.combinations(cnn_with_pool_class.blocks[1:], 2):
+            self.assertIs(a.pool, b.pool)
+
+        for a, b in itertools.combinations(cnn_with_pool_layer.blocks, 2):
+            self.assertIsNot(a.pool, b.pool)
