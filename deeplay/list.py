@@ -20,7 +20,7 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
             input_layers: tuple[T] = layers[0]
         else:
             input_layers: tuple[T] = layers
-        layers = input_layers + _args
+        layers = tuple(input_layers) + _args
         super().__pre_init__(_args=layers)
 
     def __init__(self, *layers: T):
