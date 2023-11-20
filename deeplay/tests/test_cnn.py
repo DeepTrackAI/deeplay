@@ -12,6 +12,8 @@ class TestComponentCNN(unittest.TestCase):
     def test_cnn_defaults(self):
         cnn = ConvolutionalNeuralNetwork(3, [4], 1)
         cnn.build()
+        cnn.create()
+        
         self.assertEqual(len(cnn.blocks), 2)
 
         self.assertEqual(cnn.blocks[0].layer.in_channels, 3)
@@ -42,12 +44,14 @@ class TestComponentCNN(unittest.TestCase):
     def test_cnn_change_depth(self):
         cnn = ConvolutionalNeuralNetwork(2, [4], 3)
         cnn.configure(hidden_channels=[4, 4])
+        cnn.create()
         cnn.build()
         self.assertEqual(len(cnn.blocks), 3)
 
     def test_change_act(self):
         cnn = ConvolutionalNeuralNetwork(2, [4], 3)
         cnn.configure(out_activation=nn.Sigmoid)
+        cnn.create()
         cnn.build()
         self.assertEqual(len(cnn.blocks), 2)
         self.assertIsInstance(cnn.output_block.activation, nn.Sigmoid)
@@ -55,6 +59,7 @@ class TestComponentCNN(unittest.TestCase):
     def test_change_out_act_Layer(self):
         cnn = ConvolutionalNeuralNetwork(2, [4], 3)
         cnn.configure(out_activation=Layer(nn.Sigmoid))
+        cnn.create()
         cnn.build()
         self.assertEqual(len(cnn.blocks), 2)
         self.assertIsInstance(cnn.output_block.activation, nn.Sigmoid)
@@ -62,6 +67,7 @@ class TestComponentCNN(unittest.TestCase):
     def test_change_out_act_instance(self):
         cnn = ConvolutionalNeuralNetwork(2, [4], 3)
         cnn.configure(out_activation=nn.Sigmoid())
+        cnn.create()
         cnn.build()
         self.assertEqual(len(cnn.blocks), 2)
         self.assertIsInstance(cnn.output_block.activation, nn.Sigmoid)
