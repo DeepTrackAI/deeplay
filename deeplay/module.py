@@ -301,7 +301,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
             type(self),
             *args,
             __user_config=user_config,
-            _args=_args,
+            _args=tuple(_args),
             **kwargs,
         )
         # obj._take_user_configuration(user_config)
