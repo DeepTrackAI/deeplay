@@ -86,19 +86,34 @@ class ConvolutionalNeuralNetwork(DeeplayModule):
     blocks: LayerList[PoolLayerActivationNormalization]
 
     @property
-    def input_block(self):
+    def input(self):
         """Return the input layer of the network. Equivalent to `.blocks[0]`."""
         return self.blocks[0]
 
     @property
-    def hidden_blocks(self):
+    def hidden(self):
         """Return the hidden layers of the network. Equivalent to `.blocks[:-1]`"""
         return self.blocks[:-1]
 
     @property
-    def output_block(self):
+    def output(self):
         """Return the last layer of the network. Equivalent to `.blocks[-1]`."""
         return self.blocks[-1]
+
+    @property
+    def layer(self) -> LayerList[Layer]:
+        """Return the layers of the network. Equivalent to `.blocks.layer`."""
+        return self.blocks.layer
+
+    @property
+    def activation(self) -> LayerList[Layer]:
+        """Return the activations of the network. Equivalent to `.blocks.activation`."""
+        return self.blocks.activation
+
+    @property
+    def normalization(self) -> LayerList[Layer]:
+        """Return the normalizations of the network. Equivalent to `.blocks.normalization`."""
+        return self.blocks.normalization
 
     def __init__(
         self,
