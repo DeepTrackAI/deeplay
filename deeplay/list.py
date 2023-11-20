@@ -48,7 +48,9 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
         return self[index]
 
     @overload
-    def configure(self, *args: int | slice | List[int | slice], **kwargs: Any) -> None:
+    def configure(
+        self, *args: Union[int, slice, List[int], slice], **kwargs: Any
+    ) -> None:
         ...
 
     @overload
@@ -104,7 +106,7 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
     def __getitem__(self, index: slice) -> "LayerList[T]":
         ...
 
-    def __getitem__(self, index: int | slice) -> "T | LayerList[T]":
+    def __getitem__(self, index: Union[int, slice]) -> "Union[T, LayerList[T]]":
         return super().__getitem__(index)  # type: ignore
 
 

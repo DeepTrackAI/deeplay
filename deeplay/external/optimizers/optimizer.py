@@ -24,9 +24,11 @@ class Optimizer(External):
         self,
         func: Callable[
             [],
-            Iterable[torch.nn.Parameter]
-            | Dict[str, Iterable[torch.nn.Parameter]]
-            | List[Dict[str, Iterable[torch.nn.Parameter]]],
+            Union[
+                Iterable[torch.nn.Parameter],
+                Dict[str, Iterable[torch.nn.Parameter]],
+                List[Dict[str, Iterable[torch.nn.Parameter]]],
+            ],
         ],
     ):
         self.configure(params=func)

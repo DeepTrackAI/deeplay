@@ -1,5 +1,14 @@
 import copy
-from typing import Callable, Iterator, Literal, Optional, Sequence, Tuple, TypeVar
+from typing import (
+    Callable,
+    Iterator,
+    Literal,
+    Optional,
+    Sequence,
+    Tuple,
+    TypeVar,
+    Union,
+)
 
 import lightning as L
 import torch
@@ -15,7 +24,7 @@ T = TypeVar("T")
 class Application(DeeplayModule, L.LightningModule):
     def __init__(
         self,
-        loss: Optional[nn.Module | Callable[..., torch.Tensor]],
+        loss: Union[nn.Module, Callable[..., torch.Tensor], None],
         optimizer: Optional[Optimizer] = None,
         metrics: Optional[Sequence[tm.Metric]] = None,
         train_metrics: Optional[Sequence[tm.Metric]] = None,
