@@ -291,8 +291,8 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         kwargs = self._actual_init_args["kwargs"]
 
         # Make sure that we don't modify the original arguments
-        args = (a.new() if isinstance(a, DeeplayModule) else a for a in args)
-        _args = (_a.new() if isinstance(_a, DeeplayModule) else _a for _a in _args)
+        args = tuple(a.new() if isinstance(a, DeeplayModule) else a for a in args)
+        _args = tuple(_a.new() if isinstance(_a, DeeplayModule) else _a for _a in _args)
         kwargs = {
             k: v.new() if isinstance(v, DeeplayModule) else v for k, v in kwargs.items()
         }
