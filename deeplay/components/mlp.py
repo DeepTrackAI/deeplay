@@ -1,6 +1,6 @@
 from typing import List, Optional, Literal, Any, Sequence, Type, overload
 
-from .. import DeeplayModule, Layer, LayerList, LayerActivationNormalizationBlock
+from .. import DeeplayModule, Layer, LayerList, LayerActivationNormalization
 
 import torch.nn as nn
 
@@ -55,7 +55,7 @@ class MultiLayerPerceptron(DeeplayModule):
     in_features: Optional[int]
     hidden_features: Sequence[Optional[int]]
     out_features: int
-    blocks: LayerList[LayerActivationNormalizationBlock]
+    blocks: LayerList[LayerActivationNormalization]
 
     @property
     def input(self):
@@ -125,7 +125,7 @@ class MultiLayerPerceptron(DeeplayModule):
             f_in = self.in_features if i == 0 else self.hidden_features[i - 1]
 
             self.blocks.append(
-                LayerActivationNormalizationBlock(
+                LayerActivationNormalization(
                     Layer(nn.Linear, f_in, f_out)
                     if f_in
                     else Layer(nn.LazyLinear, f_out),
@@ -138,7 +138,7 @@ class MultiLayerPerceptron(DeeplayModule):
             )
 
         self.blocks.append(
-            LayerActivationNormalizationBlock(
+            LayerActivationNormalization(
                 Layer(nn.Linear, f_out, self.out_features),
                 out_activation,
                 Layer(nn.Identity, num_features=self.out_features),

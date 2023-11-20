@@ -13,7 +13,7 @@ from ..module import DeeplayModule
 from .sequential import SequentialBlock
 
 
-class LayerActivationNormalizationBlock(SequentialBlock):
+class LayerActivationNormalization(SequentialBlock):
     layer: nn.Module
     activation: nn.Module
     normalization: nn.Module
