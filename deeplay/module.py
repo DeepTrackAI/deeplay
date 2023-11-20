@@ -1,5 +1,5 @@
 import inspect
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Tuple, List
 
 import torch.nn as nn
 
@@ -76,7 +76,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     _is_constructing: bool = False
     _is_building: bool = False
 
-    __extra_configurables__: list[str] = []
+    __extra_configurables__: List[str] = []
 
     _args: tuple
     _kwargs: dict
@@ -182,6 +182,12 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         module.child_module.configure(child_attribute=child_attribute_value)
         ```
         """
+
+        if self._has_built:
+            raise RuntimeError(
+                "Module has already been built. Please use create() to create a new instance of the module."
+            )
+
         if len(args) == 0:
             self._configure_kwargs(kwargs)
 
@@ -263,6 +269,8 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         """
         for name, value in self.named_children():
             if isinstance(value, DeeplayModule):
+                if value._has_built:
+                    continue
                 value = value.build()
                 if value is not None:
                     try:
@@ -281,6 +289,14 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         args = self._actual_init_args["args"]
         _args = self._args
         kwargs = self._actual_init_args["kwargs"]
+
+        # Make sure that we don't modify the original arguments
+        args = (a.new() if isinstance(a, DeeplayModule) else a for a in args)
+        _args = (_a.new() if isinstance(_a, DeeplayModule) else _a for _a in _args)
+        kwargs = {
+            k: v.new() if isinstance(v, DeeplayModule) else v for k, v in kwargs.items()
+        }
+
         obj = ExtendedConstructorMeta.__call__(
             type(self),
             *args,
@@ -288,6 +304,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
             _args=_args,
             **kwargs,
         )
+        # obj._take_user_configuration(user_config)
         return obj
 
     def get_user_configuration(self):
@@ -340,7 +357,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
     def _give_user_configuration(self, receiver: "DeeplayModule", name):
         if self._user_config is not None:
-            sub_config = {}
+            sub_config = receiver._collect_user_configuration()
             for key, value in self._user_config.items():
                 if len(key) > 1 and key[0] == name:
                     sub_config[key[1:]] = value
@@ -361,7 +378,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
     def __setattr__(self, name, value):
         if self._is_constructing:
-            if isinstance(value, DeeplayModule):
+            if isinstance(value, DeeplayModule) and not value._has_built:
                 self._give_user_configuration(value, name)
                 value.__construct__()
             self._setattr_recording.add(name)
@@ -383,12 +400,12 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         return arguments
 
     def __construct__(self):
-        with not_top_level(ExtendedConstructorMeta):
-            self._modules.clear()
-            self._is_constructing = True
-            self.__init__(*self._args, **self.kwargs)
-            self._is_constructing = False
-            self.__post_init__()
+        # with not_top_level(ExtendedConstructorMeta):
+        self._modules.clear()
+        self._is_constructing = True
+        self.__init__(*self._args, **self.kwargs)
+        self._is_constructing = False
+        self.__post_init__()
 
     @classmethod
     def get_argspec(cls):

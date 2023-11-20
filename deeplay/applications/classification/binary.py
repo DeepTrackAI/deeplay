@@ -11,7 +11,7 @@ import torchmetrics as tm
 from .classifier import Classifier
 
 
-class BinaryClassifier(Classifier):
+class BinaryClassifier(Application):
     model: torch.nn.Module
     loss: torch.nn.Module
     metrics: list

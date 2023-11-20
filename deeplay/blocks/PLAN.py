@@ -12,11 +12,11 @@ from .sequential import SequentialBlock
 from ..external import Layer
 
 
-class PoolLayerActivationNormalizationBlock(SequentialBlock):
-    pool: Layer
-    layer: Layer
-    activation: Layer
-    normalization: Layer
+class PoolLayerActivationNormalization(SequentialBlock):
+    pool: nn.Module
+    layer: nn.Module
+    activation: nn.Module
+    normalization: nn.Module
     order: List[str]
 
     def __init__(
