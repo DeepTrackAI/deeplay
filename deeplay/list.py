@@ -93,7 +93,9 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
                 raise
 
             submodules = [
-                getattr(layer, name) for layer in self if hasattr(layer, name)
+                getattr(layer, name)
+                for layer in self
+                if hasattr(layer, name) and isinstance(getattr(layer, name), nn.Module)
             ]
             if len(submodules) > 0:
                 return LayerList(*submodules)
