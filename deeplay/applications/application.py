@@ -89,10 +89,10 @@ class Application(DeeplayModule, L.LightningModule):
         if not isinstance(loss, dict):
             loss = {"loss": loss}
 
-        for name, loss in loss.items():
+        for name, v in loss.items():
             self.log(
                 f"train_{name}",
-                loss,
+                v,
                 on_step=True,
                 on_epoch=True,
                 prog_bar=True,

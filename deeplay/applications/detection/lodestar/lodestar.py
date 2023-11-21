@@ -10,7 +10,7 @@ from skimage import morphology
 import scipy.ndimage
 import scipy
 
-from .transforms import RandomRotation2d, RandomTranslation2d, Transform, Transforms  
+from .transforms import RandomRotation2d, RandomTranslation2d, Transform, Transforms
 
 
 class LodeSTAR(Application):
@@ -26,13 +26,13 @@ class LodeSTAR(Application):
         within_loss_weight=0.01,
         **kwargs
     ):
-
         if transforms is None:
-            
-            transforms = Transforms([
-                RandomTranslation2d(),
-                RandomRotation2d(),
-            ])
+            transforms = Transforms(
+                [
+                    RandomTranslation2d(),
+                    RandomRotation2d(),
+                ]
+            )
 
         self.num_outputs = num_outputs
         self.transforms = transforms
@@ -83,13 +83,13 @@ class LodeSTAR(Application):
 
     def normalize(self, weights):
         weights = weights + 1e-6
-        return weights / weights.sum(dim=(2, 3), keepdim=True)
+        return weights / weights.sum(dim=(1, 2), keepdim=True)
 
     def reduce(self, X, weights):
         return (X * weights).sum(dim=(2, 3)) / weights.sum(dim=(2, 3))
 
     def compute_loss(self, y_hat, inverse_fn):
-        y_pred, weights = y_hat[:, :-1], y_hat[:, -1]
+        y_pred, weights = y_hat[:, :-1], y_hat[:, -1:]
 
         weights = self.normalize(weights)
         y_reduced = self.reduce(y_pred, weights)
@@ -105,10 +105,11 @@ class LodeSTAR(Application):
             y_reduced_on_initial, average_on_initial
         )
 
-        weighted_between_loss = inter_consistency_loss * self.between_loss
-        weighted_within_loss = consistency_loss * self.within_loss
+        weighted_between_loss = inter_consistency_loss * self.between_loss_weight
+        weighted_within_loss = consistency_loss * self.within_loss_weight
 
         return {
+            "loss": weighted_between_loss + weighted_within_loss,
             "between_image_disagreement": weighted_between_loss,
             "within_image_disagreement": weighted_within_loss,
         }
