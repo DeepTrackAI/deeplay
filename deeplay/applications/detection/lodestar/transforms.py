@@ -77,7 +77,7 @@ class RandomRotation2d(Transform):
 
     @staticmethod
     def _forward(x, angle, indices):
-        angle = torch.tensor(angle).type_as(x).to(x.device)
+        angle = angle.type_as(x).to(x.device)
         return kornia.geometry.transform.rotate(
             x, angle * 180 / np.pi, align_corners=True, padding_mode="reflection"
         )

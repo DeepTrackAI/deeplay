@@ -205,7 +205,7 @@ class LodeSTAR(Application):
         return weights[..., 0] ** alpha * cls.local_consistency(pred) ** beta
 
     def train_preprocess(self, batch):
-        if isinstance(batch, tuple):
+        if isinstance(batch, (tuple, list)):
             batch = batch[0]
 
         x, inverse = self.transform_data(batch)
