@@ -23,7 +23,7 @@ class LodeSTAR(Application):
         between_loss=None,
         within_loss=None,
         between_loss_weight=1,
-        within_loss_weight=0.01,
+        within_loss_weight=0.1,
         **kwargs
     ):
         if transforms is None:
@@ -49,7 +49,7 @@ class LodeSTAR(Application):
         cnn = ConvolutionalNeuralNetwork(
             None,
             [32, 32, 64, 64, 64, 64, 64, 64, 64],
-            self.num_outputs,
+            self.num_outputs + 1,
         )
         cnn.blocks[2].pool.configure(nn.MaxPool2d, kernel_size=2)
 
@@ -70,7 +70,11 @@ class LodeSTAR(Application):
         x_range = torch.arange(Hy, device=x.device) * Hx / Hy
         y_range = torch.arange(Wy, device=x.device) * Wx / Wy
 
-        Y, X = torch.meshgrid(y_range, x_range)
+        if self.training:
+            x_range = x_range - Hx / 2 + 0.5
+            y_range = y_range - Wx / 2 + 0.5
+
+        Y, X = torch.meshgrid(y_range, x_range, indexing="xy")
 
         delta_x = y[:, 0]
         delta_y = y[:, 1]
@@ -82,41 +86,47 @@ class LodeSTAR(Application):
         return torch.cat([X[:, None], Y[:, None], y[:, 2:-1], weights[:, None]], dim=1)
 
     def normalize(self, weights):
-        weights = weights + 1e-6
-        return weights / weights.sum(dim=(1, 2), keepdim=True)
+        weights = weights + 1e-5
+        return weights / weights.sum(dim=(2, 3), keepdim=True)
 
     def reduce(self, X, weights):
         return (X * weights).sum(dim=(2, 3)) / weights.sum(dim=(2, 3))
 
     def compute_loss(self, y_hat, inverse_fn):
+        B = y_hat.size(0) / self.n_transforms
+
         y_pred, weights = y_hat[:, :-1], y_hat[:, -1:]
 
         weights = self.normalize(weights)
         y_reduced = self.reduce(y_pred, weights)
 
-        consistency = (y_pred - y_reduced[..., None, None]) * weights
-        consistency_loss = self.within_loss(consistency, torch.zeros_like(consistency))
+        within_disagreement = (y_pred - y_reduced[..., None, None]) * weights
+        within_disagreement_loss = self.within_loss(
+            within_disagreement, torch.zeros_like(within_disagreement)
+        )
 
         y_reduced_on_initial = inverse_fn(y_reduced)
 
-        average_on_initial = y_reduced_on_initial.mean(dim=0, keepdim=True)
+        between_disagreement_loss = 0
 
-        inter_consistency_loss = self.between_loss(
-            y_reduced_on_initial, average_on_initial
-        )
+        for i in range(0, y_pred.size(0), self.n_transforms):
+            batch_preds = y_reduced_on_initial[i : i + self.n_transforms]
+            batch_mean_pred = batch_preds.mean(dim=0, keepdim=True)
+            between_disagreement_loss += (
+                self.between_loss(batch_preds, batch_mean_pred) / B
+            )
 
-        weighted_between_loss = inter_consistency_loss * self.between_loss_weight
-        weighted_within_loss = consistency_loss * self.within_loss_weight
+        weighted_between_loss = between_disagreement_loss * self.between_loss_weight
+        weighted_within_loss = within_disagreement_loss * self.within_loss_weight
 
         return {
-            "loss": weighted_between_loss + weighted_within_loss,
             "between_image_disagreement": weighted_between_loss,
             "within_image_disagreement": weighted_within_loss,
         }
 
     def detect(self, x, alpha=0.5, beta=0.5, cutoff=0.97, mode="quantile"):
-        y = self.model(x.to(self.device))
-        y_pred, weights = y[:, :-1], y[:, -1]
+        y = self(x.to(self.device))
+        y_pred, weights = y[:, :-1], y[:, -1:]
         detections = [
             self.detect_single(y_pred[i], weights[i], alpha, beta, cutoff, mode)
             for i in range(len(y_pred))
@@ -125,8 +135,8 @@ class LodeSTAR(Application):
         return detections
 
     def pooled(self, x, mask=1):
-        y = self.model(x.to(self.device))
-        y_pred, weights = y[:, :-1], y[:, -1]
+        y = self(x.to(self.device))
+        y_pred, weights = y[:, :-1], y[:, -1:]
         masked_weights = weights * mask
 
         pooled = self.reduce(y_pred, self.normalize(masked_weights))
