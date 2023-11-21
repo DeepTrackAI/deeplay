@@ -1,6 +1,6 @@
 import unittest
 
-from deeplay import DeeplayModule, LayerActivationBlock, Layer
+from deeplay import DeeplayModule, LayerActivation, Layer
 
 import torch.nn as nn
 
@@ -18,7 +18,7 @@ class ChildClass(DeeplayModule):
     def __init__(self):
         super().__init__()
 
-        self.block = LayerActivationBlock(
+        self.block = LayerActivation(
             Layer(nn.Linear, 1, 1),
             Layer(nn.ReLU),
         )
