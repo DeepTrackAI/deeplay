@@ -1,12 +1,11 @@
 from __future__ import annotations
-from typing import Any, Callable, Optional, TypeVar, overload, ParamSpec
+from typing import Any, Callable, Optional, TypeVar, overload
 import inspect
 from ..module import DeeplayModule
 
 import torch.nn as nn
 
 T = TypeVar("T")
-P = ParamSpec("P")
 
 
 class External(DeeplayModule):
@@ -68,7 +67,7 @@ class External(DeeplayModule):
         return kwargs
 
     @overload
-    def configure(self, classtype: Callable[P, Any], **kwargs: P.kwargs) -> None:
+    def configure(self, classtype, **kwargs) -> None:
         ...
 
     @overload

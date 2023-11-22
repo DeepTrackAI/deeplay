@@ -1,4 +1,4 @@
-from typing import List, Optional, Literal, Any, Sequence, Type, overload
+from typing import List, Optional, Literal, Any, Sequence, Type, overload, Union
 
 from .. import DeeplayModule, Layer, LayerList, LayerActivationNormalization
 
@@ -92,7 +92,7 @@ class MultiLayerPerceptron(DeeplayModule):
         in_features: Optional[int],
         hidden_features: Sequence[Optional[int]],
         out_features: int,
-        out_activation: Type[nn.Module] | nn.Module | None = None,
+        out_activation: Union[Type[nn.Module], nn.Module, None] = None,
     ):
         super().__init__()
 
@@ -155,10 +155,10 @@ class MultiLayerPerceptron(DeeplayModule):
     def configure(
         self,
         /,
-        in_features: int | None = None,
-        hidden_features: List[int] | None = None,
-        out_features: int | None = None,
-        out_activation: Type[nn.Module] | nn.Module | None = None,
+        in_features: Optional[int] = None,
+        hidden_features: Optional[List[int]] = None,
+        out_features: Optional[int] = None,
+        out_activation: Union[Type[nn.Module], nn.Module, None] = None,
     ) -> None:
         ...
 
@@ -166,7 +166,7 @@ class MultiLayerPerceptron(DeeplayModule):
     def configure(
         self,
         name: Literal["blocks"],
-        index: int | slice | List[int | slice] | None = None,
+        index: Union[int, slice, List[Union[int, slice]], None] = None,
         order: Optional[Sequence[str]] = None,
         layer: Optional[Type[nn.Module]] = None,
         activation: Optional[Type[nn.Module]] = None,

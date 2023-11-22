@@ -1,27 +1,22 @@
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import lightning as L
-
+import copy
 from typing import (
     Callable,
     Iterator,
-    List,
-    Tuple,
-    Type,
-    Optional,
-    TypeVar,
-    Sequence,
     Literal,
-    Any,
+    Optional,
+    Sequence,
+    Tuple,
+    TypeVar,
+    Union,
 )
 
+import lightning as L
+import torch
+import torch.nn as nn
+import torchmetrics as tm
 from torch.nn.modules.module import Module
 
-from deeplay import DeeplayModule, External, Layer, Optimizer
-
-import torchmetrics as tm
-import copy
+from deeplay import DeeplayModule, Optimizer
 
 T = TypeVar("T")
 
@@ -29,7 +24,7 @@ T = TypeVar("T")
 class Application(DeeplayModule, L.LightningModule):
     def __init__(
         self,
-        loss: Optional[nn.Module | Callable[..., torch.Tensor]],
+        loss: Union[nn.Module, Callable[..., torch.Tensor], None],
         optimizer: Optional[Optimizer] = None,
         metrics: Optional[Sequence[tm.Metric]] = None,
         train_metrics: Optional[Sequence[tm.Metric]] = None,
