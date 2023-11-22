@@ -23,7 +23,7 @@ class LodeSTAR(Application):
         between_loss=None,
         within_loss=None,
         between_loss_weight=1,
-        within_loss_weight=0.1,
+        within_loss_weight=0.01,
         **kwargs
     ):
         if transforms is None:
@@ -213,3 +213,7 @@ class LodeSTAR(Application):
 
     val_preprocess = train_preprocess
     test_preprocess = train_preprocess
+
+    def on_train_end(self) -> None:
+        self.eval()
+        return super().on_train_end()
