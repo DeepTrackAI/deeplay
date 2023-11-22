@@ -1,4 +1,4 @@
-from typing import List, Optional, Literal, Any, Sequence, Type, overload
+from typing import List, Optional, Literal, Any, Sequence, Type, overload, Union
 
 from ... import DeeplayModule, Layer, LayerList, PoolLayerActivationNormalization
 
@@ -105,8 +105,8 @@ class ConvolutionalNeuralNetwork(DeeplayModule):
         in_channels: Optional[int],
         hidden_channels: Sequence[int],
         out_channels: int,
-        out_activation: Type[nn.Module] | nn.Module | None = None,
-        pool: Type[nn.Module] | nn.Module | None = None,
+        out_activation: Union[Type[nn.Module], nn.Module, None] = None,
+        pool: Union[Type[nn.Module], nn.Module, None] = None,
     ):
         super().__init__()
 
@@ -176,10 +176,10 @@ class ConvolutionalNeuralNetwork(DeeplayModule):
     def configure(
         self,
         /,
-        in_channels: int | None = None,
-        hidden_channels: List[int] | None = None,
-        out_channels: int | None = None,
-        out_activation: Type[nn.Module] | nn.Module | None = None,
+        in_channels: Optional[int] = None,
+        hidden_channels: Optional[List[int]] = None,
+        out_channels: Optional[int] = None,
+        out_activation: Union[Type[nn.Module], nn.Module, None] = None,
     ) -> None:
         ...
 
@@ -199,7 +199,7 @@ class ConvolutionalNeuralNetwork(DeeplayModule):
     def configure(
         self,
         name: Literal["blocks"],
-        index: int | slice | List[int | slice],
+        index: Union[int, slice, List[Union[int, slice]]],
         order: Optional[Sequence[str]] = None,
         layer: Optional[Type[nn.Module]] = None,
         activation: Optional[Type[nn.Module]] = None,
