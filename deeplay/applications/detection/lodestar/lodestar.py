@@ -1,29 +1,67 @@
-from ...application import Application
-from ....components import ConvolutionalNeuralNetwork
-
-import torch
-import torch.nn as nn
+from typing import Callable, Optional
 
 import numpy as np
-
-from skimage import morphology
-import scipy.ndimage
 import scipy
+import scipy.ndimage
+import torch
+import torch.nn as nn
+from skimage import morphology
 
-from .transforms import RandomRotation2d, RandomTranslation2d, Transform, Transforms
+from ....components import ConvolutionalNeuralNetwork
+from ...application import Application
+from .transforms import RandomRotation2d, RandomTranslation2d, Transforms
 
 
 class LodeSTAR(Application):
+    """Self-supervised object detection using LodeSTAR
+
+    Creates a trainable model for self-supervised object detection using the LodeSTAR method.
+
+    Parameters
+    ----------
+    optimizer: Optimizer
+        Optimizer to use for training.
+    model : nn.Module, optional
+        Backbone model. Should return a tensor of shape (B, outputs + 1, H', W') where B is the batch size, outputs is
+        the number of measures to predict, and H' and W' are the height and width of the output which do not have to
+        match the input. If None, a default model will be used.
+    num_outputs : int
+        Number of outputs from the model. Should be 2 for x and y coordinates.
+    transforms : Transforms, optional
+        Set of transforms to apply to the input. If None, a default set of transforms will be used.
+        These define the geometric transformations that the model will be consistent to.
+    n_transforms : int
+        Number of transformed images to use for training. The model will be trained to be consistent across these.
+    between_loss : Callable, optional
+        Loss function for between-image disagreement. If None, nn.L1Loss will be used.
+    within_loss : Callable, optional
+        Loss function for within-image disagreement. If None, nn.L1Loss will be used.
+    between_loss_weight : float
+        Weight for between-image disagreement loss.
+    within_loss_weight : float
+        Weight for within-image disagreement loss.
+
+    """
+
+    num_outputs: int
+    transforms: Transforms
+    n_transforms: int
+    model: nn.Module
+    between_loss: Callable
+    within_loss: Callable
+    between_loss_weight: float
+    within_loss_weight: float
+
     def __init__(
         self,
-        model=None,
-        num_outputs=2,
-        transforms=None,
-        n_transforms=2,
-        between_loss=None,
-        within_loss=None,
-        between_loss_weight=1,
-        within_loss_weight=0.01,
+        model: Optional[nn.Module] = None,
+        num_outputs: int = 2,
+        transforms: Optional[Transforms] = None,
+        n_transforms: int = 2,
+        between_loss: Optional[Callable] = None,
+        within_loss: Optional[Callable] = None,
+        between_loss_weight: float = 1,
+        within_loss_weight: float = 0.01,
         **kwargs
     ):
         if transforms is None:
@@ -37,7 +75,7 @@ class LodeSTAR(Application):
         self.num_outputs = num_outputs
         self.transforms = transforms
         self.n_transforms = n_transforms
-        self.model = model or self._build_default_model()
+        self.model = model or self._get_default_model()
         self.between_loss = between_loss or nn.L1Loss(reduction="mean")
         self.within_loss = within_loss or nn.L1Loss(reduction="mean")
         self.between_loss_weight = between_loss_weight
@@ -45,7 +83,7 @@ class LodeSTAR(Application):
 
         super().__init__(loss=None, **kwargs)
 
-    def _build_default_model(self):
+    def _get_default_model(self):
         cnn = ConvolutionalNeuralNetwork(
             None,
             [32, 32, 64, 64, 64, 64, 64, 64, 64],
@@ -125,6 +163,21 @@ class LodeSTAR(Application):
         }
 
     def detect(self, x, alpha=0.5, beta=0.5, cutoff=0.97, mode="quantile"):
+        """Detects objects in a batch of images
+
+        Parameters
+        ----------
+        x : array-like
+            Input to model
+        alpha, beta: float
+            Geometric weight of the weight-map vs the consistenct metric for detection.
+        cutoff: float
+            Threshold for detection
+        mode: string
+            Mode for thresholding. Can be either "quantile" or "ratio" or "constant". If "quantile", then
+            `ratio` defines the quantile of scores to accept. If "ratio", then cutoff defines the ratio of the max
+            score as threshhold. If constant, the cutoff is used directly as treshhold.
+        """
         y = self(x.to(self.device))
         y_pred, weights = y[:, :-1], y[:, -1:]
         detections = [
@@ -135,6 +188,18 @@ class LodeSTAR(Application):
         return detections
 
     def pooled(self, x, mask=1):
+        """Pooled output from model.
+
+        Predict and pool the output from the model. Useful to acquire a single output from the model.
+        Masking is supported by setting the mask to 0 where the output should be ignored.
+
+        Parameters
+        ----------
+        x : array-like
+            Input to model
+        mask : array-like
+            Mask for pooling. Should be the same shape as the output from the model with a single channel.
+        """
         y = self(x.to(self.device))
         y_pred, weights = y[:, :-1], y[:, -1:]
         masked_weights = weights * mask
@@ -146,6 +211,21 @@ class LodeSTAR(Application):
     def detect_single(
         self, y_pred, weights, alpha=0.5, beta=0.5, cutoff=0.97, mode="quantile"
     ):
+        """Detects objects in a single image
+
+        Parameters
+        ----------
+        y_pred, weights: array-like
+            Output from model
+        alpha, beta: float
+            Geometric weight of the weight-map vs the consistenct metric for detection.
+        cutoff: float
+            Threshold for detection
+        mode: string
+            Mode for thresholding. Can be either "quantile" or "ratio" or "constant". If "quantile", then
+            `ratio` defines the quantile of scores to accept. If "ratio", then cutoff defines the ratio of the max
+            score as threshhold. If constant, the cutoff is used directly as treshhold.
+        """
         score = self.get_detection_score(y_pred, weights, alpha, beta)
         return self.find_local_maxima(y_pred, score, cutoff, mode)
 
@@ -193,7 +273,7 @@ class LodeSTAR(Application):
 
     @classmethod
     def get_detection_score(cls, pred, weights, alpha=0.5, beta=0.5):
-        """Calculates the detection score as weights^alpha * consistency ^ beta.
+        """Calculates the detection score as weights^alpha * consistency^beta.
 
         Parameters
         ----------
