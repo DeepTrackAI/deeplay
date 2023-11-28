@@ -17,9 +17,15 @@ class External(DeeplayModule):
         full_kwargs = super().kwargs
         classtype = full_kwargs.pop("classtype")
 
+        # If classtype accepts **kwargs, we can pass all the kwargs to it.'
+        argspec = self.get_argspec()
+        if argspec.varkw is not None:
+            kwargs = full_kwargs
+            kwargs["classtype"] = classtype
+            return kwargs
+
         # Since the classtype can be configured by the user, we need to
         # remove kwargs that are not part of the classtype's signature.
-
         signature = self.get_signature()
         signature_args = signature.parameters.keys()
         kwargs = {}
@@ -40,9 +46,17 @@ class External(DeeplayModule):
         self.classtype = classtype
 
     def build(self) -> nn.Module:
-        args = self.kwargs
-        args.pop("classtype", None)
-        return self.classtype(**args)
+        kwargs = self.kwargs
+        kwargs.pop("classtype", None)
+
+        args = ()
+
+        # check if classtype has *args variadic
+        argspec = self.get_argspec()
+        if argspec.varargs is not None:
+            args = args + self._actual_init_args["args"]
+
+        return self.classtype(*args, **kwargs)
 
     create = build
 

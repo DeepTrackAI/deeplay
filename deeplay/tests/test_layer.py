@@ -15,6 +15,12 @@ class Container(dl.DeeplayModule):
         super().__init__()
         self.module = dl.Layer(nn.Identity)
 
+class VariadicClass:
+
+    def __init__(self, *args, **kwargs):
+        self._args = args
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
 class TestExternal(unittest.TestCase):
     def test_external(self):
@@ -91,3 +97,17 @@ class TestExternal(unittest.TestCase):
         wrapped = Wrapper(container)
 
         self.assertIsInstance(wrapped.module.module, nn.Identity)
+
+    def test_variadic(self):
+        external = dl.External(VariadicClass, 10, 20, arg=30)
+        built = external.build()
+        created = external.create()
+        self.assertIsInstance(created, VariadicClass)
+        self.assertIsInstance(built, VariadicClass)
+        self.assertIsNot(built, created)
+
+        self.assertEqual(built._args, (10, 20))
+        self.assertEqual(built.arg, 30)
+        
+        self.assertEqual(created._args, (10, 20))
+        self.assertEqual(created.arg, 30)
