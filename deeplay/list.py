@@ -12,10 +12,10 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
         if len(layers) == 1 and isinstance(layers[0], list):
             input_layers: Tuple[T] = layers[0]
         else:
-            input_layers: Tuple[T] = layers
-        layers = layers + _args
+            input_layers: tuple[T] = layers
+        layers = tuple(input_layers) + _args
+        super().__pre_init__(_args=layers)
 
-        super().__pre_init__(_args=input_layers)
 
     def __init__(self, *layers: T):
         super().__init__()
