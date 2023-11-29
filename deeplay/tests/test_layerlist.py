@@ -181,4 +181,4 @@ class TestLayerList(unittest.TestCase):
         nets = llist.net
         self.assertEqual(len(nets), 2)
         self.assertIsInstance(nets[0], nn.Linear)
-        self.assertIsInstance(nets[1], nn.Linear)
+        self.assertIsInstance(nets[1], nn.Linear) 
