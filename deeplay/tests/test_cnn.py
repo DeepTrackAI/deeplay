@@ -35,7 +35,7 @@ class TestComponentCNN(unittest.TestCase):
         # test on a batch of 2
         x = torch.randn(2, 3, 5, 5)
         y = cnn(x)
-        self.assertEqual(y.shape, (2, 1, 5, 5))
+        self.assertEqual(y.shape, (2, 1, 5, 5)) 
 
     def test_cnn_change_depth(self):
         cnn = ConvolutionalNeuralNetwork(2, [4], 3)
