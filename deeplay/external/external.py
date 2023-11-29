@@ -53,6 +53,17 @@ class External(DeeplayModule):
 
         # check if classtype has *args variadic
         argspec = self.get_argspec()
+        signature = self.get_signature()
+
+          
+        positional_only_args =[param.name
+                                for param in signature.parameters.values()
+                                if param.kind == param.POSITIONAL_ONLY]
+
+        # Any positional only arguments should be moved from kwargs to args
+        for arg in positional_only_args:
+            args = args + (kwargs.pop(arg),)
+
         if argspec.varargs is not None:
             args = args + self._actual_init_args["args"]
 

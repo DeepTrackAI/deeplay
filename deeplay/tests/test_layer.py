@@ -16,10 +16,27 @@ class Container(dl.DeeplayModule):
         self.module = dl.Layer(nn.Identity)
 
 class VariadicClass:
-
     def __init__(self, *args, **kwargs):
         self._args = args
         for key, value in kwargs.items():
+            setattr(self, key, value)
+
+class KWVariadicClass:
+    def __init__(self, arg1, kwarg=2, **kwargs):
+        self.arg1 = arg1
+        self.kwarg = kwarg
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+
+class GeneralVariadicClass:
+    def __init__(self, pos_only, /, standard, *args, kw_only, kwonly_with_default=60, **kwargs):
+        self.pos_only = pos_only
+        self.standard = standard
+        self.kw_only = kw_only
+        self.kwonly_with_default = kwonly_with_default
+        self._args = args
+        for key, value in kwargs.items():  
             setattr(self, key, value)
 
 class TestExternal(unittest.TestCase):
@@ -111,3 +128,57 @@ class TestExternal(unittest.TestCase):
         
         self.assertEqual(created._args, (10, 20))
         self.assertEqual(created.arg, 30)
+
+    def test_kwvariadic_1(self):
+        external = dl.External(KWVariadicClass, 5, kwarg=30, arg2=40)
+        external.configure(arg1=10)
+        built = external.build()
+        created = external.create()
+        self.assertIsInstance(created, KWVariadicClass)
+        self.assertIsInstance(built, KWVariadicClass)
+        self.assertIsNot(built, created)
+
+        self.assertEqual(built.arg1, 10)
+        self.assertEqual(built.kwarg, 30)
+        self.assertEqual(built.arg2, 40)
+        
+        self.assertEqual(created.arg1, 10)
+        self.assertEqual(created.kwarg, 30)
+        self.assertEqual(created.arg2, 40)
+    
+    def test_kwvariadic_2(self):
+        external = dl.External(KWVariadicClass, arg1=10, kwarg=30, arg2=40)
+        built = external.build()
+        created = external.create()
+        self.assertIsInstance(created, KWVariadicClass)
+        self.assertIsInstance(built, KWVariadicClass)
+        self.assertIsNot(built, created)
+
+        self.assertEqual(built.arg1, 10)
+        self.assertEqual(built.kwarg, 30)
+        self.assertEqual(built.arg2, 40)
+        
+        self.assertEqual(created.arg1, 10)
+        self.assertEqual(created.kwarg, 30)
+        self.assertEqual(created.arg2, 40)
+
+    def test_general_variadic(self):
+
+        external = dl.External(GeneralVariadicClass, 10, 20, 25, kw_only=30, kwonly_with_default=50, arg1=60)
+        built = external.build()
+        created = external.create()
+        self.assertIsInstance(created, GeneralVariadicClass)
+        self.assertIsInstance(built, GeneralVariadicClass)
+        self.assertIsNot(built, created)
+
+        self.assertEqual(built.pos_only, 10)
+        self.assertEqual(built.standard, 20)
+        self.assertEqual(built.kw_only, 30)
+        self.assertEqual(built.kwonly_with_default, 50)
+        self.assertEqual(built.arg1, 60)
+        
+        self.assertEqual(created.pos_only, 10)
+        self.assertEqual(created.standard, 20)
+        self.assertEqual(created.kw_only, 30)
+        self.assertEqual(created.kwonly_with_default, 50)
+        self.assertEqual(created.arg1, 60)
