@@ -164,21 +164,5 @@ class TestExternal(unittest.TestCase):
 
     def test_general_variadic(self):
 
-        external = dl.External(GeneralVariadicClass, 10, 20, 25, kw_only=30, kwonly_with_default=50, arg1=60)
-        built = external.build()
-        created = external.create()
-        self.assertIsInstance(created, GeneralVariadicClass)
-        self.assertIsInstance(built, GeneralVariadicClass)
-        self.assertIsNot(built, created)
-
-        self.assertEqual(built.pos_only, 10)
-        self.assertEqual(built.standard, 20)
-        self.assertEqual(built.kw_only, 30)
-        self.assertEqual(built.kwonly_with_default, 50)
-        self.assertEqual(built.arg1, 60)
-        
-        self.assertEqual(created.pos_only, 10)
-        self.assertEqual(created.standard, 20)
-        self.assertEqual(created.kw_only, 30)
-        self.assertEqual(created.kwonly_with_default, 50)
-        self.assertEqual(created.arg1, 60)
+        with self.assertRaises(TypeError):
+            external = dl.External(GeneralVariadicClass, 10, 20, 25, kw_only=30, kwonly_with_default=50)

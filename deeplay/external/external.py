@@ -40,10 +40,30 @@ class External(DeeplayModule):
         # Hack
         self.classtype = classtype
         super().__pre_init__(*args, classtype=classtype, **kwargs)
+        self.assert_not_positional_only_and_variadic()
 
     def __init__(self, classtype, *args, **kwargs):
         super().__init__()
         self.classtype = classtype
+        self.assert_not_positional_only_and_variadic()
+
+    def assert_not_positional_only_and_variadic(self):
+        argspec = self.get_argspec()
+        signature = self.get_signature()
+
+        positional_only_args = [
+            param
+            for param in signature.parameters.values()
+            if param.kind == param.POSITIONAL_ONLY
+        ]
+
+        has_variadic = argspec.varargs is not None
+
+        if positional_only_args and has_variadic:
+            raise TypeError(
+                f"Cannot use both positional only arguments and *args with {self.__class__.__name__}. Consider wrapping the classtype in a wrapper class."
+            )
+
 
     def build(self) -> nn.Module:
         kwargs = self.kwargs
