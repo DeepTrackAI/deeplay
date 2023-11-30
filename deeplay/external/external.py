@@ -16,9 +16,15 @@ class External(DeeplayModule):
         full_kwargs = super().kwargs
         classtype = full_kwargs.pop("classtype")
 
+        # If classtype accepts **kwargs, we can pass all the kwargs to it.'
+        argspec = self.get_argspec()
+        if argspec.varkw is not None:
+            kwargs = full_kwargs
+            kwargs["classtype"] = classtype
+            return kwargs
+
         # Since the classtype can be configured by the user, we need to
         # remove kwargs that are not part of the classtype's signature.
-
         signature = self.get_signature()
         signature_args = signature.parameters.keys()
         kwargs = {}
@@ -33,15 +39,54 @@ class External(DeeplayModule):
         # Hack
         self.classtype = classtype
         super().__pre_init__(*args, classtype=classtype, **kwargs)
+        self.assert_not_positional_only_and_variadic()
 
     def __init__(self, classtype, *args, **kwargs):
         super().__init__()
         self.classtype = classtype
+        self.assert_not_positional_only_and_variadic()
+
+    def assert_not_positional_only_and_variadic(self):
+        argspec = self.get_argspec()
+        signature = self.get_signature()
+
+        positional_only_args = [
+            param
+            for param in signature.parameters.values()
+            if param.kind == param.POSITIONAL_ONLY
+        ]
+
+        has_variadic = argspec.varargs is not None
+
+        if positional_only_args and has_variadic:
+            raise TypeError(
+                f"Cannot use both positional only arguments and *args with {self.__class__.__name__}. Consider wrapping the classtype in a wrapper class."
+            )
+
 
     def build(self) -> nn.Module:
-        args = self.kwargs
-        args.pop("classtype", None)
-        return self.classtype(**args)
+        kwargs = self.kwargs
+        kwargs.pop("classtype", None)
+
+        args = ()
+
+        # check if classtype has *args variadic
+        argspec = self.get_argspec()
+        signature = self.get_signature()
+
+          
+        positional_only_args =[param.name
+                                for param in signature.parameters.values()
+                                if param.kind == param.POSITIONAL_ONLY]
+
+        # Any positional only arguments should be moved from kwargs to args
+        for arg in positional_only_args:
+            args = args + (kwargs.pop(arg),)
+
+        if argspec.varargs is not None:
+            args = args + self._actual_init_args["args"]
+
+        return self.classtype(*args, **kwargs)
 
     create = build
 
