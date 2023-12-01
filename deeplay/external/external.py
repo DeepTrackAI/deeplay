@@ -63,8 +63,9 @@ class External(DeeplayModule):
                 f"Cannot use both positional only arguments and *args with {self.__class__.__name__}. Consider wrapping the classtype in a wrapper class."
             )
 
-
     def build(self) -> nn.Module:
+        self._run_hooks("before_build")
+
         kwargs = self.kwargs
         kwargs.pop("classtype", None)
 
@@ -74,10 +75,11 @@ class External(DeeplayModule):
         argspec = self.get_argspec()
         signature = self.get_signature()
 
-          
-        positional_only_args =[param.name
-                                for param in signature.parameters.values()
-                                if param.kind == param.POSITIONAL_ONLY]
+        positional_only_args = [
+            param.name
+            for param in signature.parameters.values()
+            if param.kind == param.POSITIONAL_ONLY
+        ]
 
         # Any positional only arguments should be moved from kwargs to args
         for arg in positional_only_args:
@@ -86,7 +88,11 @@ class External(DeeplayModule):
         if argspec.varargs is not None:
             args = args + self._actual_init_args["args"]
 
-        return self.classtype(*args, **kwargs)
+        obj = self.classtype(*args, **kwargs)
+
+        self._run_hooks("after_build", obj)
+
+        return obj
 
     create = build
 
