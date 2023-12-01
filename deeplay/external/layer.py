@@ -1,4 +1,4 @@
-from typing import Any, Callable, Type, overload
+from typing import Any, Type, overload, Dict
 from .external import External
 from functools import partial
 
@@ -7,7 +7,7 @@ import torch.nn as nn
 from ..decorators import after_build
 
 
-def _create_forward_with_extras(old_forward, extra_arguments: dict[str, str]):
+def _create_forward_with_extras(old_forward, extra_arguments: Dict[str, str]):
     def forward_with_extras(self, *args, extras={}, **kwargs):
         assert all(
             key not in kwargs for key in extra_arguments.keys()
