@@ -1,4 +1,6 @@
 import unittest
+
+import torch
 import torch.nn as nn
 import deeplay as dl
 
@@ -236,9 +238,6 @@ class TestDeeplayModule(unittest.TestCase):
         self.assertEqual(parent.foo.bar.a, 7)
         self.assertEqual(parent.foo.bar.b, 8)
         self.assertEqual(parent.foo.bar.c, "F")
-
-
-import torch
 
 
 class ModelWithLayer(dl.DeeplayModule):
