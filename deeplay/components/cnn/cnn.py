@@ -1,4 +1,4 @@
-from typing import List, Optional, Literal, Any, Sequence, Type, overload
+from typing import List, Optional, Literal, Any, Sequence, Type, overload, Union
 
 from ... import DeeplayModule, Layer, LayerList, PoolLayerActivationNormalization
 
@@ -105,8 +105,8 @@ class ConvolutionalNeuralNetwork(DeeplayModule):
         in_channels: Optional[int],
         hidden_channels: Sequence[int],
         out_channels: int,
-        out_activation: Type[nn.Module] | nn.Module | None = None,
-        pool: Type[nn.Module] | nn.Module | None = None,
+        out_activation: Union[Type[nn.Module], nn.Module, None] = None,
+        pool: Union[Type[nn.Module], nn.Module, None] = None,
     ):
         super().__init__()
 
@@ -130,40 +130,42 @@ class ConvolutionalNeuralNetwork(DeeplayModule):
         elif isinstance(out_activation, type) and issubclass(out_activation, nn.Module):
             out_activation = Layer(out_activation)
 
-        if pool is None:
-            pool = Layer(nn.Identity)
-        elif isinstance(pool, type) and issubclass(pool, nn.Module):
-            pool = Layer(pool)
-
         self.blocks = LayerList()
 
         c_out = in_channels
 
-        for i, c_out in enumerate(self.hidden_channels):
+        for i, c_out in enumerate([*self.hidden_channels, out_channels]):
             c_in = self.in_channels if i == 0 else self.hidden_channels[i - 1]
 
-            self.blocks.append(
-                PoolLayerActivationNormalization(
-                    pool if i > 0 else Layer(nn.Identity),
-                    Layer(nn.Conv2d, c_in, c_out, 3, 1, 1)
-                    if c_in
-                    else Layer(nn.LazyConv2d, c_out, 3, 1, 1),
-                    Layer(nn.ReLU),
-                    # We can give num_features as an argument to nn.Identity
-                    # because it is ignored. This means that users do not have
-                    # to specify the number of features for nn.Identity.
-                    Layer(nn.Identity, num_features=out_channels),
-                )
+            if i == 0:
+                pool_layer = Layer(nn.Identity)
+            elif pool is None:
+                pool_layer = Layer(nn.Identity)
+            elif isinstance(pool, type) and issubclass(pool, nn.Module):
+                pool_layer = Layer(pool)
+            elif isinstance(pool, DeeplayModule):
+                pool_layer = pool.new()
+            else:
+                pool_layer = pool
+
+            layer = (
+                Layer(nn.Conv2d, c_in, c_out, 3, 1, 1)
+                if c_in
+                else Layer(nn.LazyConv2d, c_out, 3, 1, 1)
+            )
+            activation = (
+                Layer(nn.ReLU) if i < len(self.hidden_channels) else out_activation
+            )
+            normalization = Layer(nn.Identity, num_features=out_channels)
+
+            block = PoolLayerActivationNormalization(
+                pool=pool_layer,
+                layer=layer,
+                activation=activation,
+                normalization=normalization,
             )
 
-        self.blocks.append(
-            PoolLayerActivationNormalization(
-                pool if len(self.hidden_channels) > 0 else Layer(nn.Identity),
-                Layer(nn.Conv2d, c_out, self.out_channels, 3, 1, 1),
-                out_activation,
-                Layer(nn.Identity, num_channels=self.out_channels),
-            )
-        )
+            self.blocks.append(block)
 
     def forward(self, x):
         for block in self.blocks:
@@ -174,10 +176,10 @@ class ConvolutionalNeuralNetwork(DeeplayModule):
     def configure(
         self,
         /,
-        in_channels: int | None = None,
-        hidden_channels: List[int] | None = None,
-        out_channels: int | None = None,
-        out_activation: Type[nn.Module] | nn.Module | None = None,
+        in_channels: Optional[int] = None,
+        hidden_channels: Optional[List[int]] = None,
+        out_channels: Optional[int] = None,
+        out_activation: Union[Type[nn.Module], nn.Module, None] = None,
     ) -> None:
         ...
 
@@ -197,7 +199,7 @@ class ConvolutionalNeuralNetwork(DeeplayModule):
     def configure(
         self,
         name: Literal["blocks"],
-        index: int | slice | List[int | slice],
+        index: Union[int, slice, List[Union[int, slice]]],
         order: Optional[Sequence[str]] = None,
         layer: Optional[Type[nn.Module]] = None,
         activation: Optional[Type[nn.Module]] = None,

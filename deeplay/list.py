@@ -1,11 +1,4 @@
-from typing import (
-    Any,
-    overload,
-    Iterator,
-    List,
-    Generic,
-    TypeVar,
-)
+from typing import Any, overload, Iterator, List, Generic, TypeVar, Union, Tuple
 
 from torch import nn
 from .module import DeeplayModule
@@ -15,14 +8,13 @@ T = TypeVar("T", bound=nn.Module)
 
 
 class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
-    def __pre_init__(self, *layers: T | List[T], _args: tuple[T, ...] = ()):
+    def __pre_init__(self, *layers: Union[T, List[T]], _args: Tuple[T, ...] = ()):
         if len(layers) == 1 and isinstance(layers[0], list):
-            input_layers: tuple[T] = layers[0]
+            input_layers: Tuple[T] = layers[0]
         else:
             input_layers: tuple[T] = layers
-        layers = layers + _args
-
-        super().__pre_init__(_args=input_layers)
+        layers = tuple(input_layers) + _args
+        super().__pre_init__(_args=layers)
 
     def __init__(self, *layers: T):
         super().__init__()
@@ -32,7 +24,7 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
 
         for idx, layer in enumerate(layers):
             super().append(layer)
-            if isinstance(layer, DeeplayModule):
+            if isinstance(layer, DeeplayModule) and not layer._has_built:
                 self._give_user_configuration(layer, self._get_abs_string_index(idx))
                 layer.__construct__()
 
@@ -55,7 +47,9 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
         return self[index]
 
     @overload
-    def configure(self, *args: int | slice | List[int | slice], **kwargs: Any) -> None:
+    def configure(
+        self, *args: Union[int, slice, List[int], slice], **kwargs: Any
+    ) -> None:
         ...
 
     @overload
@@ -110,7 +104,7 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
     def __getitem__(self, index: slice) -> "LayerList[T]":
         ...
 
-    def __getitem__(self, index: int | slice) -> "T | LayerList[T]":
+    def __getitem__(self, index: Union[int, slice]) -> "Union[T, LayerList[T]]":
         return super().__getitem__(index)  # type: ignore
 
 

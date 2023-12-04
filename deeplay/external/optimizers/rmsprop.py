@@ -9,7 +9,7 @@ torch.optim.Adam
 
 
 class RMSprop(Optimizer):
-    def __pre_init__(self, **optimzer_kwargs):
+    def __pre_init__(self, classtype=None, **optimzer_kwargs):
         super().__pre_init__(torch.optim.RMSprop, **optimzer_kwargs)
 
     def __init__(self, **optimzer_kwargs):
@@ -22,9 +22,11 @@ class RMSprop(Optimizer):
         self,
         func: Callable[
             [],
-            Iterable[torch.nn.Parameter]
-            | Dict[str, Iterable[torch.nn.Parameter]]
-            | List[Dict[str, Iterable[torch.nn.Parameter]]],
+            Union[
+                Iterable[torch.nn.Parameter],
+                Dict[str, Iterable[torch.nn.Parameter]],
+                List[Dict[str, Iterable[torch.nn.Parameter]]],
+            ],
         ],
     ):
         self.configure(params=func)
