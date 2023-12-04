@@ -1,4 +1,3 @@
-from .module import DeeplayModule
 from functools import wraps
 
 
@@ -6,7 +5,7 @@ def before_build(func):
     """Decorator for methods that will be run before build instead of immediately."""
 
     @wraps(func)
-    def wrapper(self: DeeplayModule, *args, **kwargs):
+    def wrapper(self, *args, **kwargs):
         self.register_before_build_hook(
             lambda instance: func(instance, *args, **kwargs)
         )
@@ -22,7 +21,7 @@ def after_build(func):
     """
 
     @wraps(func)
-    def wrapper(self: DeeplayModule, *args, **kwargs):
+    def wrapper(self, *args, **kwargs):
         self.register_after_build_hook(lambda instance: func(instance, *args, **kwargs))
         return self
 
