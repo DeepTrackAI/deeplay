@@ -3,22 +3,42 @@ from .. import DeeplayModule, Layer, LayerList, LayerActivation
 import torch
 
 class RecurrentNeuralNetwork(DeeplayModule):
-    """
+   """
     Recurrent Neural Network (RNN) module.
 
     This RNN can be configured to be a simple RNN, LSTM, or GRU, with options for bidirectionality, 
-    number of layers, and other typical RNN configurations.
+    number of layers, and other typical RNN configurations. It supports embedding layers and can be 
+    customized with different activation functions for the output layer.
 
     Configurables
     -------------
-    - in_features (int): The number of expected features in the input.
-    - hidden_features (int): The number of features in the hidden state.
-    - num_layers (int): Number of recurrent layers. (Default: 1)
-    - nonlinearity (str): The non-linearity to use ('tanh' or 'relu'). Only used when `rnn_type` is 'RNN'. (Default: 'tanh')
-    - rnn_type (str): Type of RNN ('RNN', 'LSTM', or 'GRU'). (Default: 'RNN')
-    - bidirectional (bool): If True, becomes a bidirectional RNN. (Default: False)
-    - batch_first (bool): If True, then the input and output tensors are provided as (batch, seq, feature). (Default: True)
-    - dropout (float): If non-zero, introduces a dropout layer on the outputs of each RNN layer except the last layer. (Default: 0.0)
+    - in_features (int): The number of expected features in the input. Must be specified.
+    - hidden_features (Sequence[int]): The number of features in each hidden layer.
+    - out_features (Optional[int]): Number of features in the output layer. If None, the final RNN layer's output is returned directly.
+    - rnn_type (Literal['RNN', 'LSTM', 'GRU']): Type of RNN. Defaults to 'GRU'.
+    - out_activation (Union[Literal['softmax', 'sigmoid', 'tanh', 'relu', 'leaky_relu', 'gelu', 'none'], torch.nn.Module]): 
+      Activation function for the output layer. Can be a string specifying the activation type or an instance of a PyTorch Module. Defaults to 'none'.
+    - bidirectional (bool): If True, makes the RNN bidirectional. Defaults to False.
+    - batch_first (bool): If True, input and output tensors are provided as (batch, seq, feature). Defaults to True.
+    - dropout (float): Dropout value for the outputs of each RNN layer except the last layer. Defaults to 0.1.
+    - embedding (Optional[torch.nn.Embedding]): An embedding layer to be applied to the input data. If None, no embedding is applied.
+
+    Properties
+    ----------
+    - input: Returns the input layer of the network.
+    - hidden: Returns the hidden layers of the network.
+    - output: Returns the output layer of the network.
+    - layer: Returns all layers of the network.
+    - activation: Returns the activation functions used in the network.
+    - normalization: Returns the normalization layers used in the network, if any.
+
+    Methods
+    -------
+    - forward(x, lengths): Defines the forward pass of the RNN.
+
+    Notes
+    -----
+    The RNN module is designed to be flexible and configurable, allowing for various RNN types and structures.
     """
     
     in_features: Optional[int] 
