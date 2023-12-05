@@ -12,10 +12,9 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
         if len(layers) == 1 and isinstance(layers[0], list):
             input_layers: Tuple[T] = layers[0]
         else:
-            input_layers: Tuple[T] = layers
-        layers = layers + _args
-
-        super().__pre_init__(_args=input_layers)
+            input_layers: tuple[T] = layers
+        layers = tuple(input_layers) + _args
+        super().__pre_init__(_args=layers)
 
     def __init__(self, *layers: T):
         super().__init__()
@@ -25,7 +24,7 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
 
         for idx, layer in enumerate(layers):
             super().append(layer)
-            if isinstance(layer, DeeplayModule):
+            if isinstance(layer, DeeplayModule) and not layer._has_built:
                 self._give_user_configuration(layer, self._get_abs_string_index(idx))
                 layer.__construct__()
 
@@ -90,8 +89,7 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
             submodules = [
                 getattr(layer, name)
                 for layer in self
-                if hasattr(layer, name)
-                and isinstance(getattr(layer, name), DeeplayModule)
+                if hasattr(layer, name) and isinstance(getattr(layer, name), nn.Module)
             ]
             if len(submodules) > 0:
                 return LayerList(*submodules)

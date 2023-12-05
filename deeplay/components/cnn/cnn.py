@@ -86,19 +86,34 @@ class ConvolutionalNeuralNetwork(DeeplayModule):
     blocks: LayerList[PoolLayerActivationNormalization]
 
     @property
-    def input_block(self):
+    def input(self):
         """Return the input layer of the network. Equivalent to `.blocks[0]`."""
         return self.blocks[0]
 
     @property
-    def hidden_blocks(self):
+    def hidden(self):
         """Return the hidden layers of the network. Equivalent to `.blocks[:-1]`"""
         return self.blocks[:-1]
 
     @property
-    def output_block(self):
+    def output(self):
         """Return the last layer of the network. Equivalent to `.blocks[-1]`."""
         return self.blocks[-1]
+
+    @property
+    def layer(self) -> LayerList[Layer]:
+        """Return the layers of the network. Equivalent to `.blocks.layer`."""
+        return self.blocks.layer
+
+    @property
+    def activation(self) -> LayerList[Layer]:
+        """Return the activations of the network. Equivalent to `.blocks.activation`."""
+        return self.blocks.activation
+
+    @property
+    def normalization(self) -> LayerList[Layer]:
+        """Return the normalizations of the network. Equivalent to `.blocks.normalization`."""
+        return self.blocks.normalization
 
     def __init__(
         self,
@@ -130,40 +145,42 @@ class ConvolutionalNeuralNetwork(DeeplayModule):
         elif isinstance(out_activation, type) and issubclass(out_activation, nn.Module):
             out_activation = Layer(out_activation)
 
-        if pool is None:
-            pool = Layer(nn.Identity)
-        elif isinstance(pool, type) and issubclass(pool, nn.Module):
-            pool = Layer(pool)
-
         self.blocks = LayerList()
 
         c_out = in_channels
 
-        for i, c_out in enumerate(self.hidden_channels):
+        for i, c_out in enumerate([*self.hidden_channels, out_channels]):
             c_in = self.in_channels if i == 0 else self.hidden_channels[i - 1]
 
-            self.blocks.append(
-                PoolLayerActivationNormalization(
-                    pool if i > 0 else Layer(nn.Identity),
-                    Layer(nn.Conv2d, c_in, c_out, 3, 1, 1)
-                    if c_in
-                    else Layer(nn.LazyConv2d, c_out, 3, 1, 1),
-                    Layer(nn.ReLU),
-                    # We can give num_features as an argument to nn.Identity
-                    # because it is ignored. This means that users do not have
-                    # to specify the number of features for nn.Identity.
-                    Layer(nn.Identity, num_features=out_channels),
-                )
+            if i == 0:
+                pool_layer = Layer(nn.Identity)
+            elif pool is None:
+                pool_layer = Layer(nn.Identity)
+            elif isinstance(pool, type) and issubclass(pool, nn.Module):
+                pool_layer = Layer(pool)
+            elif isinstance(pool, DeeplayModule):
+                pool_layer = pool.new()
+            else:
+                pool_layer = pool
+
+            layer = (
+                Layer(nn.Conv2d, c_in, c_out, 3, 1, 1)
+                if c_in
+                else Layer(nn.LazyConv2d, c_out, 3, 1, 1)
+            )
+            activation = (
+                Layer(nn.ReLU) if i < len(self.hidden_channels) else out_activation
+            )
+            normalization = Layer(nn.Identity, num_features=out_channels)
+
+            block = PoolLayerActivationNormalization(
+                pool=pool_layer,
+                layer=layer,
+                activation=activation,
+                normalization=normalization,
             )
 
-        self.blocks.append(
-            PoolLayerActivationNormalization(
-                pool if len(self.hidden_channels) > 0 else Layer(nn.Identity),
-                Layer(nn.Conv2d, c_out, self.out_channels, 3, 1, 1),
-                out_activation,
-                Layer(nn.Identity, num_channels=self.out_channels),
-            )
-        )
+            self.blocks.append(block)
 
     def forward(self, x):
         for block in self.blocks:
