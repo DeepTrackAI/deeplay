@@ -15,11 +15,13 @@ class Container(dl.DeeplayModule):
         super().__init__()
         self.module = dl.Layer(nn.Identity)
 
+
 class VariadicClass:
     def __init__(self, *args, **kwargs):
         self._args = args
         for key, value in kwargs.items():
             setattr(self, key, value)
+
 
 class KWVariadicClass:
     def __init__(self, arg1, kwarg=2, **kwargs):
@@ -30,14 +32,17 @@ class KWVariadicClass:
 
 
 class GeneralVariadicClass:
-    def __init__(self, pos_only, /, standard, *args, kw_only, kwonly_with_default=60, **kwargs):
+    def __init__(
+        self, pos_only, /, standard, *args, kw_only, kwonly_with_default=60, **kwargs
+    ):
         self.pos_only = pos_only
         self.standard = standard
         self.kw_only = kw_only
         self.kwonly_with_default = kwonly_with_default
         self._args = args
-        for key, value in kwargs.items():  
+        for key, value in kwargs.items():
             setattr(self, key, value)
+
 
 class TestExternal(unittest.TestCase):
     def test_external(self):
@@ -125,7 +130,7 @@ class TestExternal(unittest.TestCase):
 
         self.assertEqual(built._args, (10, 20))
         self.assertEqual(built.arg, 30)
-        
+
         self.assertEqual(created._args, (10, 20))
         self.assertEqual(created.arg, 30)
 
@@ -141,11 +146,11 @@ class TestExternal(unittest.TestCase):
         self.assertEqual(built.arg1, 10)
         self.assertEqual(built.kwarg, 30)
         self.assertEqual(built.arg2, 40)
-        
+
         self.assertEqual(created.arg1, 10)
         self.assertEqual(created.kwarg, 30)
         self.assertEqual(created.arg2, 40)
-    
+
     def test_kwvariadic_2(self):
         external = dl.External(KWVariadicClass, arg1=10, kwarg=30, arg2=40)
         built = external.build()
@@ -157,12 +162,13 @@ class TestExternal(unittest.TestCase):
         self.assertEqual(built.arg1, 10)
         self.assertEqual(built.kwarg, 30)
         self.assertEqual(built.arg2, 40)
-        
+
         self.assertEqual(created.arg1, 10)
         self.assertEqual(created.kwarg, 30)
         self.assertEqual(created.arg2, 40)
 
     def test_general_variadic(self):
-
         with self.assertRaises(TypeError):
-            external = dl.External(GeneralVariadicClass, 10, 20, 25, kw_only=30, kwonly_with_default=50)
+            external = dl.External(
+                GeneralVariadicClass, 10, 20, 25, kw_only=30, kwonly_with_default=50
+            )
