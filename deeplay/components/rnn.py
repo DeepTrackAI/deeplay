@@ -3,7 +3,7 @@ from .. import DeeplayModule, Layer, LayerList, LayerActivation
 import torch
 
 class RecurrentNeuralNetwork(DeeplayModule):
-   """
+    """
     Recurrent Neural Network (RNN) module.
 
     This RNN can be configured to be a simple RNN, LSTM, or GRU, with options for bidirectionality, 
@@ -134,7 +134,6 @@ class RecurrentNeuralNetwork(DeeplayModule):
              
         if isinstance(out_activation, torch.nn.Module):
             self.out_activation=Layer(out_activation)
-            print(self.out_activation)
         else:
             if out_activation == 'softmax':
                 self.out_activation = Layer(torch.nn.Softmax,dim=1)
