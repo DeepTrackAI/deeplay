@@ -1,6 +1,5 @@
-from typing import Optional,overload,Sequence,List,Dict,Any
-
-from .. import DeeplayModule, Layer, LayerList
+from typing import Optional,overload,Sequence,List,Dict,Any,Literal,Union
+from .. import DeeplayModule, Layer, LayerList, LayerActivation
 import torch
 
 class RecurrentNeuralNetwork(DeeplayModule):
@@ -23,12 +22,12 @@ class RecurrentNeuralNetwork(DeeplayModule):
     """
     
     in_features: Optional[int] 
-    hidden_features: Sequence[Optional[int]] 
+    hidden_features: Sequence[int]
     rnn_type: Optional[str]
     bidirectional: bool
     batch_first: bool
     dropout: float
-    blocks: LayerList[Layer]
+    blocks: LayerList[LayerActivation]
     
     @property
     def input(self):
@@ -62,65 +61,142 @@ class RecurrentNeuralNetwork(DeeplayModule):
 
     def __init__(
         self, 
-        in_features: int, 
-        hidden_features: Optional[int] = 256, 
-        num_layers: Optional[int] = 1,
-        out_features: Optional[int] = 0,
-        rnn_type: str = 'LSTM', 
+        in_features: Optional[int], 
+        hidden_features: Sequence[int], 
+        out_features: Optional[int] = None,
+        rnn_type: Literal['RNN', 'LSTM', 'GRU'] = 'GRU',
+        out_activation: Union[Literal['softmax', 'sigmoid', 'tanh', 'relu', 'leaky_relu', 'gelu', 'none'], torch.nn.Module] = 'none',
         bidirectional: bool = False, 
         batch_first: bool = True, 
-        dropout: float = 0.1
+        dropout: float = 0.1,
+        embedding: Optional[torch.nn.Embedding] = None
     ):
         super(RecurrentNeuralNetwork, self).__init__()
 
+        self.embedding=embedding
         self._in_features = in_features
         self.hidden_features = hidden_features
         self.out_features = out_features
-        self.num_layers = num_layers
         self.rnn_type = rnn_type
         self.bidirectional = bidirectional
         self.batch_first = batch_first
 
-            
+        if in_features is None:
+            raise ValueError("in_features must be specified")
+        if hidden_features is None or hidden_features == []:
+            raise ValueError("hidden_features must be specified")
         if in_features is not None and in_features <= 0:
             raise ValueError(f"in_channels must be positive, got {in_features}")
 
-        if hidden_features <= 0:
+        if any(h <= 0 for h in hidden_features):
             raise ValueError(
                 f"all hidden_channels must be positive, got {hidden_features}"
             )
-
-        self.blocks = LayerList()
-        rnn_class = torch.nn.LSTM if self.rnn_type == 'LSTM' else torch.nn.GRU
-        self.rnn = rnn_class(
-            in_features,
-            hidden_features,
-            num_layers,
-            dropout=dropout,
-        )
-        #self.blocks.append(Layer(self.rnn))
-        self.blocks.append(self.rnn)
+        if out_features is not None:
+            if out_features <= 0:
+                raise ValueError(
+                    f"Number of output features must be positive, got {out_features}"
+                )
+        if rnn_type not in ["RNN", "LSTM", "GRU"]:
+            raise ValueError(
+                f"rnn_type must be one of 'RNN', 'LSTM', or 'GRU', got {rnn_type}"
+            )
         
-        if bidirectional:
-                layer_output_size = hidden_features * 2
+        if embedding:
+            self.embedding_dropout=torch.nn.Dropout(dropout)
+
+        if self.rnn_type == 'LSTM':
+             self.rnn_class = torch.nn.LSTM
+        elif self.rnn_type == 'GRU':
+            self.rnn_class = torch.nn.GRU
         else:
-            layer_output_size = hidden_features
+            self.rnn_class = torch.nn.RNN
+             
+        if isinstance(out_activation, torch.nn.Module):
+            self.out_activation=Layer(out_activation)
+            print(self.out_activation)
+        else:
+            if out_activation == 'softmax':
+                self.out_activation = Layer(torch.nn.Softmax,dim=1)
+            elif out_activation == 'sigmoid':
+                self.out_activation = Layer(torch.nn.Sigmoid)
+            elif out_activation == 'tanh':
+                self.out_activation = Layer(torch.nn.Tanh)
+            elif out_activation == 'relu':
+                self.out_activation = Layer(torch.nn.ReLU)
+            elif out_activation == 'leaky_relu':
+                self.out_activation = Layer(torch.nn.LeakyReLU)
+            elif out_activation == 'gelu':
+                self.out_activation = Layer(torch.nn.GELU)
+            else:
+                self.out_activation = Layer(torch.nn.Identity)
+            
+        self.blocks = LayerList()
 
+        rnn = Layer(self.rnn_class,
+        input_size=in_features,
+        hidden_size=hidden_features[0],
+        num_layers=1,
+        dropout=dropout,
+        bidirectional=bidirectional,
+        )
+        self.blocks.append(LayerActivation(rnn,Layer(torch.nn.Identity,num_features=hidden_features[0])))
+
+        if len(hidden_features) > 2:
+            for i in range(len(hidden_features) - 2):
+                self.blocks.append(LayerActivation(
+                        Layer(self.rnn_class,
+                        input_size=hidden_features[i] * 2 if bidirectional else hidden_features[i],
+                        hidden_size=hidden_features[i + 1],
+                        num_layers=1,
+                        dropout=dropout,
+                        bidirectional=bidirectional),
+                        Layer(torch.nn.Identity,num_features=hidden_features[i+1])))
+                
+        if len(hidden_features) > 1:
+                self.blocks.append(LayerActivation(
+                        Layer(self.rnn_class,
+                        input_size=hidden_features[-2] * 2 if bidirectional else hidden_features[-2],
+                        hidden_size=hidden_features[-1],
+                        num_layers=1,
+                        dropout=0,
+                        bidirectional=bidirectional),
+                        self.out_activation if not out_features else Layer(torch.nn.Identity,num_features=hidden_features[-1])))
+                
         # Define the output layer
-        
-        if self.out_features>0:
-            self.output_layer = Layer(torch.nn.Linear, layer_output_size, out_features)
-
+        if self.out_features is not None:
+            output_layer = LayerActivation(Layer(torch.nn.Linear, in_features=hidden_features[-1],out_features=out_features),self.out_activation)
+            self.blocks.append(output_layer)
 
     def forward(self, x, lengths: Optional[torch.Tensor] = None):
+
+        if self.embedding:
+            x = self.embedding(x)
+            x = self.embedding_dropout(x)
         if lengths is not None:
             x = torch.nn.utils.rnn.pack_padded_sequence(x, lengths, enforce_sorted=False)
-        outputs, hidden = self.rnn(x)
+
+        outputs, hidden = self.blocks[0](x)
+        for layer in self.blocks[1:-1]:
+          outputs, hidden = layer(outputs)
+        if not self.out_features:
+           outputs,hidden = self.blocks[-1](outputs)
         if lengths is not None:
-            outputs, _ = torch.nn.utils.rnn.pad_packed_sequence(outputs)
-        if self.output_layer is not None:
-            outputs = self.output_layer(outputs)
-        return outputs, hidden
+           outputs, _ = torch.nn.utils.rnn.pad_packed_sequence(outputs)
+        if self.bidirectional:
+           outputs = outputs[:, :, :self.hidden_features[-1]] + outputs[:, :, self.hidden_features[-1]:]
+
+        if self.out_features is not None:
+           if self.batch_first:
+               outputs = outputs[:, -1, :]
+           else:
+               outputs = outputs[-1, :, :]
+           outputs=torch.nn.Flatten()(outputs)
+           outputs = self.blocks[-1](outputs)
+           return outputs
+
+
+        return outputs, hidden #return last hidden state
 
 
     @overload
@@ -132,148 +208,13 @@ class RecurrentNeuralNetwork(DeeplayModule):
         out_features: Optional[int] = None,
         rnn_type: Optional[str] = None,
         bidirectional: Optional[bool] = None,
+        out_activation: Optional[str] = None,
         batch_first: Optional[bool] = None,
-        dropout: Optional[float] = None
-    ) -> None:
-        ...
-
-    @overload
-    def configure(
-        self,
-        network_config: Dict[str, Any]  # A dictionary containing all the configuration parameters
+        dropout: Optional[float] = None,
+        embedding: Optional[torch.nn.Embedding] = None
     ) -> None:
         ...
         
     configure = DeeplayModule.configure
 
-class EncoderRNN(RecurrentNeuralNetwork):
-    """
-    Encoder RNN module.
 
-    This module extends the RecurrentNeuralNetwork module to create an RNN encoder with GRU units.
-
-    Configurables
-    -------------
-    Inherits all configurables from RecurrentNeuralNetwork, with the addition of:
-    - Embedding (nn.Embedding): Embedding layer for the input (Default: None)
-    
-    Constraints
-    -----------
-    Inherits constraints from RecurrentNeuralNetwork, with the output shape adjusted for bidirectionality if enabled.
-
-    Evaluation
-    ----------
-    Inherits the evaluation process from RecurrentNeuralNetwork, with the addition of summing the outputs from both directions if bidirectional.
-
-    Examples
-    --------
-    >>> # Example usage
-    >>> encoder = EncoderRNN(in_features=my_input_size, hidden_features=my_hidden_features, out_features=my_out_features, embedding=my_embedding_layer, rnn_type='GRU', bidirectional=True)
-    """
-
-    def __init__(
-        self, 
-        in_features: int, 
-        hidden_features: Optional[int] = 256, 
-        num_layers: Optional[int] = 1,
-        out_features: Optional[int] = 0,
-        rnn_type: str = 'LSTM', 
-        bidirectional: bool = False, 
-        batch_first: bool = True, 
-        dropout: float = 0.1,
-        embedding: Optional[torch.nn.Embedding] = None
-        ):
-        # Initialize the parent class
-        super().__init__(in_features, hidden_features, num_layers, out_features, rnn_type, bidirectional, batch_first, dropout)
-
-        self.embedding = embedding
-        self.batch_first = batch_first
-        self.bidirectional = bidirectional
-        self.rnn_type = rnn_type
-        self.dropout = dropout
-        if self.embedding is None:
-            raise ValueError("An embedding layer must be provided to EncoderRNN.")
-        
-        # Adjust the RNN construction for bidirectionality
-        self.rnn = torch.nn.GRU(
-            in_features,
-            hidden_features,
-            num_layers,
-            dropout=(0 if self.num_layers == 1 else self.dropout),
-            bidirectional=bidirectional
-        )
-
-    def forward(self, input_seq, input_lengths, hidden=None):
-        if self.embedding:
-            input_seq = self.embedding(input_seq)
-        packed = torch.nn.utils.rnn.pack_padded_sequence(input_seq, input_lengths, enforce_sorted=False)
-        outputs, hidden = self.rnn(packed, hidden)
-        outputs, _ = torch.nn.utils.rnn.pad_packed_sequence(outputs)
-        if self.bidirectional:
-            # Sum bidirectional RNN outputs
-            outputs = outputs[:, :, :self.hidden_size] + outputs[:, :, self.hidden_size:]
-        return outputs, hidden
-    
-import torch.nn as nn
-import torch.nn.functional as F
-from .. import DeeplayModule
-
-class DecoderRNN(RecurrentNeuralNetwork):
-    """
-    Decoder RNN module.
-
-    This module is used for decoding sequences in a sequence-to-sequence model, extending the BaseRNN.
-
-    Configurables
-    -------------
-    Inherits all configurables from BaseRNN, with the addition of:
-    - output_size (int): The size of the output
-    """
-
-    def __init__(
-        self, 
-        in_features: int, 
-        hidden_features: Optional[int] = 256, 
-        num_layers: Optional[int] = 1,
-        out_features: Optional[int] =0,
-        rnn_type: str = 'LSTM', 
-        bidirectional: bool = False, 
-        batch_first: bool = True, 
-        dropout: float = 0.1,
-        embedding: Optional[torch.nn.Embedding] = None
-        ):
-        # Initialize the parent class
-        super().__init__(in_features, hidden_features, num_layers, 0, rnn_type, bidirectional, batch_first, dropout)
-        self.embedding = embedding
-        self.embedding_dropout=torch.nn.Dropout(dropout)
-        self.out = torch.nn.Linear(hidden_features, out_features)
-        self.n_layers=num_layers
-
-        if self.embedding is None:
-            raise ValueError("An embedding layer must be provided to DecoderRNN.")
-
-    def forward(self, input_step, last_hidden):
-        """
-        Forward pass for the decoder for a single step.
-
-        Parameters
-        ----------
-        - input_step: The input at the current timestep
-        - last_hidden: The hidden state from the previous timestep
-        """
-        # Get embedding of current input word
-        embedded = self.embedding(input_step)
-        embedded = self.embedding_dropout(embedded)
-        #embedded = embedded.unsqueeze(0)  # Add batch dimension
-
-        # Forward through unidirectional RNN
-        rnn_output, hidden = self.rnn(embedded, last_hidden)
-
-        # Squeeze the output to remove extra dimension
-        rnn_output = rnn_output.squeeze(0)
-
-        # Predict next word using the RNN output
-        output = self.out(rnn_output)
-        output = F.softmax(output, dim=1)
-
-        return output, hidden
