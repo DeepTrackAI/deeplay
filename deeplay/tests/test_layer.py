@@ -1,7 +1,6 @@
 import unittest
 
 import deeplay as dl
-import torch
 import torch.nn as nn
 
 from unittest.mock import Mock
@@ -19,7 +18,35 @@ class Container(dl.DeeplayModule):
         self.module = dl.Layer(nn.Identity)
 
 
-class TestLayer(unittest.TestCase):
+class VariadicClass:
+    def __init__(self, *args, **kwargs):
+        self._args = args
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+
+class KWVariadicClass:
+    def __init__(self, arg1, kwarg=2, **kwargs):
+        self.arg1 = arg1
+        self.kwarg = kwarg
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+
+class GeneralVariadicClass:
+    def __init__(
+        self, pos_only, /, standard, *args, kw_only, kwonly_with_default=60, **kwargs
+    ):
+        self.pos_only = pos_only
+        self.standard = standard
+        self.kw_only = kw_only
+        self.kwonly_with_default = kwonly_with_default
+        self._args = args
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+
+class TestExternal(unittest.TestCase):
     def test_external(self):
         external = dl.Layer(nn.Identity)
         built = external.build()
@@ -95,6 +122,59 @@ class TestLayer(unittest.TestCase):
 
         self.assertIsInstance(wrapped.module.module, nn.Identity)
 
+    def test_variadic(self):
+        external = dl.External(VariadicClass, 10, 20, arg=30)
+        built = external.build()
+        created = external.create()
+        self.assertIsInstance(created, VariadicClass)
+        self.assertIsInstance(built, VariadicClass)
+        self.assertIsNot(built, created)
+
+        self.assertEqual(built._args, (10, 20))
+        self.assertEqual(built.arg, 30)
+
+        self.assertEqual(created._args, (10, 20))
+        self.assertEqual(created.arg, 30)
+
+    def test_kwvariadic_1(self):
+        external = dl.External(KWVariadicClass, 5, kwarg=30, arg2=40)
+        external.configure(arg1=10)
+        built = external.build()
+        created = external.create()
+        self.assertIsInstance(created, KWVariadicClass)
+        self.assertIsInstance(built, KWVariadicClass)
+        self.assertIsNot(built, created)
+
+        self.assertEqual(built.arg1, 10)
+        self.assertEqual(built.kwarg, 30)
+        self.assertEqual(built.arg2, 40)
+
+        self.assertEqual(created.arg1, 10)
+        self.assertEqual(created.kwarg, 30)
+        self.assertEqual(created.arg2, 40)
+
+    def test_kwvariadic_2(self):
+        external = dl.External(KWVariadicClass, arg1=10, kwarg=30, arg2=40)
+        built = external.build()
+        created = external.create()
+        self.assertIsInstance(created, KWVariadicClass)
+        self.assertIsInstance(built, KWVariadicClass)
+        self.assertIsNot(built, created)
+
+        self.assertEqual(built.arg1, 10)
+        self.assertEqual(built.kwarg, 30)
+        self.assertEqual(built.arg2, 40)
+
+        self.assertEqual(created.arg1, 10)
+        self.assertEqual(created.kwarg, 30)
+        self.assertEqual(created.arg2, 40)
+
+    def test_general_variadic(self):
+        with self.assertRaises(TypeError):
+            external = dl.External(
+                GeneralVariadicClass, 10, 20, 25, kw_only=30, kwonly_with_default=50
+            )
+
     def test_set_dict_inputs_simple_foward(self):
         class SimpleModule(nn.Module):
             def forward(self, x, extra1, extra2):
@@ -104,10 +184,10 @@ class TestLayer(unittest.TestCase):
                 return x, extra1, extra2
 
         external = dl.Layer(SimpleModule)
-        external.set_dict_input_mapping("x", extra1="extra1", extra2="other_name")
-        external.set_dict_output_mapping(
-            "x", extra1=1, extra2_with_other_name=2, xother=0
+        external.set_dict_input_mapping(
+            "x", extra1="extra1", extra2="other_name_for_extra2"
         )
+        external.set_dict_output_mapping("x", extra1=1, extra2=2, xother=0)
         built = external.build()
 
         built
@@ -116,14 +196,12 @@ class TestLayer(unittest.TestCase):
         x["x"] = Mock()
         x["x1"] = Mock()
         x["extra1"] = Mock()
-        x["extra2"] = Mock()
-        x["other_name"] = Mock()
+        x["other_name_for_extra2"] = Mock()
 
         o = built(x)
 
         o["x"].assert_called_once()
         o["x1"].assert_not_called()
         o["extra1"].assert_called_once()
-        o["extra2_with_other_name"].assert_called_once()
-        o["other_name"].assert_not_called()
+        o["extra2"].assert_called_once()
         o["xother"].assert_called_once()
