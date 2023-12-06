@@ -95,29 +95,35 @@ class TestLayer(unittest.TestCase):
 
         self.assertIsInstance(wrapped.module.module, nn.Identity)
 
-    def test_set_extras(self):
+    def test_set_dict_inputs_simple_foward(self):
         class SimpleModule(nn.Module):
             def forward(self, x, extra1, extra2):
+                x()
                 extra1()
                 extra2()
-                return x
+                return x, extra1, extra2
 
         external = dl.Layer(SimpleModule)
-        external.set_extras("extra1", extra2="other_name")
+        external.set_dict_input_mapping("x", extra1="extra1", extra2="other_name")
+        external.set_dict_output_mapping(
+            "x", extra1=1, extra2_with_other_name=2, xother=0
+        )
         built = external.build()
 
         built
 
-        all_extras = {
-            "extra1": Mock(),
-            "other_name": Mock(),
-            "extra2": Mock(),
-            "unrelated": Mock(),
-        }
+        x = {}
+        x["x"] = Mock()
+        x["x1"] = Mock()
+        x["extra1"] = Mock()
+        x["extra2"] = Mock()
+        x["other_name"] = Mock()
 
-        built(torch.randn(10, 10), extras=all_extras)
+        o = built(x)
 
-        all_extras["extra1"].assert_called_once()
-        all_extras["other_name"].assert_called_once()
-        all_extras["extra2"].assert_not_called()
-        all_extras["unrelated"].assert_not_called()
+        o["x"].assert_called_once()
+        o["x1"].assert_not_called()
+        o["extra1"].assert_called_once()
+        o["extra2_with_other_name"].assert_called_once()
+        o["other_name"].assert_not_called()
+        o["xother"].assert_called_once()
