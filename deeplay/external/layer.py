@@ -67,12 +67,12 @@ class Layer(External):
         if getattr(self, "_dict_input_mapping_called", False) and getattr(
             self, "_dict_output_mapping_called", False
         ):
-            self.set_dict_mapping(
+            self._set_dict_mapping(
                 self.input_arguments, self.input_kwargs, self.output_arguments
             )
 
     @after_build
-    def set_dict_mapping(
+    def _set_dict_mapping(
         layer: nn.Module,
         input_arguments: List[str],
         input_kwargs: Dict[str, str],
