@@ -1,6 +1,20 @@
 import unittest
+
+import torch
 import torch.nn as nn
 import deeplay as dl
+
+from deeplay import (
+    DeeplayModule,
+)  # Import your actual module here
+
+
+# A simple subclass for testing
+class TestModule(DeeplayModule):
+    def __init__(self, param1=None, param2=None):
+        super().__init__()
+        self.param1 = param1
+        self.param2 = param2
 
 
 class DummyClass:
@@ -28,6 +42,49 @@ class Module2(dl.DeeplayModule):
 
 
 class TestDeeplayModule(unittest.TestCase):
+    def test_initialization(self):
+        # Testing basic initialization and attribute setting
+        module = TestModule(param1=10, param2="test")
+        self.assertEqual(module.param1, 10)
+        self.assertEqual(module.param2, "test")
+
+    def test_configure(self):
+        # Testing the configure method
+        module = TestModule()
+        module.configure("param1", 20)
+        module.configure(param2="configured")
+        self.assertEqual(module.param1, 20)
+        self.assertEqual(module.param2, "configured")
+
+    def test_build(self):
+        # Testing the build method
+        module = TestModule()
+        module.configure(param1=30)
+        built_module = module.build()
+        self.assertEqual(built_module.param1, 30)
+        self.assertTrue(built_module._has_built)
+
+    def test_create(self):
+        # Testing the create method
+        module = TestModule(param1=40)
+        new_module = module.create()
+        self.assertIsInstance(new_module, TestModule)
+        self.assertEqual(new_module.param1, 40)
+        self.assertNotEqual(new_module, module)
+
+    def test_get_user_configuration(self):
+        # Testing retrieval of user configuration
+        module = TestModule(param1=50)
+        module.configure(param1=60)
+        config = module.get_user_configuration()
+        self.assertEqual(config[("param1",)], 60)
+
+    def test_invalid_configure(self):
+        # Testing configure method with invalid attribute
+        module = TestModule()
+        with self.assertRaises(ValueError):
+            module.configure("invalid_param", 100)
+
     def test_configure_1(self):
         module = Module()
         module.configure(a=1)
@@ -104,10 +161,8 @@ class TestDeeplayModule(unittest.TestCase):
         module = Module2(Module())
         module.build()
 
-        module.configure("bar", a=3, b=4, c="D")
-        self.assertEqual(module.bar.a, 3)
-        self.assertEqual(module.bar.b, 4)
-        self.assertEqual(module.bar.c, "D")
+        with self.assertRaises(RuntimeError):
+            module.configure("foo", a=1, b=2, c="C")
 
     def test_init_2(self):
         module = Module(a=1, b=2, c="C")
@@ -141,7 +196,7 @@ class TestDeeplayModule(unittest.TestCase):
         self.assertEqual(created.foo.b, 2)
         self.assertEqual(created.foo.c, "C")
 
-        parent.child.configure(a=3)
+        parent.foo.configure(a=3)
 
         created_2 = parent.create()
 
@@ -152,9 +207,37 @@ class TestDeeplayModule(unittest.TestCase):
 
         self.assertIsNot(created.foo, created_2.foo)
 
+    def test_replace_1(self):
+        parent = Module2(foo=Module(a=1, b=2, c="C"))
+        parent.replace("foo", Module(a=3, b=4, c="D"))
+        parent.replace("bar", Module(a=5, b=6, c="E"))
+        parent.build()
 
-import torch
-import torch.nn as nn
+        self.assertEqual(parent.foo.a, 3)
+        self.assertEqual(parent.foo.b, 4)
+        self.assertEqual(parent.foo.c, "D")
+
+        self.assertEqual(parent.bar.a, 5)
+        self.assertEqual(parent.bar.b, 6)
+        self.assertEqual(parent.bar.c, "E")
+
+    def test_replace_2(self):
+        parent = Module2(foo=Module(a=1, b=2, c="C"))
+
+        new_child = Module2(foo=Module(a=3, b=4, c="D"))
+        new_child.foo.configure(a=5, b=6, c="E")
+        new_child.replace("bar", Module(a=7, b=8, c="F"))
+
+        parent.replace("foo", new_child)
+        parent.build()
+
+        self.assertEqual(parent.foo.foo.a, 5)
+        self.assertEqual(parent.foo.foo.b, 6)
+        self.assertEqual(parent.foo.foo.c, "E")
+
+        self.assertEqual(parent.foo.bar.a, 7)
+        self.assertEqual(parent.foo.bar.b, 8)
+        self.assertEqual(parent.foo.bar.c, "F")
 
 
 class ModelWithLayer(dl.DeeplayModule):
@@ -245,71 +328,6 @@ class TestLayer(unittest.TestCase):
         model.build()
 
         self.assertEqual(model.foo.num_features, 20)
-
-
-import unittest
-from unittest.mock import Mock, patch
-from deeplay import (
-    DeeplayModule,
-)  # Import your actual module here
-
-import unittest
-from deeplay import DeeplayModule, ExtendedConstructorMeta
-import torch.nn as nn
-
-
-# A simple subclass for testing
-class TestModule(DeeplayModule):
-    def __init__(self, param1=None, param2=None):
-        super().__init__()
-        self.param1 = param1
-        self.param2 = param2
-
-
-# Unit tests for DeeplayModule
-class TestDeeplayModule(unittest.TestCase):
-    def test_initialization(self):
-        # Testing basic initialization and attribute setting
-        module = TestModule(param1=10, param2="test")
-        self.assertEqual(module.param1, 10)
-        self.assertEqual(module.param2, "test")
-
-    def test_configure(self):
-        # Testing the configure method
-        module = TestModule()
-        module.configure("param1", 20)
-        module.configure(param2="configured")
-        self.assertEqual(module.param1, 20)
-        self.assertEqual(module.param2, "configured")
-
-    def test_build(self):
-        # Testing the build method
-        module = TestModule()
-        module.configure(param1=30)
-        built_module = module.build()
-        self.assertEqual(built_module.param1, 30)
-        self.assertTrue(built_module._has_built)
-
-    def test_create(self):
-        # Testing the create method
-        module = TestModule(param1=40)
-        new_module = module.create()
-        self.assertIsInstance(new_module, TestModule)
-        self.assertEqual(new_module.param1, 40)
-        self.assertNotEqual(new_module, module)
-
-    def test_get_user_configuration(self):
-        # Testing retrieval of user configuration
-        module = TestModule(param1=50)
-        module.configure(param1=60)
-        config = module.get_user_configuration()
-        self.assertEqual(config[("param1",)], 60)
-
-    def test_invalid_configure(self):
-        # Testing configure method with invalid attribute
-        module = TestModule()
-        with self.assertRaises(ValueError):
-            module.configure("invalid_param", 100)
 
 
 if __name__ == "__main__":

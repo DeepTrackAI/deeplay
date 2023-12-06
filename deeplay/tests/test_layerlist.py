@@ -1,7 +1,7 @@
 import unittest
 import torch
 import torch.nn as nn
-from deeplay import LayerList, DeeplayModule, Layer
+from deeplay import LayerList, DeeplayModule, Layer, LayerActivation
 import itertools
 
 
@@ -164,3 +164,36 @@ class TestLayerList(unittest.TestCase):
         self.assertEqual(len(llist), 2)
         self.assertIsInstance(llist[0], nn.Linear)
         self.assertIsInstance(llist[1], nn.Linear)
+
+    def test_with_instantiated_2(self):
+        class Item(DeeplayModule):
+            def __init__(self):
+                self.net = Layer(nn.Linear, 1, 1)
+
+        llist = LayerList(Item(), Item())
+
+        nets = llist.net
+        self.assertEqual(len(nets), 2)
+        self.assertIsInstance(nets[0], Layer)
+        self.assertIsInstance(nets[1], Layer)
+
+        llist.build()
+        nets = llist.net
+        self.assertEqual(len(nets), 2)
+        self.assertIsInstance(nets[0], nn.Linear)
+        self.assertIsInstance(nets[1], nn.Linear) 
+
+    def test_slice_does_not_mutate(self):
+        llist = LayerList(
+            LayerActivation(Layer(nn.Linear, 1, 1), Layer(nn.ReLU)),
+            LayerActivation(Layer(nn.Linear, 1, 1), Layer(nn.ReLU)),
+            LayerActivation(Layer(nn.Linear, 1, 1), Layer(nn.ReLU)),
+            LayerActivation(Layer(nn.Linear, 1, 1), Layer(nn.ReLU)),
+        )
+        llist.build()
+        llist[0:1]
+        for layer in llist:
+            self.assertTrue(layer._has_built)
+        for layer in llist[0:]:
+            self.assertTrue(layer._has_built)
+
