@@ -18,7 +18,7 @@ def _create_forward_with_input_dict(
 
         outputs = old_forward(
             self,
-            *[x.get(arg) for arg in input_arguments],
+            *map(x.get, input_arguments),
             **{key: x.get(value) for key, value in input_kwargs.items()},
         )
 
@@ -31,7 +31,12 @@ def _create_forward_with_input_dict(
             f"but it should return {expected_outputs}"
         )
 
-        x.update({key: outputs[value] for key, value in output_arguments.items()})
+        x.update(
+            map(
+                lambda key, value: (key, outputs[value]),
+                *zip(*output_arguments.items()),
+            )
+        )
         return x
 
     return forward_with_input_dict
