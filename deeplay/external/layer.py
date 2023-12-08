@@ -41,31 +41,31 @@ class Layer(External):
     def __pre_init__(self, classtype: Type[nn.Module], *args, **kwargs):
         super().__pre_init__(classtype, *args, **kwargs)
 
-    def set_dict_input_mapping(self, *args: str, **kwargs: str):
+    def set_input_map(self, *args: str, **kwargs: str):
         self.__dict__.update(
             {
                 "input_arguments": args,
                 "input_kwargs": kwargs,
-                "_dict_input_mapping_called": True,
+                "_input_map_called": True,
             }
         )
-        self._check_and_execute_dict_mapping()
+        self._check_and_execute_mapping()
 
-    def set_dict_output_mapping(self, *args: str, **kwargs: int):
+    def set_output_map(self, *args: str, **kwargs: int):
         output_arguments = {arg: i for i, arg in enumerate(args)}
         output_arguments.update(kwargs)
 
         self.__dict__.update(
             {
                 "output_arguments": output_arguments,
-                "_dict_output_mapping_called": True,
+                "_output_map_called": True,
             }
         )
-        self._check_and_execute_dict_mapping()
+        self._check_and_execute_mapping()
 
-    def _check_and_execute_dict_mapping(self):
-        if getattr(self, "_dict_input_mapping_called", False) and getattr(
-            self, "_dict_output_mapping_called", False
+    def _check_and_execute_mapping(self):
+        if getattr(self, "_input_map_called", False) and getattr(
+            self, "_output_map_called", False
         ):
             self._set_dict_mapping(
                 self.input_arguments, self.input_kwargs, self.output_arguments

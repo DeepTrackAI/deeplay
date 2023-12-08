@@ -184,10 +184,8 @@ class TestExternal(unittest.TestCase):
                 return x, extra1, extra2
 
         external = dl.Layer(SimpleModule)
-        external.set_dict_input_mapping(
-            "x", extra1="extra1", extra2="other_name_for_extra2"
-        )
-        external.set_dict_output_mapping("x", extra1=1, extra2=2, xother=0)
+        external.set_input_map("x", extra1="extra1", extra2="other_name_for_extra2")
+        external.set_output_map("x", extra1=1, extra2=2, xother=0)
         built = external.build()
 
         built
