@@ -174,7 +174,7 @@ class TestExternal(unittest.TestCase):
             external = dl.External(
                 GeneralVariadicClass, 10, 20, 25, kw_only=30, kwonly_with_default=50
             )
-
+    
     def test_set_dict_inputs_simple_foward(self):
         class SimpleModule(nn.Module):
             def forward(self, x, extra1, extra2):
