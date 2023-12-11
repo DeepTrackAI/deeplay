@@ -6,6 +6,8 @@ import torch.nn as nn
 from .meta import ExtendedConstructorMeta, not_top_level
 from .decorators import before_build
 
+import warnings
+
 
 class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     """
@@ -517,3 +519,17 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         raise NotImplementedError(
             "forward method not implemented for {}".format(self.__class__.__name__)
         )
+
+    def __call__(self, x, *args, **kwargs):
+        if not isinstance(x, dict):
+            x = {"x": x}  # by default, the input is called "x"
+
+        if len(args) > 0:
+            warnings.warn(
+                "You are passing multiple positional arguments to a block."
+                "This is not recommended. Use a dictionary instead."
+                "Alternatively, use keyword arguments."
+            )
+
+        x.update(kwargs)
+        return super().__call__(x)
