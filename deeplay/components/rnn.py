@@ -1,4 +1,4 @@
-from typing import Optional,overload,Sequence,List,Dict,Any,Literal,Union
+from typing import Optional,overload,Sequence,List,Dict,Any,Literal,Union,Type
 from .. import DeeplayModule, Layer, LayerList, LayerActivation
 import torch
 
@@ -43,12 +43,15 @@ class RecurrentNeuralNetwork(DeeplayModule):
     
     in_features: Optional[int] 
     hidden_features: Sequence[int]
+    out_features: Optional[int]
     rnn_type: Optional[str]
+    out_activation: Union[Type[torch.nn.Module], torch.nn.Module, None]
     bidirectional: bool
     batch_first: bool
     dropout: float
+    embedding: Optional[torch.nn.Embedding] 
     blocks: LayerList[LayerActivation]
-    
+
     @property
     def input(self):
         """Return the input layer of the network. Equivalent to `.blocks[0]`."""
@@ -85,7 +88,7 @@ class RecurrentNeuralNetwork(DeeplayModule):
         hidden_features: Sequence[int], 
         out_features: Optional[int] = None,
         rnn_type: Literal['RNN', 'LSTM', 'GRU'] = 'GRU',
-        out_activation: Union[Literal['softmax', 'sigmoid', 'tanh', 'relu', 'leaky_relu', 'gelu', 'none'], torch.nn.Module] = 'none',
+        out_activation: Union[Type[torch.nn.Module], torch.nn.Module, None] = None,
         bidirectional: bool = False, 
         batch_first: bool = True, 
         dropout: float = 0.1,
@@ -102,7 +105,7 @@ class RecurrentNeuralNetwork(DeeplayModule):
         self.batch_first = batch_first
 
         if in_features is None:
-            raise ValueError("in_features must be specified")
+            raise NotImplementedError("in_features must be specified, Lazy RNNs are not supported")
         if hidden_features is None or hidden_features == []:
             raise ValueError("hidden_features must be specified")
         if in_features is not None and in_features <= 0:
@@ -132,24 +135,11 @@ class RecurrentNeuralNetwork(DeeplayModule):
         else:
             self.rnn_class = torch.nn.RNN
              
-        if isinstance(out_activation, torch.nn.Module):
-            self.out_activation=Layer(out_activation)
-        else:
-            if out_activation == 'softmax':
-                self.out_activation = Layer(torch.nn.Softmax,dim=1)
-            elif out_activation == 'sigmoid':
-                self.out_activation = Layer(torch.nn.Sigmoid)
-            elif out_activation == 'tanh':
-                self.out_activation = Layer(torch.nn.Tanh)
-            elif out_activation == 'relu':
-                self.out_activation = Layer(torch.nn.ReLU)
-            elif out_activation == 'leaky_relu':
-                self.out_activation = Layer(torch.nn.LeakyReLU)
-            elif out_activation == 'gelu':
-                self.out_activation = Layer(torch.nn.GELU)
-            else:
-                self.out_activation = Layer(torch.nn.Identity)
-            
+        if out_activation is None:
+            out_activation = Layer(torch.nn.Identity)
+        elif isinstance(out_activation, type) and issubclass(out_activation, torch.nn.Module):
+            out_activation = Layer(out_activation)
+         
         self.blocks = LayerList()
 
         rnn = Layer(self.rnn_class,
