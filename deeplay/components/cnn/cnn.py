@@ -171,7 +171,7 @@ class ConvolutionalNeuralNetwork(DeeplayModule):
             activation = (
                 Layer(nn.ReLU) if i < len(self.hidden_channels) else out_activation
             )
-            normalization = Layer(nn.Identity, num_features=out_channels)
+            normalization = Layer(nn.Identity, num_features=c_out)
 
             block = PoolLayerActivationNormalization(
                 pool=pool_layer,
