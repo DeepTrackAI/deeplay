@@ -107,11 +107,19 @@ class External(DeeplayModule):
 
     def get_argspec(self):
         classtype = self.classtype
-        if inspect.isclass(classtype):
-            argspec = inspect.getfullargspec(classtype.__init__)
+
+        init_method = classtype.__init__ if inspect.isclass(classtype) else classtype
+        argspec = inspect.getfullargspec(init_method)
+
+        if "self" in argspec.args:
             argspec.args.remove("self")
-        else:
-            argspec = inspect.getfullargspec(classtype)
+
+        if not argspec.args and issubclass(classtype, nn.RNNBase):
+            # This is a hack to get around torch RNN classes
+            parent_init = classtype.__mro__[1].__init__
+            argspec = inspect.getfullargspec(parent_init)
+            argspec.args.remove("self")
+            argspec.args.remove("mode")
 
         return argspec
 
@@ -119,6 +127,11 @@ class External(DeeplayModule):
         classtype = self.classtype
         if issubclass(classtype, DeeplayModule):
             return classtype.get_signature()
+        elif issubclass(classtype, nn.RNNBase):
+            signature = inspect.signature(classtype.__mro__[1])
+            params = list(signature.parameters.values())
+            params.pop(0)  # corresponding "mode" in RNNBase
+            return inspect.Signature(params)
         return inspect.signature(classtype)
 
     def build_arguments_from(self, *args, classtype, **kwargs):
