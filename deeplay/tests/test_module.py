@@ -283,9 +283,9 @@ class TestLayer(unittest.TestCase):
             layer.configure(missdefined=10)
 
     def test_configure_4(self):
-        layer = dl.Layer(nn.Identity)
+        layer = dl.Layer(nn.Conv2d)
         with self.assertRaises(ValueError):
-            layer.configure(nn.Identity, num_features=20)
+            layer.configure(num_features=20)
 
     def test_forward(self):
         layer = dl.Layer(nn.BatchNorm1d, num_features=10)
