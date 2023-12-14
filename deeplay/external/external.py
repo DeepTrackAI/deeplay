@@ -88,6 +88,15 @@ class External(DeeplayModule):
         if argspec.varargs is not None:
             args = args + self._actual_init_args["args"]
 
+        # Remove *args and **kwargs from kwargs
+        for key in list(kwargs.keys()):
+            if key in signature.parameters and (
+                signature.parameters[key].kind == signature.parameters[key].VAR_KEYWORD
+                or signature.parameters[key].kind
+                == signature.parameters[key].VAR_POSITIONAL
+            ):
+                kwargs.pop(key)
+
         obj = self.classtype(*args, **kwargs)
 
         self._run_hooks("after_build", obj)
