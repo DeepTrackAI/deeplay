@@ -134,6 +134,11 @@ class TestExternal(unittest.TestCase):
         self.assertEqual(created._args, (10, 20))
         self.assertEqual(created.arg, 30)
 
+        self.assertFalse(hasattr(built, "args"))
+        self.assertFalse(hasattr(created, "args"))
+        self.assertFalse(hasattr(built, "kwargs"))
+        self.assertFalse(hasattr(created, "kwargs"))
+
     def test_kwvariadic_1(self):
         external = dl.External(KWVariadicClass, 5, kwarg=30, arg2=40)
         external.configure(arg1=10)
@@ -202,3 +207,16 @@ class TestExternal(unittest.TestCase):
         self.assertEqual(built.input_size, 2)
         self.assertEqual(built.hidden_size, 64)
         self.assertTrue(built.bidirectional)
+
+    def test_configure_variadic(self):
+        external = dl.External(VariadicClass, 10, 20, arg=30)
+        external.configure(arg9=40)
+        built = external.build()
+        created = external.create()
+        self.assertIsInstance(created, VariadicClass)
+        self.assertIsInstance(built, VariadicClass)
+        self.assertIsNot(built, created)
+
+        self.assertEqual(built._args, (10, 20))
+        self.assertEqual(built.arg, 30)
+        self.assertEqual(built.arg9, 40)

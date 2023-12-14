@@ -237,11 +237,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
             self._configure_kwargs(kwargs)
 
         else:
-            if args[0] not in self.configurables:
-                raise ValueError(
-                    f"Unknown configurable {args[0]} for {self.__class__.__name__}. "
-                    f"Available configurables are {self.configurables}."
-                )
+            self._assert_valid_configurable(args[0])
 
             if hasattr(getattr(self, args[0]), "configure"):
                 getattr(self, args[0]).configure(*args[1:], **kwargs)
@@ -420,10 +416,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
     def _configure_kwargs(self, kwargs):
         for name, value in kwargs.items():
-            if name not in self.configurables:
-                raise ValueError(
-                    f"Unknown configurable {name} for {self.__class__.__name__}. Available configurables are {self.configurables}."
-                )
+            self._assert_valid_configurable(name)
             self._user_config[(name,)] = value
         self.__construct__()
 
@@ -485,6 +478,13 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
         arguments.pop("self", None)
         return arguments
+
+    def _assert_valid_configurable(self, *args):
+        if args[0] not in self.configurables:
+            raise ValueError(
+                f"Unknown configurable {args[0]} for {self.__class__.__name__}. "
+                f"Available configurables are {self.configurables}."
+            )
 
     def _run_hooks(self, hook_name, instance=None):
         if instance is None:
