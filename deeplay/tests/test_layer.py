@@ -172,3 +172,16 @@ class TestExternal(unittest.TestCase):
             external = dl.External(
                 GeneralVariadicClass, 10, 20, 25, kw_only=30, kwonly_with_default=50
             )
+
+    def test_configure_variadic(self):
+        external = dl.External(VariadicClass, 10, 20, arg=30)
+        external.configure(arg9=40)
+        built = external.build()
+        created = external.create()
+        self.assertIsInstance(created, VariadicClass)
+        self.assertIsInstance(built, VariadicClass)
+        self.assertIsNot(built, created)
+
+        self.assertEqual(built._args, (10, 20))
+        self.assertEqual(built.arg, 30)
+        self.assertEqual(built.arg9, 40)

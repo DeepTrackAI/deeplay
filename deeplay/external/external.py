@@ -131,6 +131,11 @@ class External(DeeplayModule):
 
         super().configure(**kwargs)
 
+    def _assert_valid_configurable(self, *args):
+        if self.get_argspec().varkw is not None:
+            return
+        return super()._assert_valid_configurable(*args)
+
     def __repr__(self):
         classkwargs = ", ".join(
             f"{key}={value}" for key, value in self.kwargs.items() if key != "classtype"
