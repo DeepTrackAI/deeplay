@@ -179,32 +179,38 @@ class TestExternal(unittest.TestCase):
             )
 
     def test_torch_RNN_signature(self):
-        layer = dl.Layer(nn.RNN, 2, 64)
+        layer = dl.Layer(nn.RNN, 2, 64, 1)
+
+        layer.configure(input_size=10)
         layer.configure(bidirectional=True)
 
         built = layer.build()
 
-        self.assertEqual(built.input_size, 2)
+        self.assertEqual(built.input_size, 10)
         self.assertEqual(built.hidden_size, 64)
         self.assertTrue(built.bidirectional)
 
     def test_torch_LSTM_signature(self):
-        layer = dl.Layer(nn.RNN, 2, 64)
+        layer = dl.Layer(nn.LSTM, 2, 64, 1)
+
+        layer.configure(input_size=10)
         layer.configure(bidirectional=True)
 
         built = layer.build()
 
-        self.assertEqual(built.input_size, 2)
+        self.assertEqual(built.input_size, 10)
         self.assertEqual(built.hidden_size, 64)
         self.assertTrue(built.bidirectional)
 
     def test_torch_GRU_signature(self):
-        layer = dl.Layer(nn.RNN, 2, 64)
+        layer = dl.Layer(nn.GRU, 2, 64, 1)
+
+        layer.configure(input_size=10)
         layer.configure(bidirectional=True)
 
         built = layer.build()
 
-        self.assertEqual(built.input_size, 2)
+        self.assertEqual(built.input_size, 10)
         self.assertEqual(built.hidden_size, 64)
         self.assertTrue(built.bidirectional)
 
