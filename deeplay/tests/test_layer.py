@@ -134,6 +134,11 @@ class TestExternal(unittest.TestCase):
         self.assertEqual(created._args, (10, 20))
         self.assertEqual(created.arg, 30)
 
+        self.assertFalse(hasattr(built, "args"))
+        self.assertFalse(hasattr(created, "args"))
+        self.assertFalse(hasattr(built, "kwargs"))
+        self.assertFalse(hasattr(created, "kwargs"))
+
     def test_kwvariadic_1(self):
         external = dl.External(KWVariadicClass, 5, kwarg=30, arg2=40)
         external.configure(arg1=10)
