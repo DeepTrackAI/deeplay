@@ -203,7 +203,6 @@ class EncoderDecoder(DeeplayModule):
 
         self.decoder_blocks = LayerList()
         for i, c_out in enumerate(self.decoder_channels + [out_channels]):
-            # c_in = c_in if i == 0 else self.decoder_channels[i - 1]
 
             if unpool is None:
                 unpool_layer = Layer(
@@ -234,7 +233,7 @@ class EncoderDecoder(DeeplayModule):
 
             self.decoder_blocks.append(block)
 
-        self.output_blocks = Layer(nn.Identity, num_features=c_out)
+        self.output_blocks = Layer(nn.Identity)
 
         self.blocks = (
             self.encoder_blocks
