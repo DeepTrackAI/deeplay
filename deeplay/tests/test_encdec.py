@@ -1,4 +1,5 @@
 import unittest
+
 import torch
 import torch.nn as nn
 from deeplay import EncoderDecoder, Layer, LayerList
@@ -26,7 +27,7 @@ class TestComponentEncDec(unittest.TestCase):
         # test on a batch of 2
         x = torch.randn(2, 3, 64, 64)
         y = encdec(x)
-        self.assertEqual(y.shape, [2, 1, 128, 128])
+        self.assertEqual(y.shape, (2, 1, 128, 128))
 
     # def test_cnn_change_depth(self):
     #     cnn = ConvolutionalNeuralNetwork(2, [4], 3)
@@ -45,7 +46,7 @@ class TestComponentEncDec(unittest.TestCase):
         self.assertIsInstance(encdec.output.activation, nn.Sigmoid)
 
     def test_change_out_act_Layer(self):
-        encdec = EncoderDecoder(3, [8, 16, 32
+        encdec = EncoderDecoder(3, [8, 16, 32],[16, 8, 4], 1)
         encdec.configure(out_activation=Layer(nn.Sigmoid))
         encdec.build()
         encdec.create()
@@ -53,13 +54,14 @@ class TestComponentEncDec(unittest.TestCase):
         self.assertEqual(len(encdec.blocks), 8)
         self.assertIsInstance(encdec.output.activation, nn.Sigmoid)
 
-    # def test_change_out_act_instance(self):
-    #     cnn = ConvolutionalNeuralNetwork(2, [4], 3)
-    #     cnn.configure(out_activation=nn.Sigmoid())
-    #     cnn.create()
-    #     cnn.build()
-    #     self.assertEqual(len(cnn.blocks), 2)
-    #     self.assertIsInstance(cnn.output.activation, nn.Sigmoid)
+    def test_change_out_act_instance(self):
+        encdec = EncoderDecoder(3, [8, 16, 32],[16, 8, 4], 1)
+        encdec.configure(out_activation=nn.Sigmoid())
+        encdec.build()
+        encdec.create()
+
+        self.assertEqual(len(encdec.blocks), 8)
+        self.assertIsInstance(encdec.output.activation, nn.Sigmoid)
 
     # def test_default_values_initialization(self):
     #     cnn = ConvolutionalNeuralNetwork(
