@@ -46,7 +46,6 @@ class RecurrentNeuralNetwork(DeeplayModule):
         in_features: Optional[int],
         hidden_features: Sequence[Optional[int]],
         out_features: int,
-        out_activation: Union[Type[nn.Module], nn.Module, None] = None,
     ):
         super().__init__()
 
@@ -68,11 +67,6 @@ class RecurrentNeuralNetwork(DeeplayModule):
             raise ValueError(
                 f"all hidden_channels must be positive, got {hidden_features}"
             )
-
-        if out_activation is None:
-            out_activation = Layer(nn.Identity)
-        elif isinstance(out_activation, type) and issubclass(out_activation, nn.Module):
-            out_activation = Layer(out_activation)
 
         f_out = in_features
 
