@@ -88,6 +88,15 @@ class External(DeeplayModule):
         if argspec.varargs is not None:
             args = args + self._actual_init_args["args"]
 
+        # Remove *args and **kwargs from kwargs
+        for key in list(kwargs.keys()):
+            if key in signature.parameters and (
+                signature.parameters[key].kind == signature.parameters[key].VAR_KEYWORD
+                or signature.parameters[key].kind
+                == signature.parameters[key].VAR_POSITIONAL
+            ):
+                kwargs.pop(key)
+
         obj = self.classtype(*args, **kwargs)
 
         self._run_hooks("after_build", obj)
@@ -98,11 +107,19 @@ class External(DeeplayModule):
 
     def get_argspec(self):
         classtype = self.classtype
-        if inspect.isclass(classtype):
-            argspec = inspect.getfullargspec(classtype.__init__)
+
+        init_method = classtype.__init__ if inspect.isclass(classtype) else classtype
+        argspec = inspect.getfullargspec(init_method)
+
+        if "self" in argspec.args:
             argspec.args.remove("self")
-        else:
-            argspec = inspect.getfullargspec(classtype)
+
+        if not argspec.args and issubclass(classtype, nn.RNNBase):
+            # This is a hack to get around torch RNN classes
+            parent_init = classtype.__mro__[1].__init__
+            argspec = inspect.getfullargspec(parent_init)
+            argspec.args.remove("self")
+            argspec.args.remove("mode")
 
         return argspec
 
@@ -110,6 +127,11 @@ class External(DeeplayModule):
         classtype = self.classtype
         if issubclass(classtype, DeeplayModule):
             return classtype.get_signature()
+        elif issubclass(classtype, nn.RNNBase):
+            signature = inspect.signature(classtype.__mro__[1])
+            params = list(signature.parameters.values())
+            params.pop(0)  # corresponding "mode" in RNNBase
+            return inspect.Signature(params)
         return inspect.signature(classtype)
 
     def build_arguments_from(self, *args, classtype, **kwargs):
@@ -130,6 +152,11 @@ class External(DeeplayModule):
             super().configure(classtype=classtype)
 
         super().configure(**kwargs)
+
+    def _assert_valid_configurable(self, *args):
+        if self.get_argspec().varkw is not None:
+            return
+        return super()._assert_valid_configurable(*args)
 
     def __repr__(self):
         classkwargs = ", ".join(

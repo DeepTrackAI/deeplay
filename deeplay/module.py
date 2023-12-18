@@ -4,6 +4,7 @@ from typing import Any, Dict, Tuple, List, Set
 import torch.nn as nn
 
 from .meta import ExtendedConstructorMeta, not_top_level
+from .decorators import before_build
 
 
 class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
@@ -143,6 +144,42 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     def __post_init__(self):
         ...
 
+    @before_build
+    def replace(self, target: str, replacement: nn.Module):
+        """
+        Replaces a child module with another module.
+
+        This method replaces the child module with the given name with the specified replacement module.
+        It is useful for dynamically swapping out modules within a larger module or for replacing
+        modules within a module that has already been built.
+
+        Parameters
+        ----------
+        target : str
+            The name of the child module to be replaced.
+        replacement : DeeplayModule
+            The replacement module.
+
+        Raises
+        ------
+        ValueError
+            Raised if the target module is not found among the module's children.
+
+        Example Usage
+        -------------
+        To replace a child module with another module:
+        ```
+        module = ExampleModule()
+        module.replace('child_module', ReplacementModule())
+        ```
+        """
+        if target not in self._modules:
+            raise ValueError(
+                f"Cannot replace {target}. {target} is not a child module of {self.__class__.__name__}."
+            )
+
+        self._modules[target] = replacement
+
     def configure(self, *args: Any, **kwargs: Any):
         """
         Configures the module with specified arguments.
@@ -200,11 +237,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
             self._configure_kwargs(kwargs)
 
         else:
-            if args[0] not in self.configurables:
-                raise ValueError(
-                    f"Unknown configurable {args[0]} for {self.__class__.__name__}. "
-                    f"Available configurables are {self.configurables}."
-                )
+            self._assert_valid_configurable(args[0])
 
             if hasattr(getattr(self, args[0]), "configure"):
                 getattr(self, args[0]).configure(*args[1:], **kwargs)
@@ -383,10 +416,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
     def _configure_kwargs(self, kwargs):
         for name, value in kwargs.items():
-            if name not in self.configurables:
-                raise ValueError(
-                    f"Unknown configurable {name} for {self.__class__.__name__}. Available configurables are {self.configurables}."
-                )
+            self._assert_valid_configurable(name)
             self._user_config[(name,)] = value
         self.__construct__()
 
@@ -448,6 +478,13 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
         arguments.pop("self", None)
         return arguments
+
+    def _assert_valid_configurable(self, *args):
+        if args[0] not in self.configurables:
+            raise ValueError(
+                f"Unknown configurable {args[0]} for {self.__class__.__name__}. "
+                f"Available configurables are {self.configurables}."
+            )
 
     def _run_hooks(self, hook_name, instance=None):
         if instance is None:
