@@ -1,15 +1,22 @@
 from typing import List, Optional, Literal, Any, Sequence, Type, overload, Union
 
-from .. import DeeplayModule, Layer, LayerList, LayerActivationNormalization
+from .. import DeeplayModule, Layer, LayerList, LayerActivationNormalizationDropout
 
 import torch.nn as nn
 
+class Drop(nn.Module):
+    def __init__(self, p=0):
+        super(Drop, self).__init__()
+        self.p = p
+
+    def forward(self, x):
+        return nn.Dropout(p=self.p)(x[0]),x[1]
 
 class RecurrentNeuralNetwork(DeeplayModule):
     in_features: Optional[int]
     hidden_features: Sequence[Optional[int]]
     out_features: int
-    blocks: LayerList[LayerActivationNormalization]
+    blocks: LayerList[LayerActivationNormalizationDropout]
 
     @property
     def input(self):
@@ -40,6 +47,11 @@ class RecurrentNeuralNetwork(DeeplayModule):
     def normalization(self) -> LayerList[Layer]:
         """Return the normalizations of the network. Equivalent to `.blocks.normalization`."""
         return self.blocks.normalization
+    
+    @property
+    def dropout(self) -> LayerList[Layer]:
+        """Return the normalizations of the network. Equivalent to `.blocks.normalization`."""
+        return self.blocks.dropout
 
     def __init__(
         self,
@@ -74,16 +86,17 @@ class RecurrentNeuralNetwork(DeeplayModule):
         for c_in, c_out in zip(
             [in_features, *hidden_features], [*hidden_features, out_features]
         ):
+            """Torch automatically overwrites dropout==0 for RNN with num_layers=1. To allow for hidden layers of different size, we include dropout layers separately. """
             self.blocks.append(
-                LayerActivationNormalization(
-                    Layer(nn.RNN, c_in, c_out),
+                LayerActivationNormalizationDropout(
+                    Layer(nn.RNN, c_in, c_out), 
                     Layer(nn.Identity, num_features=f_out),
                     Layer(nn.Identity, num_features=f_out),
+                    Layer(Drop,p=0)
                 )
             )
 
     def forward(self, x):
-        print(x.shape)
         for block in self.blocks:
             x, _ = block(x)
         return x
