@@ -1,11 +1,17 @@
 from typing import List, Optional, Literal, Any, Sequence, Type, overload, Union
 
-from .. import DeeplayModule, Layer, LayerList, PoolLayerActivationNormalization
+from .. import (
+    DeeplayModule,
+    Layer,
+    LayerList,
+    PoolLayerActivationNormalization,
+    LayerActivationNormalizationUnpool,
+)
 import torch.nn as nn
 
 
-class EncoderDecoder(DeeplayModule):
-    """Encoder Decoder module.
+class ConvolutionalEncoderDecoder2d(DeeplayModule):
+    """Convolutional Encoder Decoder module in 2D.
 
     Parameters
     ----------
@@ -99,7 +105,7 @@ class EncoderDecoder(DeeplayModule):
     @property
     def bottleneck_layer(self) -> LayerList[Layer]:
         """Return the layers of the network. Equivalent to `.blocks.layer`."""
-        return self.bottleneck_blocks
+        return self.bottleneck_blocks.layer
 
     @property
     def decoder_layer(self) -> LayerList[Layer]:
@@ -109,7 +115,7 @@ class EncoderDecoder(DeeplayModule):
     @property
     def output_layer(self) -> LayerList[Layer]:
         """Return the layers of the network. Equivalent to `.blocks.layer`."""
-        return self.output_blocks
+        return self.output_blocks.layer
 
     @property
     def activation(self) -> LayerList[Layer]:
@@ -175,19 +181,12 @@ class EncoderDecoder(DeeplayModule):
                 else:
                     pool_layer = pool
 
-            if i < len(self.encoder_channels):
-                if c_in:
-                    layer = Layer(nn.Conv2d, c_in, c_out, 3, 1, 1)
-                else:
-                    layer = Layer(nn.LazyConv2d, c_out, 3, 1, 1)
+            if c_in:
+                layer = Layer(nn.Conv2d, c_in, c_out, 3, 1, 1)
             else:
-                layer = Layer(nn.Identity, num_features=c_out)
+                layer = Layer(nn.LazyConv2d, c_out, 3, 1, 1)
 
-            activation = (
-                Layer(nn.ReLU)
-                if i < len(self.encoder_channels)
-                else Layer(nn.Identity, num_features=c_out)
-            )
+            activation = Layer(nn.ReLU)
             normalization = Layer(nn.Identity, num_features=c_out)
 
             block = PoolLayerActivationNormalization(
@@ -199,11 +198,17 @@ class EncoderDecoder(DeeplayModule):
 
             self.encoder_blocks.append(block)
 
-        self.bottleneck_blocks = Layer(nn.Identity, num_features=c_out)
+        self.bottleneck_blocks = LayerList()
+        block = PoolLayerActivationNormalization(
+            pool=Layer(nn.Identity),
+            layer=Layer(nn.Identity),
+            activation=Layer(nn.Identity),
+            normalization=Layer(nn.Identity),
+        )
+        self.bottleneck_blocks.append(block)
 
         self.decoder_blocks = LayerList()
-        for i, c_out in enumerate(self.decoder_channels + [out_channels]):
-
+        for i, c_out in enumerate(self.decoder_channels):
             if unpool is None:
                 unpool_layer = Layer(
                     nn.LazyConvTranspose2d,
@@ -219,27 +224,32 @@ class EncoderDecoder(DeeplayModule):
                 unpool_layer = unpool
 
             layer = Layer(nn.LazyConv2d, c_out, 3, 1, 1)
-            activation = (
-                Layer(nn.ReLU) if i < len(self.decoder_channels) else out_activation
-            )
+            activation = Layer(nn.ReLU)
             normalization = Layer(nn.Identity, num_features=c_out)
 
-            block = PoolLayerActivationNormalization(
-                pool=unpool_layer,
+            block = LayerActivationNormalizationUnpool(
                 layer=layer,
                 activation=activation,
                 normalization=normalization,
+                unpool=unpool_layer,
             )
 
             self.decoder_blocks.append(block)
 
-        self.output_blocks = Layer(nn.Identity)
+        self.output_blocks = LayerList()
+        block = PoolLayerActivationNormalization(
+            pool=Layer(nn.Identity),
+            layer=Layer(nn.LazyConv2d, self.out_channels, 3, 1, 1),
+            activation=out_activation,
+            normalization=Layer(nn.Identity),
+        )
+        self.output_blocks.append(block)
 
         self.blocks = (
             self.encoder_blocks
-            + LayerList(self.bottleneck_blocks)
+            + self.bottleneck_blocks
             + self.decoder_blocks
-            + LayerList(self.output_blocks)
+            + self.output_blocks
         )
 
     def forward(self, x):
