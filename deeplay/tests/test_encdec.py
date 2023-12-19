@@ -2,7 +2,7 @@ import unittest
 
 import torch
 import torch.nn as nn
-from deeplay import EncoderDecoder, Layer, LayerList
+from deeplay import ConvolutionalEncoderDecoder2d, Layer, LayerList
 
 import itertools
 
@@ -11,23 +11,23 @@ class TestComponentEncDec(unittest.TestCase):
     ...
 
     def test_encdec_defaults(self):
-        encdec = EncoderDecoder(3, [8, 16, 32],[16, 8, 4], 1)
+        encdec = ConvolutionalEncoderDecoder2d(3, [8, 16, 32], [16, 8, 4], 1)
         encdec.build()
         encdec.create()
-        
-        self.assertEqual(len(encdec.blocks), 8)
+
+        self.assertEqual(len(encdec.blocks), 9)
 
         self.assertEqual(encdec.blocks[0].layer.in_channels, 3)
         self.assertEqual(encdec.blocks[1].layer.out_channels, 16)
-        self.assertEqual(encdec.encoder_blocks[0].layer.in_channels,3)
-        self.assertEqual(encdec.decoder_blocks[-2].layer.out_channels,4)
+        self.assertEqual(encdec.encoder_blocks[0].layer.in_channels, 3)
+        self.assertEqual(encdec.decoder_blocks[-2].layer.out_channels, 8)
 
         self.assertEqual(encdec.output.layer.out_channels, 1)
 
         # test on a batch of 2
         x = torch.randn(2, 3, 64, 64)
         y = encdec(x)
-        self.assertEqual(y.shape, (2, 1, 128, 128))
+        self.assertEqual(y.shape, (2, 1, 64, 64))
 
     # def test_cnn_change_depth(self):
     #     cnn = ConvolutionalNeuralNetwork(2, [4], 3)
@@ -37,30 +37,30 @@ class TestComponentEncDec(unittest.TestCase):
     #     self.assertEqual(len(cnn.blocks), 3)
 
     def test_change_act(self):
-        encdec = EncoderDecoder(3, [8, 16, 32],[16, 8, 4], 1)
+        encdec = ConvolutionalEncoderDecoder2d(3, [8, 16, 32], [16, 8, 4], 1)
         encdec.configure(out_activation=nn.Sigmoid)
         encdec.build()
         encdec.create()
 
-        self.assertEqual(len(encdec.blocks), 8)
+        self.assertEqual(len(encdec.blocks), 9)
         self.assertIsInstance(encdec.output.activation, nn.Sigmoid)
 
     def test_change_out_act_Layer(self):
-        encdec = EncoderDecoder(3, [8, 16, 32],[16, 8, 4], 1)
+        encdec = ConvolutionalEncoderDecoder2d(3, [8, 16, 32], [16, 8, 4], 1)
         encdec.configure(out_activation=Layer(nn.Sigmoid))
         encdec.build()
         encdec.create()
 
-        self.assertEqual(len(encdec.blocks), 8)
+        self.assertEqual(len(encdec.blocks), 9)
         self.assertIsInstance(encdec.output.activation, nn.Sigmoid)
 
     def test_change_out_act_instance(self):
-        encdec = EncoderDecoder(3, [8, 16, 32],[16, 8, 4], 1)
+        encdec = ConvolutionalEncoderDecoder2d(3, [8, 16, 32], [16, 8, 4], 1)
         encdec.configure(out_activation=nn.Sigmoid())
         encdec.build()
         encdec.create()
 
-        self.assertEqual(len(encdec.blocks), 8)
+        self.assertEqual(len(encdec.blocks), 9)
         self.assertIsInstance(encdec.output.activation, nn.Sigmoid)
 
     # def test_default_values_initialization(self):
