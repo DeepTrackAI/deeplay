@@ -11,11 +11,11 @@ import torch.nn as nn
 from .sequential import SequentialBlock
 
 
-class LayerActivationNormalizationUnpool(SequentialBlock):
+class LayerActivationNormalizationUpsample(SequentialBlock):
     layer: nn.Module
     activation: nn.Module
     normalization: nn.Module
-    unpool: nn.Module
+    upsample: nn.Module
     order: List[str]
 
     def __init__(
@@ -23,15 +23,15 @@ class LayerActivationNormalizationUnpool(SequentialBlock):
         layer: nn.Module,
         activation: nn.Module,
         normalization: nn.Module,
-        unpool: nn.Module,
-        order: List[str] = ["layer", "activation", "normalization", "unpool"],
+        upsample: nn.Module,
+        order: List[str] = ["layer", "activation", "normalization", "upsample"],
         **kwargs: nn.Module,
     ):
         super().__init__(
             layer=layer,
             activation=activation,
             normalization=normalization,
-            unpool=unpool,
+            upsample=upsample,
             order=order,
             **kwargs,
         )
@@ -63,7 +63,7 @@ class LayerActivationNormalizationUnpool(SequentialBlock):
         ...
 
     @overload
-    def configure(self, name: Literal["unpool"], *args, **kwargs) -> None:
+    def configure(self, name: Literal["upsample"], *args, **kwargs) -> None:
         ...
 
     @overload

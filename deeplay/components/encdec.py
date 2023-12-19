@@ -5,7 +5,7 @@ from .. import (
     Layer,
     LayerList,
     PoolLayerActivationNormalization,
-    LayerActivationNormalizationUnpool,
+    LayerActivationNormalizationUpsample,
 )
 import torch.nn as nn
 
@@ -27,8 +27,8 @@ class ConvolutionalEncoderDecoder2d(DeeplayModule):
         Specification for the output activation. (Default: nn.ReLU)
     pool: template-like
         Specification for the pooling of the block. Is not applied to the first block. (Default: nn.MaxPool2d)
-    unpool: template-like
-        Specification for the unpooling of the block. (Default: nn.ConvTranspose2d)
+    upsample: template-like
+        Specification for the upsampling of the block. (Default: nn.ConvTranspose2d)
 
 
     Configurables
@@ -135,7 +135,7 @@ class ConvolutionalEncoderDecoder2d(DeeplayModule):
         out_channels: int,
         out_activation: Union[Type[nn.Module], nn.Module, None] = None,
         pool: Union[Type[nn.Module], nn.Module, None] = None,
-        unpool: Union[Type[nn.Module], nn.Module, None] = None,
+        upsample: Union[Type[nn.Module], nn.Module, None] = None,
     ):
         super().__init__()
 
@@ -209,29 +209,29 @@ class ConvolutionalEncoderDecoder2d(DeeplayModule):
 
         self.decoder_blocks = LayerList()
         for i, c_out in enumerate(self.decoder_channels):
-            if unpool is None:
-                unpool_layer = Layer(
+            if upsample is None:
+                upsample_layer = Layer(
                     nn.LazyConvTranspose2d,
                     c_out,
                     kernel_size=2,
                     stride=2,
                 )
-            elif isinstance(unpool, type) and issubclass(unpool, nn.Module):
-                unpool_layer = Layer(unpool)
-            elif isinstance(unpool, DeeplayModule):
-                unpool_layer = unpool.new()
+            elif isinstance(upsample, type) and issubclass(upsample, nn.Module):
+                upsample_layer = Layer(upsample)
+            elif isinstance(upsample, DeeplayModule):
+                upsample_layer = upsample.new()
             else:
-                unpool_layer = unpool
+                upsample_layer = upsample
 
             layer = Layer(nn.LazyConv2d, c_out, 3, 1, 1)
             activation = Layer(nn.ReLU)
             normalization = Layer(nn.Identity, num_features=c_out)
 
-            block = LayerActivationNormalizationUnpool(
+            block = LayerActivationNormalizationUpsample(
                 layer=layer,
                 activation=activation,
                 normalization=normalization,
-                unpool=unpool_layer,
+                upsample=upsample_layer,
             )
 
             self.decoder_blocks.append(block)
