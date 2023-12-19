@@ -6,6 +6,7 @@ from typing import (
     Any,
 )
 
+
 import torch.nn as nn
 
 from .sequential import SequentialBlock
