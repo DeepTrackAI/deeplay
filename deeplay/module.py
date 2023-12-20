@@ -130,6 +130,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         self._hooks = {
             "before_build": [],
             "after_build": [],
+            "after_init": [],
         }
 
         self._has_built = False
@@ -387,6 +388,20 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
         self._hooks["after_build"].append(func)
 
+    def register_after_init_hook(self, func):
+        """
+        Registers a function to be called after the module is initialized.
+
+        Parameters
+        ----------
+        func : Callable
+            The function to be called after the module is initialized. The function should take
+            a single argument, which is the module instance.
+
+        """
+
+        self._hooks["after_init"].append(func)
+
     def get_user_configuration(self):
         """
         Retrieves the current user configuration of the module.
@@ -498,6 +513,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
             self._is_constructing = True
             self.__init__(*self._args, **self.kwargs)
             self._is_constructing = False
+            self._run_hooks("after_init")
             self.__post_init__()
 
     @classmethod

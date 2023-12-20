@@ -2,7 +2,7 @@ from typing import Any, overload, Iterator, List, Generic, TypeVar, Union, Tuple
 
 from torch import nn
 from .module import DeeplayModule
-
+from .decorators import after_init
 
 T = TypeVar("T", bound=nn.Module)
 
@@ -28,23 +28,34 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
                 self._give_user_configuration(layer, self._get_abs_string_index(idx))
                 layer.__construct__()
 
+    @after_init
     def append(self, module: DeeplayModule) -> "LayerList[T]":
-        if not self._has_built:
-            self._args = (*self._args, module)
-            self.__construct__()
-
-        else:
-            super().append(module)
-
+        super().append(module)
         return self
 
-    def pop(self, index: int = -1) -> T:
-        args = list(self._args)
-        args.pop(index)
-        self._args = tuple(args)
-        self.__construct__()
+    @after_init
+    def pop(self, key: int = -1) -> T:
+        return super().pop(key)
 
-        return self[index]
+    @after_init
+    def insert(self, index: int, module: DeeplayModule) -> "LayerList[T]":
+        super().insert(index, module)
+        return self
+
+    @after_init
+    def extend(self, modules: List[DeeplayModule]) -> "LayerList[T]":
+        super().extend(modules)
+        return self
+
+    @after_init
+    def remove(self, module: DeeplayModule) -> "LayerList[T]":
+        super().remove(module)
+        return self
+
+    @after_init
+    def reverse(self) -> "LayerList[T]":
+        super().reverse()
+        return self
 
     @overload
     def configure(

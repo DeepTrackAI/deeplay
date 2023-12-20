@@ -16,9 +16,7 @@ from ..module import DeeplayModule
 T = TypeVar("T")
 
 
-class Block(
-    DeeplayModule,
-):
+class Block(DeeplayModule):
     @property
     def configurables(self):
         return super().configurables.union(self.kwargs.keys())
