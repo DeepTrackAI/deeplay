@@ -1,6 +1,6 @@
 from typing import List, Optional, Literal, Any, Sequence, Type, overload, Union
 
-from .. import DeeplayModule, Layer, LayerList, LayerActivationNormalization
+from .. import DeeplayModule, Layer, LayerList, LayerActivationNormalizationDropout
 
 import torch.nn as nn
 
@@ -30,6 +30,7 @@ class MultiLayerPerceptron(DeeplayModule):
     - `layer`: Equivalent to `.blocks.layer`.
     - `activation`: Equivalent to `.blocks.activation`.
     - `normalization`: Equivalent to `.blocks.normalization`.
+    - `dropout`: Equivalent to `.blocks.dropout`.
 
     Evaluation
     ----------
@@ -55,7 +56,7 @@ class MultiLayerPerceptron(DeeplayModule):
     in_features: Optional[int]
     hidden_features: Sequence[Optional[int]]
     out_features: int
-    blocks: LayerList[LayerActivationNormalization]
+    blocks: LayerList[LayerActivationNormalizationDropout]
 
     @property
     def input(self):
@@ -86,6 +87,11 @@ class MultiLayerPerceptron(DeeplayModule):
     def normalization(self) -> LayerList[Layer]:
         """Return the normalizations of the network. Equivalent to `.blocks.normalization`."""
         return self.blocks.normalization
+    
+    @property
+    def dropout(self) -> LayerList[Layer]:
+        """Return the dropout of the network. Equivalent to `.blocks.dropout`."""
+        return self.blocks.dropout
 
     def __init__(
         self,
@@ -125,7 +131,7 @@ class MultiLayerPerceptron(DeeplayModule):
             f_in = self.in_features if i == 0 else self.hidden_features[i - 1]
 
             self.blocks.append(
-                LayerActivationNormalization(
+                LayerActivationNormalizationDropout(
                     Layer(nn.Linear, f_in, f_out)
                     if f_in
                     else Layer(nn.LazyLinear, f_out),
@@ -134,14 +140,16 @@ class MultiLayerPerceptron(DeeplayModule):
                     # because it is ignored. This means that users do not have
                     # to specify the number of features for nn.Identity.
                     Layer(nn.Identity, num_features=f_out),
+                    Layer(nn.Dropout, p=0),
                 )
             )
 
         self.blocks.append(
-            LayerActivationNormalization(
+            LayerActivationNormalizationDropout(
                 Layer(nn.Linear, f_out, self.out_features),
                 out_activation,
                 Layer(nn.Identity, num_features=self.out_features),
+                Layer(nn.Dropout, p=0),
             )
         )
 
