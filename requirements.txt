@@ -2,3 +2,4 @@ lightning
 torchmetrics
 torchvision
 kornia
+scipy
