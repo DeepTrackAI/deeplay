@@ -15,7 +15,7 @@ import torch.nn as nn
 from deeplay import LayerList
 
 
-class ConvBlock(DeeplayModule):
+class ConvBlock(LayerActivationNormalization):
     """
     Convolutional block for DCGAN discriminator. It consists of a 2D Convolutional layer, a Batch Normalization layer and a LeakyReLU activation function.
     """
@@ -27,35 +27,17 @@ class ConvBlock(DeeplayModule):
         kernel_size,
         stride,
         padding,
-        batch_norm=True,
+        activation=None,
+        normalization=None,
     ):
-        super().__init__()
-        self.blocks = LayerList()
-        self.blocks.append(
-            LayerActivationNormalization(
-                Layer(
-                    nn.Conv2d,
-                    in_channels,
-                    out_channels,
-                    kernel_size,
-                    stride,
-                    padding,
-                    bias=not batch_norm,
-                ),
-                Layer(nn.BatchNorm2d, out_channels)
-                if batch_norm
-                else Layer(nn.Identity),
-                Layer(nn.LeakyReLU, 0.2),
-            )
+        super().__init__(
+            Layer(nn.Conv2d, in_channels, out_channels, kernel_size, stride, padding),
+            activation=activation or Layer(nn.LeakyReLU, 0.2),
+            normalization=normalization or Layer(nn.BatchNorm2d, out_channels),
         )
 
-    def forward(self, x):
-        for block in self.blocks:
-            x = block(x)
-        return x
 
-
-class DcganDiscriminator(DeeplayModule):
+class DCGANDiscriminator(DeeplayModule):
     """
     Deep Convolutional Generative Adversarial Network (DCGAN) discriminator.
 
@@ -148,13 +130,22 @@ class DcganDiscriminator(DeeplayModule):
                 Layer(nn.LeakyReLU, 0.2),
             )
             self.blocks.append(
-                ConvBlock(input_channels + 1, features_dim, 4, 2, 1, batch_norm=False)
+                ConvBlock(
+                    input_channels + 1,
+                    features_dim,
+                    4,
+                    2,
+                    1,
+                    normalization=nn.Identity(),
+                )
             )
 
         else:
             self.blocks = LayerList()
             self.blocks.append(
-                ConvBlock(input_channels, features_dim, 4, 2, 1, batch_norm=False)
+                ConvBlock(
+                    input_channels, features_dim, 4, 2, 1, normalization=nn.Identity()
+                )
             )
 
         for i in range(3):
@@ -246,7 +237,7 @@ class DcganDiscriminator(DeeplayModule):
     configure = DeeplayModule.configure
 
 
-class ConvTransposeBlock(DeeplayModule):
+class ConvTransposeBlock(LayerActivationNormalization):
     """
     Convolutional transpose block for DCGAN generator. It consists of a 2D Convolutional transpose layer, a Batch Normalization layer and a ReLU activation function.
     """
@@ -258,35 +249,24 @@ class ConvTransposeBlock(DeeplayModule):
         kernel_size,
         stride,
         padding,
-        batch_norm=True,
+        activation=None,
+        normalization=None,
     ):
-        super().__init__()
-        self.blocks = LayerList()
-        self.blocks.append(
-            LayerActivationNormalization(
-                Layer(
-                    nn.ConvTranspose2d,
-                    in_channels,
-                    out_channels,
-                    kernel_size,
-                    stride,
-                    padding,
-                    bias=not batch_norm,
-                ),
-                Layer(nn.BatchNorm2d, out_channels)
-                if batch_norm
-                else Layer(nn.Identity),
-                Layer(nn.ReLU),
-            )
+        super().__init__(
+            Layer(
+                nn.ConvTranspose2d,
+                in_channels,
+                out_channels,
+                kernel_size,
+                stride,
+                padding,
+            ),
+            activation=activation or Layer(nn.ReLU),
+            normalization=normalization or Layer(nn.BatchNorm2d, out_channels),
         )
 
-    def forward(self, x):
-        for block in self.blocks:
-            x = block(x)
-        return x
 
-
-class DcganGenerator(DeeplayModule):
+class DCGANGenerator(DeeplayModule):
     """
     Deep Convolutional Generative Adversarial Network (DCGAN) generator.
 
