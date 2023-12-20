@@ -17,6 +17,9 @@ class LodeSTAR(Application):
 
     Creates a trainable model for self-supervised object detection using the LodeSTAR method.
 
+    Should be trained on a dataset of crops of objects. The model will learn to detect objects in the crops and
+    output the coordinates of the center of the object.
+
     Parameters
     ----------
     optimizer: Optimizer
