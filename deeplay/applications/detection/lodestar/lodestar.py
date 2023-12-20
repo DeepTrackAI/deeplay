@@ -152,7 +152,9 @@ class LodeSTAR(Application):
 
         for i in range(0, y_pred.size(0), self.n_transforms):
             batch_preds = y_reduced_on_initial[i : i + self.n_transforms]
-            batch_mean_pred = batch_preds.mean(dim=0, keepdim=True)
+            batch_mean_pred = batch_preds.mean(dim=0, keepdim=True).expand_as(
+                batch_preds
+            )
             between_disagreement_loss += (
                 self.between_loss(batch_preds, batch_mean_pred) / B
             )
@@ -285,7 +287,10 @@ class LodeSTAR(Application):
         alpha, beta: float
             Geometric weight of the weight-map vs the consistenct metric for detection.
         """
-        return weights[0].detach().cpu().numpy() ** alpha * cls.local_consistency(pred) ** beta
+        return (
+            weights[0].detach().cpu().numpy() ** alpha
+            * cls.local_consistency(pred) ** beta
+        )
 
     def train_preprocess(self, batch):
         if isinstance(batch, (tuple, list)):
