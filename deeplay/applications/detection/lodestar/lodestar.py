@@ -64,7 +64,7 @@ class LodeSTAR(Application):
         between_loss: Optional[Callable] = None,
         within_loss: Optional[Callable] = None,
         between_loss_weight: float = 1,
-        within_loss_weight: float = 0.01,
+        within_loss_weight: float = 100,
         **kwargs
     ):
         if transforms is None:
@@ -254,7 +254,7 @@ class LodeSTAR(Application):
             th = np.max(score.flatten()) * cutoff
         hmax = morphology.h_maxima(np.squeeze(score), th) == 1
         hmax = np.pad(hmax, ((3, 3), (3, 3)))
-        detections = pred[hmax, :]
+        detections = pred.permute(1, 2, 0).detach().cpu().numpy()[hmax, :]
         return np.array(detections)
 
     @staticmethod
@@ -266,8 +266,8 @@ class LodeSTAR(Application):
         pred : array-like
             first output from model
         """
-        pred = pred.permute(0, 2, 3, 1).cpu().detach().numpy()
-        kernel = np.ones((1, 3, 3)) / 3**2
+        pred = pred.permute(1, 2, 0).cpu().detach().numpy()
+        kernel = np.ones((3, 3, 1)) / 3**2
         pred_local_squared = scipy.signal.convolve(pred, kernel, "same") ** 2
         squared_pred_local = scipy.signal.convolve(pred**2, kernel, "same")
         squared_diff = (squared_pred_local - pred_local_squared).sum(-1)
@@ -285,7 +285,7 @@ class LodeSTAR(Application):
         alpha, beta: float
             Geometric weight of the weight-map vs the consistenct metric for detection.
         """
-        return weights[..., 0] ** alpha * cls.local_consistency(pred) ** beta
+        return weights[0].detach().cpu().numpy() ** alpha * cls.local_consistency(pred) ** beta
 
     def train_preprocess(self, batch):
         if isinstance(batch, (tuple, list)):
