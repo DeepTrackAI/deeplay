@@ -1,5 +1,15 @@
 import copy
-from typing import Callable, Iterator, Tuple, Literal, Optional, Dict, TypeVar, Sequence, Union
+from typing import (
+    Callable,
+    Iterator,
+    Tuple,
+    Literal,
+    Optional,
+    Dict,
+    TypeVar,
+    Sequence,
+    Union,
+)
 
 import lightning as L
 import torch
@@ -49,7 +59,7 @@ class Application(DeeplayModule, L.LightningModule):
     def forward(self, *args, **kwargs):
         raise NotImplementedError
 
-    def compute_loss(self, y_hat, y) -> torch.Tensor | Dict[str, torch.Tensor]:
+    def compute_loss(self, y_hat, y) -> Union[torch.Tensor, Dict[str, torch.Tensor]]:
         if self.loss:
             return self.loss(y_hat, y)
         else:
