@@ -6,14 +6,14 @@ from typing import (
     Any,
 )
 
+
 import torch.nn as nn
 
-
-from ..module import DeeplayModule
 from .sequential import SequentialBlock
 
 
-class LayerActivationNormalization(SequentialBlock):
+class PoolLayerActivationNormalization(SequentialBlock):
+    pool: nn.Module
     layer: nn.Module
     activation: nn.Module
     normalization: nn.Module
@@ -21,13 +21,15 @@ class LayerActivationNormalization(SequentialBlock):
 
     def __init__(
         self,
+        pool: nn.Module,
         layer: nn.Module,
         activation: nn.Module,
         normalization: nn.Module,
-        order: List[str] = ["layer", "activation", "normalization"],
+        order: List[str] = ["pool", "layer", "activation", "normalization"],
         **kwargs: nn.Module,
     ):
         super().__init__(
+            pool=pool,
             layer=layer,
             activation=activation,
             normalization=normalization,
@@ -59,6 +61,10 @@ class LayerActivationNormalization(SequentialBlock):
 
     @overload
     def configure(self, name: Literal["normalization"], *args, **kwargs) -> None:
+        ...
+
+    @overload
+    def configure(self, name: Literal["pool"], *args, **kwargs) -> None:
         ...
 
     @overload
