@@ -1,3 +1,6 @@
 lightning
 torchmetrics
 torchvision
+kornia
+scipy
+scikit-image

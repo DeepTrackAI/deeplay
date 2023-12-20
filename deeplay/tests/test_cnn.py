@@ -13,7 +13,7 @@ class TestComponentCNN(unittest.TestCase):
         cnn = ConvolutionalNeuralNetwork(3, [4], 1)
         cnn.build()
         cnn.create()
-        
+
         self.assertEqual(len(cnn.blocks), 2)
 
         self.assertEqual(cnn.blocks[0].layer.in_channels, 3)
@@ -39,7 +39,7 @@ class TestComponentCNN(unittest.TestCase):
         # test on a batch of 2
         x = torch.randn(2, 3, 5, 5)
         y = cnn(x)
-        self.assertEqual(y.shape, (2, 1, 5, 5)) 
+        self.assertEqual(y.shape, (2, 1, 5, 5))
 
     def test_cnn_change_depth(self):
         cnn = ConvolutionalNeuralNetwork(2, [4], 3)
@@ -88,8 +88,8 @@ class TestComponentCNN(unittest.TestCase):
         self.assertEqual(cnn.blocks[0].layer.in_channels, 3)
         self.assertEqual(cnn.blocks[0].layer.out_channels, 1)
 
-        self.assertIs(cnn.blocks[0], cnn.input)
         self.assertIs(cnn.blocks[0], cnn.output)
+        self.assertIs(cnn.blocks[0], cnn.input)
 
     def test_zero_out_channels(self):
         with self.assertRaises(ValueError):
