@@ -3,3 +3,4 @@ torchmetrics
 torchvision
 kornia
 scipy
+skimage
