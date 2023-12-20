@@ -1,21 +1,10 @@
+import copy
+from typing import Callable, Iterator, Tuple, Literal, Optional, Dict, TypeVar, Sequence
+
+import lightning as L
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-import lightning as L
-
-from typing import (
-    Callable,
-    Iterator,
-    List,
-    Tuple,
-    Optional,
-    TypeVar,
-    Sequence,
-    Literal,
-    Any,
-    Dict,
-)
-
+import torchmetrics as tm
 from torch.nn.modules.module import Module
 
 from deeplay import DeeplayModule, Optimizer

@@ -9,7 +9,6 @@ from typing import (
 
 import torch.nn as nn
 
-
 from ..module import DeeplayModule
 from .sequential import SequentialBlock
 

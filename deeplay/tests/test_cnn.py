@@ -13,7 +13,7 @@ class TestComponentCNN(unittest.TestCase):
         cnn = ConvolutionalNeuralNetwork(3, [4], 1)
         cnn.build()
         cnn.create()
-        
+
         self.assertEqual(len(cnn.blocks), 2)
 
         self.assertEqual(cnn.blocks[0].layer.in_channels, 3)
@@ -31,7 +31,7 @@ class TestComponentCNN(unittest.TestCase):
         cnn = ConvolutionalNeuralNetwork(None, [4], 1).build()
         self.assertEqual(len(cnn.blocks), 2)
 
-        self.assertEqual(cnn.blocks[0].layer.in_channels, 0)
+        self.assertEqual(cnn.input.layer.in_channels, 0)
         self.assertEqual(cnn.blocks[0].layer.out_channels, 4)
         self.assertEqual(cnn.output.layer.in_channels, 4)
         self.assertEqual(cnn.output.layer.out_channels, 1)

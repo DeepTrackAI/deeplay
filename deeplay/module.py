@@ -1,9 +1,10 @@
 import inspect
-from typing import Any, Dict, Tuple, List
+from typing import Any, Dict, Tuple, List, Set
 
 import torch.nn as nn
 
 from .meta import ExtendedConstructorMeta, not_top_level
+from .decorators import before_build
 
 
 class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
@@ -72,17 +73,18 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     ```
     """
 
+    __extra_configurables__: List[str] = []
+    __config_containers__: List[str] = ["_user_config", "_hooks"]
+
     _user_config: Dict[Tuple[str, ...], Any]
     _is_constructing: bool = False
     _is_building: bool = False
-
-    __extra_configurables__: List[str] = []
 
     _args: tuple
     _kwargs: dict
     _actual_init_args: dict
     _has_built: bool
-    _setattr_recording: set[str]
+    _setattr_recording: Set[str]
 
     @property
     def configurables(self):
@@ -123,7 +125,13 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         self._args = _args
         self._is_constructing = False
         self._is_building = False
+
         self._user_config = {}
+        self._hooks = {
+            "before_build": [],
+            "after_build": [],
+        }
+
         self._has_built = False
 
         self._setattr_recording = set()
@@ -135,6 +143,42 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
     def __post_init__(self):
         ...
+
+    @before_build
+    def replace(self, target: str, replacement: nn.Module):
+        """
+        Replaces a child module with another module.
+
+        This method replaces the child module with the given name with the specified replacement module.
+        It is useful for dynamically swapping out modules within a larger module or for replacing
+        modules within a module that has already been built.
+
+        Parameters
+        ----------
+        target : str
+            The name of the child module to be replaced.
+        replacement : DeeplayModule
+            The replacement module.
+
+        Raises
+        ------
+        ValueError
+            Raised if the target module is not found among the module's children.
+
+        Example Usage
+        -------------
+        To replace a child module with another module:
+        ```
+        module = ExampleModule()
+        module.replace('child_module', ReplacementModule())
+        ```
+        """
+        if target not in self._modules:
+            raise ValueError(
+                f"Cannot replace {target}. {target} is not a child module of {self.__class__.__name__}."
+            )
+
+        self._modules[target] = replacement
 
     def configure(self, *args: Any, **kwargs: Any):
         """
@@ -185,17 +229,15 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
         if self._has_built:
             raise RuntimeError(
-                "Module has already been built. Please use create() to create a new instance of the module."
+                "Module has already been built. "
+                "Please use create() to create a new instance of the module."
             )
 
         if len(args) == 0:
             self._configure_kwargs(kwargs)
 
         else:
-            if args[0] not in self.configurables:
-                raise ValueError(
-                    f"Unknown configurable {args[0]} for {self.__class__.__name__}. Available configurables are {self.configurables}."
-                )
+            self._assert_valid_configurable(args[0])
 
             if hasattr(getattr(self, args[0]), "configure"):
                 getattr(self, args[0]).configure(*args[1:], **kwargs)
@@ -204,25 +246,30 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
             else:
                 raise ValueError(
-                    f"Unknown configurable {args[0]} for {self.__class__.__name__}. Available configurables are {self.configurables}."
+                    f"Unknown configurable {args[0]} for {self.__class__.__name__}. "
+                    "Available configurables are {self.configurables}."
                 )
 
     def create(self):
         """
-        Creates and returns a new instance of the module, fully initialized with the current configuration.
+        Creates and returns a new instance of the module, fully initialized
+        with the current configuration.
 
-        This method differs from `build` in that it generates a new, independent instance of the module,
-        rather than modifying the existing one. It's particularly relevant for subclasses of `dl.External`,
-        where actual torch layers (like Linear, Sigmoid, ReLU, etc.) are instantiated during the build
-        process. For these subclasses, `create` not only configures but also instantiates the specified
-        torch layers. For most other objects, the `.build()` step, which is internally called in `create`,
-        has no additional effect beyond configuration.
+        This method differs from `build` in that it generates a new,
+        independent instance of the module, rather than modifying the
+        existing one. It's particularly relevant for subclasses of
+        `dl.External`, where actual torch layers (like Linear, Sigmoid, ReLU,
+        etc.) are instantiated during the build process. For these subclasses,
+        `create` not only configures but also instantiates the specified torch
+        layers. For most other objects, the `.build()` step, which is internally
+        called in `create`, has no additional effect beyond configuration.
 
         Returns
         -------
         DeeplayModule
-            A new instance of the `DeeplayModule` (or its subclass), initialized with the current module's
-            configuration and, for `dl.External` subclasses, with instantiated torch layers.
+            A new instance of the `DeeplayModule` (or its subclass), initialized
+            with the current module's configuration and, for `dl.External` subclasses,
+            with instantiated torch layers.
 
         Example Usage
         -------------
@@ -267,6 +314,8 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         # `built_module` is the same instance as `module`, now fully configured and initialized
         ```
         """
+        self._run_hooks("before_build")
+
         for name, value in self.named_children():
             if isinstance(value, DeeplayModule):
                 if value._has_built:
@@ -282,6 +331,8 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
                         object.__setattr__(self, name, value)
 
         self._has_built = True
+        self._run_hooks("after_build")
+
         return self
 
     def new(self):
@@ -300,12 +351,41 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         obj = ExtendedConstructorMeta.__call__(
             type(self),
             *args,
-            __user_config=user_config,
             _args=tuple(_args),
             **kwargs,
         )
-        # obj._take_user_configuration(user_config)
+
+        for container in self.__config_containers__:
+            setattr(obj, container, getattr(self, container).copy())
+
         return obj
+
+    def register_before_build_hook(self, func):
+        """
+        Registers a function to be called before the module is built.
+
+        Parameters
+        ----------
+        func : Callable
+            The function to be called before the module is built. The function should take
+            a single argument, which is the module instance.
+
+        """
+        self._hooks["before_build"].append(func)
+
+    def register_after_build_hook(self, func):
+        """
+        Registers a function to be called after the module is built.
+
+        Parameters
+        ----------
+        func : Callable
+            The function to be called after the module is built. The function should take
+            a single argument, which is the module instance.
+
+        """
+
+        self._hooks["after_build"].append(func)
 
     def get_user_configuration(self):
         """
@@ -336,10 +416,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
     def _configure_kwargs(self, kwargs):
         for name, value in kwargs.items():
-            if name not in self.configurables:
-                raise ValueError(
-                    f"Unknown configurable {name} for {self.__class__.__name__}. Available configurables are {self.configurables}."
-                )
+            self._assert_valid_configurable(name)
             self._user_config[(name,)] = value
         self.__construct__()
 
@@ -377,6 +454,9 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         return config
 
     def __setattr__(self, name, value):
+        if name == "_user_config" and hasattr(self, "_user_config"):
+            self._take_user_configuration(value)
+
         if self._is_constructing:
             if isinstance(value, DeeplayModule) and not value._has_built:
                 self._give_user_configuration(value, name)
@@ -399,6 +479,19 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         arguments.pop("self", None)
         return arguments
 
+    def _assert_valid_configurable(self, *args):
+        if args[0] not in self.configurables:
+            raise ValueError(
+                f"Unknown configurable {args[0]} for {self.__class__.__name__}. "
+                f"Available configurables are {self.configurables}."
+            )
+
+    def _run_hooks(self, hook_name, instance=None):
+        if instance is None:
+            instance = self
+        for hook in self._hooks[hook_name]:
+            hook(instance)
+
     def __construct__(self):
         # with not_top_level(ExtendedConstructorMeta):
         self._modules.clear()
@@ -419,3 +512,8 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         # remove the first parameter
         sig = sig.replace(parameters=list(sig.parameters.values())[1:])
         return sig
+
+    def forward(self, *args, **kwargs):
+        raise NotImplementedError(
+            "forward method not implemented for {}".format(self.__class__.__name__)
+        )

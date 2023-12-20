@@ -1,9 +1,7 @@
-from typing import Any, Callable, Type, overload, ParamSpec
+from typing import Any, Callable, Type, overload
 from .external import External
 
 import torch.nn as nn
-
-P = ParamSpec("P")
 
 
 class Layer(External):
@@ -15,12 +13,12 @@ class Layer(External):
         ...
 
     @overload
-    def configure(self, classtype: Callable[P, nn.Module], **kwargs: P.kwargs) -> None:
+    def configure(self, classtype, **kwargs) -> None:
         ...
 
     configure = External.configure
 
     def forward(self, x):
         raise RuntimeError(
-            "Unexpected call to forward. Did you forget to `create` or `build`?"
+            "Unexpected call to forward. Did you forget to call `.build()` or `.create()` on the model?"
         )
