@@ -52,6 +52,7 @@ class TestLayerList(unittest.TestCase):
     def test_create_list(self):
         for Wrapper in [Wrapper1, Wrapper2, Wrapper3]:
             module = Wrapper(5)
+            self.assertEqual(len(module.layers), 5, Wrapper)
             module.build()
             self.assertEqual(len(module.layers), 5, Wrapper)
             for i in range(5):
