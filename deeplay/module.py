@@ -508,13 +508,12 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
             hook(instance)
 
     def __construct__(self):
-        with not_top_level(ExtendedConstructorMeta):
-            self._modules.clear()
-            self._is_constructing = True
-            self.__init__(*self._args, **self.kwargs)
-            self._is_constructing = False
-            self._run_hooks("after_init")
-            self.__post_init__()
+        # with not_top_level(ExtendedConstructorMeta):
+        self._modules.clear()
+        self._is_constructing = True
+        self.__init__(*self._args, **self.kwargs)
+        self._is_constructing = False
+        self.__post_init__()
 
     @classmethod
     def get_argspec(cls):

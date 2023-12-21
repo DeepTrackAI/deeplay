@@ -2,11 +2,12 @@ import copy
 from typing import (
     Callable,
     Iterator,
+    Tuple,
     Literal,
     Optional,
-    Sequence,
-    Tuple,
+    Dict,
     TypeVar,
+    Sequence,
     Union,
 )
 
@@ -18,13 +19,16 @@ from torch.nn.modules.module import Module
 
 from deeplay import DeeplayModule, Optimizer
 
+import torchmetrics as tm
+import copy
+
 T = TypeVar("T")
 
 
 class Application(DeeplayModule, L.LightningModule):
     def __init__(
         self,
-        loss: Union[nn.Module, Callable[..., torch.Tensor], None],
+        loss: Optional[Union[nn.Module, Callable[..., torch.Tensor]]] = None,
         optimizer: Optional[Optimizer] = None,
         metrics: Optional[Sequence[tm.Metric]] = None,
         train_metrics: Optional[Sequence[tm.Metric]] = None,
@@ -55,8 +59,19 @@ class Application(DeeplayModule, L.LightningModule):
     def forward(self, *args, **kwargs):
         raise NotImplementedError
 
-    def compute_loss(self, y_hat, y):
-        return self.loss(y_hat, y)
+    def compute_loss(self, y_hat, y) -> Union[torch.Tensor, Dict[str, torch.Tensor]]:
+        if self.loss:
+            return self.loss(y_hat, y)
+        else:
+            raise NotImplementedError
+
+    def configure_optimizers(self):
+        try:
+            return self.optimizer
+        except AttributeError as e:
+            raise AttributeError(
+                "Application has no configured optimizer. Make sure to pass optimizer=... to the constructor."
+            ) from e
 
     def configure_optimizers(self):
         try:
@@ -70,23 +85,41 @@ class Application(DeeplayModule, L.LightningModule):
         x, y = self.train_preprocess(batch)
         y_hat = self(x)
         loss = self.compute_loss(y_hat, y)
-        self.log(
-            "train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
-        )
+        if not isinstance(loss, dict):
+            loss = {"loss": loss}
+
+        for name, v in loss.items():
+            self.log(
+                f"train_{name}",
+                v,
+                on_step=True,
+                on_epoch=True,
+                prog_bar=True,
+                logger=True,
+            )
 
         self.log_metrics(
             "train", y_hat, y, on_step=True, on_epoch=True, prog_bar=True, logger=True
         )
 
-        return loss
+        return sum(loss.values())
 
     def validation_step(self, batch, batch_idx):
         x, y = self.val_preprocess(batch)
         y_hat = self(x)
         loss = self.compute_loss(y_hat, y)
-        self.log(
-            "val_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
-        )
+        if not isinstance(loss, dict):
+            loss = {"loss": loss}
+
+        for name, loss in loss.items():
+            self.log(
+                f"val_{name}",
+                loss,
+                on_step=True,
+                on_epoch=True,
+                prog_bar=True,
+                logger=True,
+            )
         self.log_metrics(
             "val",
             y_hat,
@@ -96,15 +129,24 @@ class Application(DeeplayModule, L.LightningModule):
             prog_bar=True,
             logger=True,
         )
-        return loss
+        return sum(loss.values())
 
     def test_step(self, batch, batch_idx):
         x, y = self.test_preprocess(batch)
         y_hat = self(x)
         loss = self.compute_loss(y_hat, y)
-        self.log(
-            "test_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
-        )
+        if not isinstance(loss, dict):
+            loss = {"loss": loss}
+
+        for name, loss in loss.items():
+            self.log(
+                f"test_{name}",
+                loss,
+                on_step=True,
+                on_epoch=True,
+                prog_bar=True,
+                logger=True,
+            )
         self.log_metrics(
             "test",
             y_hat,
@@ -115,7 +157,7 @@ class Application(DeeplayModule, L.LightningModule):
             logger=True,
         )
 
-        return loss
+        return sum(loss.values())
 
     def predict_step(self, batch, batch_idx, dataloader_idx=None):
         if isinstance(batch, (list, tuple)):
