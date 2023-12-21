@@ -37,6 +37,18 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
             super().append(module)
 
         return self
+    
+    def insert(self, index: int, module: DeeplayModule) -> "LayerList[T]":
+        if not self._has_built:
+            args = list(self._args)
+            args.insert(index, module)
+            self._args = tuple(args)
+            self.__construct__()
+
+        else:
+            super().insert(index, module)
+
+        return self
 
     def pop(self, index: int = -1) -> T:
         args = list(self._args)
