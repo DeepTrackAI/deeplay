@@ -152,7 +152,7 @@ class RNN(DeeplayModule):
         in_features,
         hidden_features=[],
         out_features=hidden_features[0])
-        self.rnn.blocks.layer.configure(self.rnn_class, bidirectional=bidirectional,batch_first=batch_first)
+        self.rnn.blocks[0].layer.configure(self.rnn_class, bidirectional=bidirectional,batch_first=batch_first)
         self.rnn.blocks.dropout.configure(p=dropout)
         self.blocks.append(self.rnn)
 
@@ -162,7 +162,7 @@ class RNN(DeeplayModule):
                 in_features=hidden_features[i] * 2 if bidirectional else hidden_features[i],
                 hidden_features=[],
                 out_features=hidden_features[i + 1])
-                self.rnn.blocks.layer.configure(self.rnn_class, bidirectional=bidirectional,batch_first=batch_first)
+                self.rnn.blocks[0].layer.configure(self.rnn_class, bidirectional=bidirectional,batch_first=batch_first)
                 self.blocks.append(self.rnn)
                 if i<len(hidden_features) - 2:
                     self.rnn.blocks.dropout.configure(p=dropout)
