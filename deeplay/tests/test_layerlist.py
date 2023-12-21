@@ -52,6 +52,7 @@ class TestLayerList(unittest.TestCase):
     def test_create_list(self):
         for Wrapper in [Wrapper1, Wrapper2, Wrapper3]:
             module = Wrapper(5)
+            self.assertEqual(len(module.layers), 5, Wrapper)
             module.build()
             self.assertEqual(len(module.layers), 5, Wrapper)
             for i in range(5):
@@ -181,7 +182,7 @@ class TestLayerList(unittest.TestCase):
         nets = llist.net
         self.assertEqual(len(nets), 2)
         self.assertIsInstance(nets[0], nn.Linear)
-        self.assertIsInstance(nets[1], nn.Linear) 
+        self.assertIsInstance(nets[1], nn.Linear)
 
     def test_slice_does_not_mutate(self):
         llist = LayerList(
@@ -197,3 +198,32 @@ class TestLayerList(unittest.TestCase):
         for layer in llist[0:]:
             self.assertTrue(layer._has_built)
 
+    def test_layer_list_append_after_init(self):
+        llist = Wrapper1(3)
+        llist.layers.append(Layer(nn.Linear, 1, 1))
+        self.assertEqual(len(llist.layers), 4)
+        llist.build()
+        self.assertEqual(len(llist.layers), 4)
+
+    def test_layer_list_extend_after_init(self):
+        llist = Wrapper1(3)
+        llist.layers.extend([Layer(nn.Linear, 1, 1), Layer(nn.Linear, 1, 1)])
+        self.assertEqual(len(llist.layers), 5)
+        llist.build()
+        self.assertEqual(len(llist.layers), 5)
+
+    def test_layer_list_insert_after_init(self):
+        llist = Wrapper1(3)
+        llist.layers.insert(1, Layer(nn.Tanh))
+        self.assertEqual(len(llist.layers), 4)
+        self.assertIs(llist.layers[1].classtype, nn.Tanh)
+        llist.build()
+        self.assertEqual(len(llist.layers), 4)
+        self.assertIsInstance(llist.layers[1], nn.Tanh)
+
+    def test_layer_list_pop_after_init(self):
+        llist = Wrapper1(3)
+        llist.layers.pop()
+        self.assertEqual(len(llist.layers), 2)
+        llist.build()
+        self.assertEqual(len(llist.layers), 2)
