@@ -4,9 +4,9 @@ from .. import DeeplayModule, Layer, LayerList, LayerActivationNormalizationDrop
 
 import torch.nn as nn
 
-class Drop(nn.Module):
+class RecurrentDropout(nn.Module):
     def __init__(self, p=0):
-        super(Drop, self).__init__()
+        super(RecurrentDropout, self).__init__()
         self.p = p
 
     def forward(self, x):
@@ -92,7 +92,7 @@ class RecurrentNeuralNetwork(DeeplayModule):
                     Layer(nn.RNN, c_in, c_out), 
                     Layer(nn.Identity, num_features=f_out),
                     Layer(nn.Identity, num_features=f_out),
-                    Layer(Drop,p=0)
+                    Layer(RecurrentDropout,p=0)
                 )
             )
 

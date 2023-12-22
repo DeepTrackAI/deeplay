@@ -4,7 +4,7 @@ from .. import DeeplayModule, Layer, LayerList, LayerActivationNormalizationDrop
 import torch
 
 
-class RNN(DeeplayModule):
+class rnn(DeeplayModule):
     """
     Recurrent Neural Network (RNN) module.
 
@@ -95,7 +95,7 @@ class RNN(DeeplayModule):
         in_features: Optional[int], 
         hidden_features: Sequence[int], 
         out_features: Optional[int] = None,
-        rnn_type: Union[Literal['RNN', 'LSTM', 'GRU'],torch.nn.Module] = 'GRU',
+        rnn_type: Union[Literal['RNN', 'LSTM', 'GRU'],Type[torch.nn.Module]] = 'GRU',
         out_activation: Union[Type[torch.nn.Module], torch.nn.Module, None] = None,
         bidirectional: bool = False, 
         batch_first: bool = True, 
@@ -127,15 +127,17 @@ class RNN(DeeplayModule):
                 raise ValueError(
                     f"Number of output features must be positive, got {out_features}"
                 )
-        if rnn_type not in ["RNN", "LSTM", "GRU"]: #torch only supplies these RNNs
+        if isinstance(rnn_type, str) and rnn_type not in ['RNN', 'LSTM', 'GRU']:    
             raise ValueError(
-                f"rnn_type must be one of 'RNN', 'LSTM', or 'GRU', got {rnn_type}"
+                f"rnn_type must be one of ['RNN', 'LSTM', 'GRU'], got {rnn_type}"
             )
-        
+
         if embedding:
             self.embedding_dropout=torch.nn.Dropout(dropout)
 
-        if self.rnn_type == 'LSTM':
+        if isinstance(rnn_type, type) and issubclass(rnn_type, torch.nn.Module):
+            self.rnn_class = rnn_type
+        elif self.rnn_type == 'LSTM':
             self.rnn_class = torch.nn.LSTM
         elif self.rnn_type == 'GRU':
             self.rnn_class = torch.nn.GRU

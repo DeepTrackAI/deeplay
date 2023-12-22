@@ -1,1 +1,1 @@
-from .RNN import *
+from .RNN import RNN
