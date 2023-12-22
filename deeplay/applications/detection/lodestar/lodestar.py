@@ -64,7 +64,7 @@ class LodeSTAR(Application):
         between_loss: Optional[Callable] = None,
         within_loss: Optional[Callable] = None,
         between_loss_weight: float = 1,
-        within_loss_weight: float = 100,
+        within_loss_weight: float = 10,
         **kwargs
     ):
         if transforms is None:
