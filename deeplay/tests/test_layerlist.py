@@ -1,7 +1,7 @@
 import unittest
 import torch
 import torch.nn as nn
-from deeplay import LayerList, DeeplayModule, Layer, LayerActivation
+from deeplay import LayerList, DeeplayModule, Layer, LayerActivation, ToDict
 import itertools
 
 
@@ -227,3 +227,27 @@ class TestLayerList(unittest.TestCase):
         self.assertEqual(len(llist.layers), 2)
         llist.build()
         self.assertEqual(len(llist.layers), 2)
+
+    def test_set_mapping(self):
+        class AggregationRelu(nn.Module):
+            def forward(self, x, A):
+                return nn.functional.relu(A @ x)
+
+        llist = LayerList(
+            LayerActivation(Layer(nn.Linear, 1, 16), Layer(AggregationRelu)),
+            LayerActivation(Layer(nn.Linear, 16, 16), Layer(AggregationRelu)),
+            LayerActivation(Layer(nn.Linear, 16, 1), Layer(AggregationRelu)),
+        )
+        llist.layer.set_input_map("x")
+        llist.layer.set_output_map("x")
+
+        llist.activation.set_input_map("x", "A")
+        llist.activation.set_output_map("x")
+
+        for layer in llist.layer:
+            self.assertEqual(layer.input_args, ("x",))
+            self.assertEqual(layer.output_args, {"x": 0})
+
+        for activation in llist.activation:
+            self.assertEqual(activation.input_args, ("x", "A"))
+            self.assertEqual(activation.output_args, {"x": 0})

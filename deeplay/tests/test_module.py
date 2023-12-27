@@ -6,6 +6,7 @@ import deeplay as dl
 
 from deeplay import (
     DeeplayModule,
+    Sequential,
 )  # Import your actual module here
 
 
@@ -294,6 +295,26 @@ class TestLayer(unittest.TestCase):
         y = layer(x)
         self.assertEqual(y.shape, x.shape)
 
+    def test_forward_with_input_dict(self):
+        layer = dl.Layer(nn.Linear, 1, 20)
+        layer.set_input_map("x")
+        layer.set_output_map("x")
+
+        layer = layer.build()
+        inp = dl.ToDict(x=torch.randn(10, 1))
+        out = layer(inp)
+        self.assertEqual(out["x"].shape, (10, 20))
+
+    def test_forward_with_input_dict_and_numeric_output(self):
+        layer = dl.Layer(nn.Linear, 1, 20)
+        layer.set_input_map("x")
+        layer.set_output_map()
+
+        layer = layer.build()
+        inp = dl.ToDict(x=torch.randn(10, 1))
+        out = layer(inp)
+        self.assertEqual(out.shape, (10, 20))
+
     def test_in_module(self):
         model = ModelWithLayer()
         model.configure("layer_1", in_features=10, out_features=20)
@@ -328,6 +349,65 @@ class TestLayer(unittest.TestCase):
         model.build()
 
         self.assertEqual(model.foo.num_features, 20)
+
+
+class TestSequential(unittest.TestCase):
+    def test_forward_with_input_dict(self):
+        class AggregationRelu(nn.Module):
+            def forward(self, x, A):
+                return nn.functional.relu(A @ x)
+
+        model = Sequential(
+            dl.Layer(nn.Linear, 1, 20),
+            dl.Layer(AggregationRelu),
+            dl.Layer(nn.Linear, 20, 1),
+        )
+
+        model[0].set_input_map("x")
+        model[0].set_output_map("x")
+
+        model[1].set_input_map("x", "A")
+        model[1].set_output_map("x")
+
+        model[2].set_input_map("x")
+        model[2].set_output_map("x")
+
+        model.build()
+
+        inp = dl.ToDict(x=torch.randn(10, 1), A=torch.randn(10, 10))
+        out = model(inp)
+        self.assertEqual(out["x"].shape, (10, 1))
+
+    def test_set_mapping_1(self):
+        model = Sequential(
+            dl.Layer(nn.Linear, 1, 20),
+            dl.Layer(nn.ReLU),
+            dl.Layer(nn.Linear, 20, 1),
+        )
+        model.set_input_map("x")
+        model.set_output_map("x")
+
+        model.build()
+        inp = dl.ToDict(x=torch.randn(10, 1))
+        out = model(inp)
+        self.assertEqual(out["x"].shape, (10, 1))
+
+    def test_set_mapping_2(self):
+        model = Sequential(
+            dl.Layer(nn.Linear, 1, 20),
+            dl.Layer(nn.ReLU),
+            dl.Layer(nn.Linear, 20, 1),
+        )
+        model.set_input_map("x")
+        model.set_output_map("x")
+
+        model[1].set_output_map("x", x1=0, x2=0)
+
+        model.build()
+        inp = dl.ToDict(x=torch.randn(10, 1))
+        out = model(inp)
+        self.assertEqual(out["x"].shape, (10, 1))
+        self.assertEqual(torch.all(out["x1"] == out["x2"]), True)
 
 
 if __name__ == "__main__":
