@@ -85,6 +85,14 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
             for layer in self:
                 layer.configure(*args, **kwargs)
 
+    def set_input_map(self, *args: str, **kwargs: str):
+        for layer in self:
+            layer.set_input_map(*args, **kwargs)
+
+    def set_output_map(self, *args: str, **kwargs: int):
+        for layer in self:
+            layer.set_output_map(*args, **kwargs)
+
     def __iter__(self) -> Iterator[T]:
         return super().__iter__()  # type: ignore
 
