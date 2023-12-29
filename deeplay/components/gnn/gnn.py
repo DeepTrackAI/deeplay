@@ -97,7 +97,7 @@ class GraphConvolutionalNeuralNetwork(DeeplayModule):
                     )
                     return torch.spmm(A, x)
                 elif (not A.is_sparse) & len({A.size(0), A.size(1), x.size(0)}) == 1:
-                    return A @ x
+                    return A.type(x.dtype) @ x
                 else:
                     raise ValueError(
                         "Unsupported adjacency matrix format.",
