@@ -7,12 +7,14 @@ class sparse_laplacian_normalization(nn.Module):
         """
         Compute the degree of each node in a graph given its edge index.
         """
-        (row, col), inverse_indices = torch.unique(A, dim=1, return_inverse=True)
+        A = torch.unique(A, dim=1)
+        row, col = A
+
         deg = torch.zeros(num_nodes, dtype=torch.long, device=A.device)
 
         # Count occurrences of each unique edge to compute degree
-        deg.index_add_(0, row, torch.ones_like(inverse_indices))
-        return deg
+        deg.index_add_(0, row, torch.ones_like(row))
+        return A, deg
 
     def normalize(self, x, A):
         if A.size(0) != 2:
@@ -23,16 +25,17 @@ class sparse_laplacian_normalization(nn.Module):
                 " i.e., GNN.normalize.configure(deeplay.dense_laplacian_normalization)",
             )
 
+        A, deg = self.degree(A, x.size(0))
         row, col = A
-        deg = self.degree(A, x.size(0))
+
         deg_inv_sqrt = deg.pow(-0.5)
         deg_inv_sqrt[deg_inv_sqrt == float("inf")] = 0
         norm = deg_inv_sqrt[row] * deg_inv_sqrt[col]
 
-        return norm
+        return A, norm
 
     def forward(self, x, A):
-        norm = self.normalize(x, A)
+        A, norm = self.normalize(x, A)
         # sparse matrix multiplication
         norm = torch.sparse_coo_tensor(
             A,
