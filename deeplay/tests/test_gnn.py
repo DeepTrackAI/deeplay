@@ -50,11 +50,12 @@ class TestComponentGNN(unittest.TestCase):
         out = gnn(inp)
         self.assertTrue(
             (
+                # Obtained using kipf's normalization (https://github.com/tkipf/gcn/blob/master/gcn/utils.py#L24)
                 torch.Tensor(
                     [
-                        [1.0000, -0.7071, 0.0000],
-                        [-0.7071, 1.0000, -0.7071],
-                        [0.0000, -0.7071, 1.0000],
+                        [0.5000, 0.4082, 0.0000],
+                        [0.4082, 0.3333, 0.4082],
+                        [0.0000, 0.4082, 0.5000],
                     ]
                 )
                 - out["A"].to_dense()
@@ -89,11 +90,12 @@ class TestComponentGNN(unittest.TestCase):
         out = gnn(inp)
         self.assertTrue(
             (
+                # Obtained using kipf's normalization (https://github.com/tkipf/gcn/blob/master/gcn/utils.py#L24)
                 torch.Tensor(
                     [
-                        [1.0000, -0.7071, 0.0000],
-                        [-0.7071, 1.0000, -0.7071],
-                        [0.0000, -0.7071, 1.0000],
+                        [0.5000, 0.4082, 0.0000],
+                        [0.4082, 0.3333, 0.4082],
+                        [0.0000, 0.4082, 0.5000],
                     ]
                 )
                 - out["A"].to_dense()
@@ -114,11 +116,12 @@ class TestComponentGNN(unittest.TestCase):
         out = gnn(inp)
         self.assertTrue(
             (
+                # Obtained using kipf's normalization (https://github.com/tkipf/gcn/blob/master/gcn/utils.py#L24)
                 torch.Tensor(
                     [
-                        [1.0000, -0.7071, 0.0000],
-                        [-0.7071, 1.0000, -0.7071],
-                        [0.0000, -0.7071, 1.0000],
+                        [0.5000, 0.4082, 0.0000],
+                        [0.4082, 0.3333, 0.4082],
+                        [0.0000, 0.4082, 0.5000],
                     ]
                 )
                 - out["A"].to_dense()

@@ -3,6 +3,17 @@ import torch.nn as nn
 
 
 class sparse_laplacian_normalization(nn.Module):
+    def add_self_loops(self, A, num_nodes):
+        """
+        Add self-loops to the adjacency matrix of a graph.
+        """
+        loop_index = torch.arange(num_nodes, device=A.device)
+        loop_index = loop_index.unsqueeze(0).repeat(2, 1)
+
+        A = torch.cat([A, loop_index], dim=1)
+
+        return A
+
     def degree(self, A, num_nodes):
         """
         Compute the degree of each node in a graph given its edge index.
@@ -35,17 +46,16 @@ class sparse_laplacian_normalization(nn.Module):
         return A, norm
 
     def forward(self, x, A):
+        A = self.add_self_loops(A, x.size(0))
+        # computes: D^-1/2 A' D^-1/2
         A, norm = self.normalize(x, A)
         # sparse matrix multiplication
-        norm = torch.sparse_coo_tensor(
+        laplacian = torch.sparse_coo_tensor(
             A,
             norm,
             (x.size(0),) * 2,
             device=A.device,
         )
-        # computes: I - D^-1/2 A D^-1/2
-        laplacian = torch.eye(x.size(0), device=norm.device).to_sparse() - norm
-
         return laplacian
 
 
@@ -74,8 +84,8 @@ class dense_laplacian_normalization(nn.Module):
         return norm
 
     def forward(self, x, A):
-        norm = self.normalize(x, A)
+        A = A + torch.eye(x.size(0), device=A.device)
         # computes: I - D^-1/2 A D^-1/2
-        laplacian = torch.eye(x.size(0), device=norm.device) - norm * A
+        laplacian = self.normalize(x, A) * A
 
         return laplacian
