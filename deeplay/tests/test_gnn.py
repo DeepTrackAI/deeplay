@@ -126,6 +126,20 @@ class TestComponentGNN(unittest.TestCase):
             < 1e-4,
         )
 
+    def test_normalization_no_normalization_with_dense_A(self):
+        gnn = GraphConvolutionalNeuralNetwork(2, [4], 1)
+        gnn.replace("normalize", Layer(nn.Identity))
+        gnn.build()
+        gnn.create()
+
+        inp = ToDict()
+        inp["x"] = torch.randn(3, 2)
+        inp["A"] = torch.tensor([[0, 1, 0], [1, 0, 1], [0, 1, 0]])
+
+        out = gnn(inp)
+        self.assertTrue(torch.all(inp["A"] == out["A"].to_dense()))
+        self.assertEqual(out["x"].shape, (3, 1))
+
     def test_numeric_output(self):
         gnn = GraphConvolutionalNeuralNetwork(2, [4], 1)
         gnn.output.update.set_output_map()
