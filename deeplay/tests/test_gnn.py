@@ -152,3 +152,20 @@ class TestComponentGNN(unittest.TestCase):
 
         out = gnn(inp)
         self.assertTrue(torch.is_tensor(out))
+
+    def test_custom_propagation(self):
+        class custom_propagation(nn.Module):
+            def forward(self, x, A):
+                return x * 0
+
+        gnn = GraphConvolutionalNeuralNetwork(2, [4], 1)
+        gnn.propagate.configure(custom_propagation)
+        gnn.build()
+        gnn.create()
+
+        inp = ToDict()
+        inp["x"] = torch.randn(3, 2)
+        inp["A"] = torch.tensor([[0, 1, 1, 2], [1, 0, 2, 1]])
+
+        out = gnn(inp)
+        self.assertTrue(torch.all(out["x"] == 0))
