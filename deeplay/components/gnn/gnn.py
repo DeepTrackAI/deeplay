@@ -16,23 +16,38 @@ class GraphConvolutionalNeuralNetwork(DeeplayModule):
     blocks: LayerList[TransformPropagateUpdate]
 
     @property
-    def input_block(self):
+    def input(self):
         """Return the input layer of the network. Equivalent to `.blocks[0]`."""
         return self.blocks[0]
 
     @property
-    def hidden_blocks(self):
+    def hidden(self):
         """Return the hidden layers of the network. Equivalent to `.blocks[:-1]`"""
         return self.blocks[:-1]
 
     @property
-    def output_block(self):
+    def output(self):
         """Return the last layer of the network. Equivalent to `.blocks[-1]`."""
         return self.blocks[-1]
 
+    @property
+    def transform(self) -> LayerList[Layer]:
+        """Return the layers of the network. Equivalent to `.blocks.layer`."""
+        return self.blocks.transform
+
+    @property
+    def propagate(self) -> LayerList[Layer]:
+        """Return the activations of the network. Equivalent to `.blocks.activation`."""
+        return self.blocks.propagate
+
+    @property
+    def update(self) -> LayerList[Layer]:
+        """Return the normalizations of the network. Equivalent to `.blocks.normalization`."""
+        return self.blocks.update
+
     def __init__(
         self,
-        in_channels: Optional[int],
+        in_channels: int,
         hidden_channels: Sequence[int],
         out_channels: int,
         out_activation: Union[Type[nn.Module], nn.Module, None] = None,
@@ -43,11 +58,17 @@ class GraphConvolutionalNeuralNetwork(DeeplayModule):
         self.hidden_channels = hidden_channels
         self.out_channels = out_channels
 
+        if in_channels is None:
+            raise ValueError("in_channels must be specified")
+
+        if out_channels is None:
+            raise ValueError("out_channels must be specified")
+
+        if in_channels <= 0:
+            raise ValueError(f"in_channels must be positive, got {in_channels}")
+
         if out_channels <= 0:
             raise ValueError(f"out_channels must be positive, got {out_channels}")
-
-        if in_channels is not None and in_channels <= 0:
-            raise ValueError(f"in_channels must be positive, got {in_channels}")
 
         if any(h <= 0 for h in hidden_channels):
             raise ValueError(
@@ -89,9 +110,7 @@ class GraphConvolutionalNeuralNetwork(DeeplayModule):
         for i, (c_in, c_out) in enumerate(
             zip([in_channels, *hidden_channels], [*hidden_channels, out_channels])
         ):
-            transform = (
-                Layer(nn.Linear, c_in, c_out) if c_in else Layer(nn.LazyLinear, c_out)
-            )
+            transform = Layer(nn.Linear, c_in, c_out)
             transform.set_input_map("x")
             transform.set_output_map("x")
 
