@@ -1,6 +1,6 @@
 from typing import List, Optional, Literal, Any, Sequence, Type, overload, Union
 
-from ... import DeeplayModule, Layer, LayerList, LayerActivationNormalization
+from ... import DeeplayModule, Layer, LayerList
 from .TPU import TransformPropagateUpdate
 
 from .normalization import sparse_laplacian_normalization
