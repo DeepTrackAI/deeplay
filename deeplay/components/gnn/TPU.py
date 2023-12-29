@@ -14,23 +14,23 @@ from ...module import DeeplayModule
 from ...blocks.sequential import SequentialBlock
 
 
-class TransformAggregateUpdate(SequentialBlock):
+class TransformPropagateUpdate(SequentialBlock):
     transform: DeeplayModule
-    aggregate: DeeplayModule
+    propagate: DeeplayModule
     update: DeeplayModule
     order: List[str]
 
     def __init__(
         self,
         transform: DeeplayModule,
-        aggregate: DeeplayModule,
+        propagate: DeeplayModule,
         update: DeeplayModule,
-        order=["transform", "aggregate", "update"],
+        order=["transform", "propagate", "update"],
         **kwargs: DeeplayModule,
     ):
         super().__init__(
             transform=transform,
-            aggregate=aggregate,
+            propagate=propagate,
             update=update,
             order=order,
             **kwargs,
@@ -41,7 +41,7 @@ class TransformAggregateUpdate(SequentialBlock):
         self,
         order: Optional[List[str]] = None,
         transform: Optional[DeeplayModule] = None,
-        aggregate: Optional[DeeplayModule] = None,
+        propagate: Optional[DeeplayModule] = None,
         update: Optional[DeeplayModule] = None,
         **kwargs: DeeplayModule,
     ) -> None:
@@ -52,7 +52,7 @@ class TransformAggregateUpdate(SequentialBlock):
         ...
 
     @overload
-    def configure(self, name: Literal["aggregate"], *args, **kwargs) -> None:
+    def configure(self, name: Literal["propagate"], *args, **kwargs) -> None:
         ...
 
     @overload
