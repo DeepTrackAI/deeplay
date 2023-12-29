@@ -5,6 +5,7 @@ from deeplay import (
     GraphConvolutionalNeuralNetwork,
     dense_laplacian_normalization,
     Layer,
+    ToDict,
 )
 
 import itertools
@@ -24,7 +25,7 @@ class TestComponentGNN(unittest.TestCase):
         self.assertEqual(gnn.output.transform.in_features, 4)
         self.assertEqual(gnn.output.transform.out_features, 1)
         # test on a batch of 2
-        inp = {}
+        inp = ToDict()
         inp["x"] = torch.randn(3, 2)
         inp["A"] = torch.tensor([[0, 1, 1, 2, 1], [1, 0, 2, 1, 0]])
         out = gnn(inp)
@@ -42,7 +43,7 @@ class TestComponentGNN(unittest.TestCase):
         gnn.build()
         gnn.create()
 
-        inp = {}
+        inp = ToDict()
         inp["x"] = torch.randn(3, 2)
         inp["A"] = torch.tensor([[0, 1, 1, 2], [1, 0, 2, 1]])
 
@@ -67,7 +68,7 @@ class TestComponentGNN(unittest.TestCase):
         gnn.build()
         gnn.create()
 
-        inp = {}
+        inp = ToDict()
         inp["x"] = torch.randn(3, 2)
         inp["A"] = torch.tensor([[0, 1, 1, 2], [1, 0, 2, 1]])
 
@@ -80,7 +81,7 @@ class TestComponentGNN(unittest.TestCase):
         gnn.build()
         gnn.create()
 
-        inp = {}
+        inp = ToDict()
         inp["x"] = torch.randn(3, 2)
         # edge (2, 1) is repeated
         inp["A"] = torch.tensor([[0, 1, 1, 2, 2], [1, 0, 2, 1, 1]])
@@ -106,7 +107,7 @@ class TestComponentGNN(unittest.TestCase):
         gnn.build()
         gnn.create()
 
-        inp = {}
+        inp = ToDict()
         inp["x"] = torch.randn(3, 2)
         inp["A"] = torch.tensor([[0, 1, 0], [1, 0, 1], [0, 1, 0]])
 
@@ -131,7 +132,7 @@ class TestComponentGNN(unittest.TestCase):
         gnn.build()
         gnn.create()
 
-        inp = {}
+        inp = ToDict()
         inp["x"] = torch.randn(3, 2)
         inp["A"] = torch.tensor([[0, 1, 1, 2], [1, 0, 2, 1]])
 
