@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 
-class sparse_normalization(nn.Module):
+class sparse_laplacian_normalization(nn.Module):
     def degree(self, A, num_nodes):
         """
         Compute the degree of each node in a graph given its edge index.
@@ -19,8 +19,8 @@ class sparse_normalization(nn.Module):
             raise ValueError(
                 f"{self.__class__.__name__} expects 'A' to be an edge index matrix of size 2 x N. "
                 "Please ensure that 'A' follows this format for proper functioning. "
-                "For dense adjacency matrices, consider using dense_normalization instead,",
-                " i.e., GNN.normalize.configure(deeplay.dense_normalization)",
+                "For dense adjacency matrices, consider using dense_laplacian_normalization instead,",
+                " i.e., GNN.normalize.configure(deeplay.dense_laplacian_normalization)",
             )
 
         row, col = A
@@ -46,7 +46,7 @@ class sparse_normalization(nn.Module):
         return laplacian
 
 
-class dense_normalization(nn.Module):
+class dense_laplacian_normalization(nn.Module):
     def degree(self, A):
         """
         Compute the degree of each node in a graph given its adjacency matrix.
@@ -59,8 +59,8 @@ class dense_normalization(nn.Module):
             raise ValueError(
                 f"{self.__class__.__name__} expects 'A' to be a square adjacency matrix. "
                 "Please ensure that 'A' follows this format for proper functioning. "
-                "For edge index matrices, consider using sparse_normalization instead,",
-                " i.e., GNN.normalize.configure(deeplay.sparse_normalization)",
+                "For edge index matrices, consider using sparse_laplacian_normalization instead,",
+                " i.e., GNN.normalize.configure(deeplay.sparse_laplacian_normalization)",
             )
 
         deg = self.degree(A)
