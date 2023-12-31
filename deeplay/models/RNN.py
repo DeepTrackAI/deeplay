@@ -4,7 +4,7 @@ from .. import DeeplayModule, Layer, LayerList, LayerActivationNormalizationDrop
 import torch
 
 
-class rnn(DeeplayModule):
+class RNN(DeeplayModule):
     """
     Recurrent Neural Network (RNN) module.
 
