@@ -448,12 +448,20 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         self.__construct__()
 
     def _give_user_configuration(self, receiver: "DeeplayModule", name):
-        if self._user_config is not None:
-            sub_config = receiver._collect_user_configuration()
-            for key, value in self._user_config.items():
-                if len(key) > 1 and key[0] == name:
-                    sub_config[key[1:]] = value
-            receiver._take_user_configuration(sub_config)
+        my_subconfigs = self._collect_user_configuration()
+        recevier_subconfigs = receiver._collect_user_configuration()
+
+        mysub = {
+            key[1:]: value
+            for key, value in my_subconfigs.items()
+            if len(key) > 1 and key[0] == name
+        }
+
+        subconfigs = {**mysub, **recevier_subconfigs}
+
+        # print("giving config with keys", subconfigs.keys(), "to", name)
+        # print("available keys", my_subconfigs.keys())
+        receiver._take_user_configuration(subconfigs)
 
     def _collect_user_configuration(self):
         config = self.get_user_configuration()
@@ -512,8 +520,8 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
             self._modules.clear()
             self._is_constructing = True
             self.__init__(*self._args, **self.kwargs)
-            self._is_constructing = False
             self._run_hooks("after_init")
+            self._is_constructing = False
             self.__post_init__()
 
     @classmethod
