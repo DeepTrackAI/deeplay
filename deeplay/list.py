@@ -31,6 +31,9 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
     @after_init
     def append(self, module: DeeplayModule) -> "LayerList[T]":
         super().append(module)
+        if isinstance(module, DeeplayModule) and not module._has_built:
+            self._give_user_configuration(module, self._get_abs_string_index(-1))
+            module.__construct__()
         return self
 
     @after_init
@@ -40,21 +43,25 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
     @after_init
     def insert(self, index: int, module: DeeplayModule) -> "LayerList[T]":
         super().insert(index, module)
+        if isinstance(module, DeeplayModule) and not module._has_built:
+            self._give_user_configuration(module, self._get_abs_string_index(index))
+            module.__construct__()
         return self
 
     @after_init
     def extend(self, modules: List[DeeplayModule]) -> "LayerList[T]":
         super().extend(modules)
+        for idx, module in enumerate(modules):
+            if isinstance(module, DeeplayModule) and not module._has_built:
+                self._give_user_configuration(
+                    module, self._get_abs_string_index(idx + len(self) - len(modules))
+                )
+                module.__construct__()
         return self
 
     @after_init
     def remove(self, module: DeeplayModule) -> "LayerList[T]":
         super().remove(module)
-        return self
-
-    @after_init
-    def reverse(self) -> "LayerList[T]":
-        super().reverse()
         return self
 
     @overload
