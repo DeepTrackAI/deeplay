@@ -9,13 +9,12 @@ from ... import (
     LayerActivationNormalization,
 )
 
-import torch
 import torch.nn as nn
 
 
 class CycleGANBlock(LayerActivationNormalization):
     """
-    CycleGANBlock is the basic block used in the CycleGAN generator. It consists of either a convolution layer or a transposed convolution layer, an instance normalization layer, and a ReLU activation layer.
+    Basic block used in the CycleGAN generator. It consists of a convolution layer (or a transposed convolution layer), an instance normalization layer, and a ReLU activation layer.
     """
 
     def __init__(
@@ -41,7 +40,7 @@ class CycleGANBlock(LayerActivationNormalization):
 
 class ResidualBlock(DeeplayModule):
     """
-    ResidualBlock for CycleGAN generator. It consists of two Blocks defined above with convolution layers having the same number of input and output channels. The output of the blocks is added to the input of the blocks to form the residual connection.
+    ResidualBlock used in the CycleGAN generator. It combines two CycleGAN blocks defined above through a skip connection.
     """
 
     def __init__(self, channels):
@@ -64,7 +63,62 @@ class ResidualBlock(DeeplayModule):
 class CycleGANGenerator(DeeplayModule):
     """
     CycleGAN generator.
+
+    Parameters
+    ----------
+    in_channels : int
+        Number of channels in the input image.
+    out_channels : int
+        Number of channels in the output image.
+    n_residual_blocks : int
+        Number of residual blocks in the generator.
+
+    Shorthands
+    ----------
+    - input: `.blocks[0]`
+    - hidden: `.blocks[:-1]`
+    - output: `.blocks[-1]`
+    - layer: `.blocks.layer`
+    - activation: `.blocks.activation`
+
+    Examples
+    --------
+    >>> generator = CycleGANGenerator(in_channels=1, out_channels=3)
+    >>> generator.build()
+    >>> x = torch.randn(1, 1, 256, 256)
+    >>> y = generator(x)
+    >>> y.shape
+
+    Return values
+    -------------
+    The forward method returns the processed tensor.
+
     """
+
+    in_channels: int
+    out_channels: int
+    n_residual_blocks: int
+    blocks: LayerList[Layer]
+
+    @property
+    def input(self):
+        """Return the input layer of the network. Equivalent to `self.blocks[0]`."""
+        return self.blocks[0]
+
+    @property
+    def hidden(self):
+        """Return the hidden layers of the network. Equivalent to `self.blocks[:-1]`."""
+        return self.blocks[:-1]
+
+    @property
+    def output(self):
+        """Return the last layer of the network. Equivalent to `self.blocks[-1]`."""
+        return self.blocks[-1]
+
+    @property
+    def activation(self) -> LayerList[Layer]:
+        """Return the activations of the network. Equivalent to `.blocks.activation`."""
+        return self.blocks.activation
 
     def __init__(
         self,
@@ -131,10 +185,34 @@ class CycleGANGenerator(DeeplayModule):
             x = block(x)
         return x
 
+    @overload
+    def configure(
+        self,
+        /,
+        in_channels: int = 1,
+        out_channels: int = 1,
+        n_residual_blocks: int = 9,
+    ) -> None:
+        ...
+
+    @overload
+    def configure(
+        self,
+        name: Literal["blocks"],
+        order: Optional[Sequence[str]] = None,
+        layer: Optional[Type[nn.Module]] = None,
+        activation: Optional[Type[nn.Module]] = None,
+        normalization: Optional[Type[nn.Module]] = None,
+        **kwargs: Any,
+    ) -> None:
+        ...
+
+    configure = DeeplayModule.configure
+
 
 class PatchGANBlock(LayerActivationNormalization):
     """
-    PatchGANBlock is the basic block used in the PatchGAN discriminator. It consists of a convolution layer, an instance normalization layer, and a LeakyReLU activation layer.
+    PatchGANBlock is the basic block used in the CycleGAN discriminator. It consists of a convolution layer, an instance normalization layer, and a LeakyReLU activation layer.
     """
 
     def __init__(
@@ -164,8 +242,57 @@ class PatchGANBlock(LayerActivationNormalization):
 
 class CycleGANDiscriminator(DeeplayModule):
     """
-    PatchGAN discriminator. This is inspired from the 70 x 70 PatchGAN discriminator used in the original CycleGAN paper.
+    CycleGAN discriminator.
+
+    Parameters
+    ----------
+    in_channels : int
+        Number of channels in the input image.
+
+    Shorthands
+    ----------
+    - input: `.blocks[0]`
+    - hidden: `.blocks[:-1]`
+    - output: `.blocks[-1]`
+    - layer: `.blocks.layer`
+    - activation: `.blocks.activation`
+
+    Examples
+    --------
+    >>> discriminator = CycleGANDiscriminator(in_channels=3)
+    >>> discriminator.build()
+    >>> x = torch.randn(1, 3, 256, 256)
+    >>> y = discriminator(x)
+    >>> y.shape
+
+    Return values
+    -------------
+    The forward method returns the processed tensor.
+
     """
+
+    in_channels: int
+    blocks: LayerList[Layer]
+
+    @property
+    def input(self):
+        """Return the input layer of the network. Equivalent to `self.blocks[0]`."""
+        return self.blocks[0]
+
+    @property
+    def hidden(self):
+        """Return the hidden layers of the network. Equivalent to `self.blocks[:-1]`."""
+        return self.blocks[:-1]
+
+    @property
+    def output(self):
+        """Return the last layer of the network. Equivalent to `self.blocks[-1]`."""
+        return self.blocks[-1]
+
+    @property
+    def activation(self) -> LayerList[Layer]:
+        """Return the activations of the network. Equivalent to `.blocks.activation`."""
+        return self.blocks.activation
 
     def __init__(self, in_channels: int = 1):
         super().__init__()
@@ -206,3 +333,25 @@ class CycleGANDiscriminator(DeeplayModule):
         for block in self.blocks:
             x = block(x)
         return x
+
+    @overload
+    def configure(
+        self,
+        /,
+        in_channels: int = 1,
+    ) -> None:
+        ...
+
+    @overload
+    def configure(
+        self,
+        name: Literal["blocks"],
+        order: Optional[Sequence[str]] = None,
+        layer: Optional[Type[nn.Module]] = None,
+        activation: Optional[Type[nn.Module]] = None,
+        normalization: Optional[Type[nn.Module]] = None,
+        **kwargs: Any,
+    ) -> None:
+        ...
+
+    configure = DeeplayModule.configure
