@@ -1,8 +1,8 @@
 from typing import Optional, Sequence, Callable, List
 
 from ...components import ConvolutionalEncoder2d, ConvolutionalDecoder2d
-from ...application import Application
-from ....external import External, Optimizer, Adam
+from ..application import Application
+from ...external import External, Optimizer, Adam
 
 
 import torch
