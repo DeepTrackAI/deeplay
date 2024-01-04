@@ -36,7 +36,7 @@ class TestComponentEncDec(unittest.TestCase):
         encdec.create()
 
         self.assertEqual(len(encdec.blocks), 8)
-        self.assertIsInstance(encdec.output.activation, nn.Sigmoid)
+        self.assertIsInstance(encdec.out_activation, nn.Sigmoid)
 
     def test_change_out_act_Layer(self):
         encdec = ConvolutionalEncoderDecoder2d(3, [8, 16, 32], [16, 8, 4], 1)
