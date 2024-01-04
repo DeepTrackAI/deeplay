@@ -15,26 +15,19 @@ class TestComponentEncDec(unittest.TestCase):
         encdec.build()
         encdec.create()
 
-        self.assertEqual(len(encdec.blocks), 9)
+        self.assertEqual(len(encdec.blocks), 8)
 
         self.assertEqual(encdec.blocks[0].layer.in_channels, 3)
         self.assertEqual(encdec.blocks[1].layer.out_channels, 16)
-        self.assertEqual(encdec.encoder_blocks[0].layer.in_channels, 3)
-        self.assertEqual(encdec.decoder_blocks[-2].layer.out_channels, 8)
+        self.assertEqual(encdec.encoder.blocks[0].layer.in_channels, 3)
+        self.assertEqual(encdec.decoder.blocks[-2].layer.out_channels, 4)
 
-        self.assertEqual(encdec.output.layer.out_channels, 1)
+        self.assertEqual(encdec.decoder.output.layer.out_channels, 1)
 
         # test on a batch of 2
         x = torch.randn(2, 3, 64, 64)
         y = encdec(x)
         self.assertEqual(y.shape, (2, 1, 64, 64))
-
-    # def test_cnn_change_depth(self):
-    #     cnn = ConvolutionalNeuralNetwork(2, [4], 3)
-    #     cnn.configure(hidden_channels=[4, 4])
-    #     cnn.create()
-    #     cnn.build()
-    #     self.assertEqual(len(cnn.blocks), 3)
 
     def test_change_act(self):
         encdec = ConvolutionalEncoderDecoder2d(3, [8, 16, 32], [16, 8, 4], 1)
@@ -42,7 +35,7 @@ class TestComponentEncDec(unittest.TestCase):
         encdec.build()
         encdec.create()
 
-        self.assertEqual(len(encdec.blocks), 9)
+        self.assertEqual(len(encdec.blocks), 8)
         self.assertIsInstance(encdec.output.activation, nn.Sigmoid)
 
     def test_change_out_act_Layer(self):
@@ -51,8 +44,8 @@ class TestComponentEncDec(unittest.TestCase):
         encdec.build()
         encdec.create()
 
-        self.assertEqual(len(encdec.blocks), 9)
-        self.assertIsInstance(encdec.output.activation, nn.Sigmoid)
+        self.assertEqual(len(encdec.blocks), 8)
+        self.assertIsInstance(encdec.out_activation, nn.Sigmoid)
 
     def test_change_out_act_instance(self):
         encdec = ConvolutionalEncoderDecoder2d(3, [8, 16, 32], [16, 8, 4], 1)
@@ -60,8 +53,8 @@ class TestComponentEncDec(unittest.TestCase):
         encdec.build()
         encdec.create()
 
-        self.assertEqual(len(encdec.blocks), 9)
-        self.assertIsInstance(encdec.output.activation, nn.Sigmoid)
+        self.assertEqual(len(encdec.blocks), 8)
+        self.assertIsInstance(encdec.out_activation, nn.Sigmoid)
 
     # def test_default_values_initialization(self):
     #     cnn = ConvolutionalNeuralNetwork(
