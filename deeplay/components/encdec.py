@@ -549,7 +549,6 @@ class UNet2d(ConvolutionalEncoderDecoder2d):
         x = self.decoder.pre(x)
         for act, block in zip(acts[::-1], self.decoder.blocks):
             x = self.skip(act, x)
-            # x = torch.cat([act, x], dim=1)
             x = block(x)
         return x
 
