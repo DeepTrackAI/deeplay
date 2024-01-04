@@ -1,6 +1,6 @@
 from typing import List, Optional, Literal, Any, Sequence, Type, overload, Union
 
-from ... import (
+from .. import (
     DeeplayModule,
     Layer,
     LayerList,
