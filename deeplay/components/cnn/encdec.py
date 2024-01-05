@@ -1,6 +1,6 @@
 from typing import List, Optional, Literal, Any, Sequence, Type, overload, Union
 
-from .. import (
+from ... import (
     DeeplayModule,
     Layer,
     LayerList,
@@ -27,7 +27,7 @@ class ConvolutionalEncoder2d(DeeplayModule):
         Specification for the output activation. (Default: nn.ReLU)
     pool: template-like
         Specification for the pooling of the block. Is not applied to the first block. (Default: nn.MaxPool2d)
-    post: postprocessing layer (Default: nn.Identity)
+    postprocess: postprocessing layer (Default: nn.Identity)
 
     Configurables
     -------------
@@ -45,8 +45,7 @@ class ConvolutionalEncoder2d(DeeplayModule):
     ----------
     >>> for block in self.blocks:
     >>>    x = block(x)
-    >>> for layer in self.post:
-    >>>    x = layer(x)
+    >>> x = self.postprocess(x)
     >>> return x
 
     Examples
@@ -113,7 +112,7 @@ class ConvolutionalEncoder2d(DeeplayModule):
         out_channels: int,
         out_activation: Optional[Union[Type[nn.Module], nn.Module, None]] = None,
         pool: Optional[Union[Type[nn.Module], nn.Module, None]] = None,
-        post: Optional[Union[Type[nn.Module], nn.Module, None]] = None,
+        postprocess: Optional[Union[Type[nn.Module], nn.Module, None]] = None,
     ):
         super().__init__()
 
@@ -174,12 +173,12 @@ class ConvolutionalEncoder2d(DeeplayModule):
 
             self.blocks.append(block)
 
-        self.post = Layer(nn.Identity)
+        self.postprocess = Layer(nn.Identity)
 
     def forward(self, x):
         for block in self.blocks:
             x = block(x)
-        x = self.post(x)
+        x = self.postprocess(x)
         return x
 
     @overload
@@ -202,7 +201,7 @@ class ConvolutionalEncoder2d(DeeplayModule):
         layer: Optional[Type[nn.Module]] = None,
         activation: Optional[Type[nn.Module]] = None,
         normalization: Optional[Type[nn.Module]] = None,
-        post: Optional[Type[nn.Module]] = None,
+        postprocess: Optional[Type[nn.Module]] = None,
         **kwargs: Any,
     ) -> None:
         ...
@@ -217,7 +216,7 @@ class ConvolutionalEncoder2d(DeeplayModule):
         layer: Optional[Type[nn.Module]] = None,
         activation: Optional[Type[nn.Module]] = None,
         normalization: Optional[Type[nn.Module]] = None,
-        post: Optional[Type[nn.Module]] = None,
+        postprocess: Optional[Type[nn.Module]] = None,
         **kwargs: Any,
     ) -> None:
         ...
@@ -240,7 +239,7 @@ class ConvolutionalDecoder2d(DeeplayModule):
         Specification for the output activation. (Default: nn.Sigmoid)
     pool: template-like
         Specification for the pooling of the block. Is not applied to the first block. (Default: nn.MaxPool2d)
-    pre: preprocessing layer (Default: nn.Identity)
+    preprocess: preprocessing layer (Default: nn.Identity)
 
     Configurables
     -------------
@@ -256,8 +255,8 @@ class ConvolutionalDecoder2d(DeeplayModule):
 
     Evaluation
     ----------
-    >>> for layer in self.pre:
-    >>>    x = layer(x)
+    >>>
+    >>> x = self.preprocess(x)
     >>> for block in blocks:
     >>>    x = block(x)
     >>> return x
@@ -326,7 +325,7 @@ class ConvolutionalDecoder2d(DeeplayModule):
         out_channels: int,
         out_activation: Optional[Union[Type[nn.Module], nn.Module, None]] = None,
         upsample: Optional[Union[Type[nn.Module], nn.Module, None]] = None,
-        pre: Optional[Union[Type[nn.Module], nn.Module, None]] = None,
+        preprocess: Optional[Union[Type[nn.Module], nn.Module, None]] = None,
     ):
         super().__init__()
 
@@ -350,7 +349,7 @@ class ConvolutionalDecoder2d(DeeplayModule):
         elif isinstance(out_activation, type) and issubclass(out_activation, nn.Module):
             out_activation = Layer(out_activation)
 
-        self.pre = Layer(nn.Identity)
+        self.preprocess = Layer(nn.Identity)
 
         self.blocks = LayerList()
 
@@ -391,7 +390,7 @@ class ConvolutionalDecoder2d(DeeplayModule):
             self.blocks.append(block)
 
     def forward(self, x):
-        x = self.pre(x)
+        x = self.preprocess(x)
         for block in self.blocks:
             x = block(x)
         return x
@@ -416,7 +415,7 @@ class ConvolutionalDecoder2d(DeeplayModule):
         activation: Optional[Type[nn.Module]] = None,
         normalization: Optional[Type[nn.Module]] = None,
         upsample: Optional[Type[nn.Module]] = None,
-        pre: Optional[Type[nn.Module]] = None,
+        preprocess: Optional[Type[nn.Module]] = None,
         **kwargs: Any,
     ) -> None:
         ...
@@ -431,7 +430,7 @@ class ConvolutionalDecoder2d(DeeplayModule):
         activation: Optional[Type[nn.Module]] = None,
         normalization: Optional[Type[nn.Module]] = None,
         upsample: Optional[Type[nn.Module]] = None,
-        pre: Optional[Type[nn.Module]] = None,
+        preprocess: Optional[Type[nn.Module]] = None,
         **kwargs: Any,
     ) -> None:
         ...
@@ -545,8 +544,8 @@ class UNet2d(ConvolutionalEncoderDecoder2d):
         for block in self.encoder.blocks:
             x = block(x)
             acts.append(x)
-        x = self.encoder.post(x)
-        x = self.decoder.pre(x)
+        x = self.encoder.postprocess(x)
+        x = self.decoder.preprocess(x)
         for act, block in zip(acts[::-1], self.decoder.blocks):
             x = self.skip(act, x)
             x = block(x)

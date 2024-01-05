@@ -9,7 +9,7 @@ import torch
 import torch.nn as nn
 
 
-class VAE(Application):
+class VariationalAutoEncoder(Application):
     encoder: torch.nn.Module
     decoder: torch.nn.Module
     loss: torch.nn.Module
