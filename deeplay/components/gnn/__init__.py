@@ -1,2 +1,1 @@
-from .gnn import GraphConvolutionalNeuralNetwork
-from .normalization import *
+from .gcn import *

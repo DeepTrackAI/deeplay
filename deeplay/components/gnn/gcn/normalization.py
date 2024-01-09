@@ -1,8 +1,10 @@
 import torch
 import torch.nn as nn
 
+from deeplay import DeeplayModule
 
-class sparse_laplacian_normalization(nn.Module):
+
+class sparse_laplacian_normalization(DeeplayModule):
     def add_self_loops(self, A, num_nodes):
         """
         Add self-loops to the adjacency matrix of a graph.
@@ -59,7 +61,7 @@ class sparse_laplacian_normalization(nn.Module):
         return laplacian
 
 
-class dense_laplacian_normalization(nn.Module):
+class dense_laplacian_normalization(DeeplayModule):
     def degree(self, A):
         """
         Compute the degree of each node in a graph given its adjacency matrix.

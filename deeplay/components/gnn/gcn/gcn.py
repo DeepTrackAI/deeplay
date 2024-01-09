@@ -1,8 +1,8 @@
 from typing import List, Optional, Literal, Any, Sequence, Type, overload, Union
 
-from ... import DeeplayModule, Layer, LayerList
-from .TPU import TransformPropagateUpdate
+from deeplay import DeeplayModule, Layer, LayerList
 
+from ..TPU import TransformPropagateUpdate
 from .normalization import sparse_laplacian_normalization
 
 import torch
@@ -84,7 +84,7 @@ class GraphConvolutionalNeuralNetwork(DeeplayModule):
         self.normalize.set_input_map("x", "A")
         self.normalize.set_output_map("A")
 
-        class propagation(nn.Module):
+        class propagation(DeeplayModule):
             def forward(self, x, A):
                 if A.is_sparse:
                     return torch.spmm(A, x)
