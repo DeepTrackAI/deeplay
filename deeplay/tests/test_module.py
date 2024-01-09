@@ -350,6 +350,23 @@ class TestLayer(unittest.TestCase):
 
         self.assertEqual(model.foo.num_features, 20)
 
+    def test_configure_in_init(self):
+        class TestClass(dl.DeeplayModule):
+            def __init__(self, model=None):
+                super().__init__()
+
+                model = dl.MultiLayerPerceptron(None, [64], 10)
+                model.output.normalization.configure(nn.BatchNorm1d)
+                self.model = model
+
+        testclass = TestClass()
+
+        self.assertEqual(testclass.model.output.normalization.classtype, nn.BatchNorm1d)
+
+        testclass.build()
+
+        self.assertIsInstance(testclass.model.output.normalization, nn.BatchNorm1d)
+
 
 class TestSequential(unittest.TestCase):
     def test_forward_with_input_dict(self):

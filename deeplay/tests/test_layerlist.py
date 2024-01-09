@@ -251,3 +251,57 @@ class TestLayerList(unittest.TestCase):
         for activation in llist.activation:
             self.assertEqual(activation.input_args, ("x", "A"))
             self.assertEqual(activation.output_args, {"x": 0})
+
+    def test_configuration_applies_in_wrapped(self):
+        class MLP(DeeplayModule):
+            def __init__(self, in_features, hidden_features, out_features):
+                self.in_features = in_features
+                self.hidden_features = hidden_features
+                self.out_features = out_features
+
+                self.blocks = LayerList()
+                self.blocks.append(
+                    LayerActivation(
+                        Layer(nn.Linear, in_features, hidden_features[0]),
+                        Layer(nn.ReLU),
+                    )
+                )
+
+                self.hidden_blocks = LayerList()
+                for i in range(len(hidden_features) - 1):
+                    self.hidden_blocks.append(
+                        LayerActivation(
+                            Layer(
+                                nn.Linear, hidden_features[i], hidden_features[i + 1]
+                            ),
+                            Layer(nn.ReLU),
+                        )
+                    )
+
+                self.blocks.extend(self.hidden_blocks)
+                self.blocks.insert(
+                    1,
+                    LayerActivation(
+                        Layer(nn.Linear, hidden_features[-1], out_features),
+                        Layer(nn.Sigmoid),
+                    ),
+                )
+
+        class TestClass(DeeplayModule):
+            def __init__(self, model=None):
+                super().__init__()
+
+                model = MLP(1, [1, 1], 1)
+                model.blocks[0].layer.configure(in_features=1, out_features=2)
+                model.blocks[1].layer.configure(in_features=1, out_features=2)
+                model.blocks[2].layer.configure(in_features=1, out_features=2)
+
+                self.model = model
+
+        testclass = TestClass()
+        testclass.build()
+        self.assertEqual(len(testclass.model.blocks), 3)
+        self.assertEqual(testclass.model.blocks[0].layer.out_features, 2)
+        self.assertEqual(testclass.model.blocks[1].layer.out_features, 2)
+        self.assertEqual(testclass.model.blocks[2].layer.out_features, 2)
+
