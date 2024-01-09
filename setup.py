@@ -1,5 +1,7 @@
 from setuptools import setup, find_packages
 
+with open("requirements.txt", "r") as file:
+    required = file.read().splitlines()
 
 setup(
     name="deeplay",
@@ -10,5 +12,5 @@ setup(
     packages=find_packages(),
     url="https://github.com/softmatterlab/deeplay",
     keywords="example project",
-    install_requires=[],
+    install_requires=required,
 )
