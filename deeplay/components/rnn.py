@@ -1,22 +1,25 @@
 from typing import List, Optional, Literal, Any, Sequence, Type, overload, Union
 
-from .. import DeeplayModule, Layer, LayerList, LayerActivationNormalizationDropout
+from .. import DeeplayModule, Layer, LayerList, RecurrentBlock
 
 import torch.nn as nn
 
-class RecurrentDropout(nn.Module):
-    def __init__(self, p=0):
-        super(RecurrentDropout, self).__init__()
+class RecurrentDropout(Layer):
+    def __init__(self, p=0.0):
+        super(RecurrentDropout, self).__init__(classtype=RecurrentDropout)
         self.p = p
+        self.dropout = nn.Dropout(p=self.p)
 
     def forward(self, x):
-        return nn.Dropout(p=self.p)(x[0]),x[1]
+        if isinstance(x[0],nn.utils.rnn.PackedSequence):
+            return nn.utils.rnn.PackedSequence(self.dropout(x[0].data),x[0].batch_sizes),x[1]
+        return nn.Dropout(p=self.p)(x[0]),x[1]#self.dropout(x[0]),x[1]
 
 class RecurrentNeuralNetwork(DeeplayModule):
     in_features: Optional[int]
     hidden_features: Sequence[Optional[int]]
     out_features: int
-    blocks: LayerList[LayerActivationNormalizationDropout]
+    blocks: LayerList[RecurrentBlock]
 
     @property
     def input(self):
@@ -50,7 +53,7 @@ class RecurrentNeuralNetwork(DeeplayModule):
     
     @property
     def dropout(self) -> LayerList[Layer]:
-        """Return the normalizations of the network. Equivalent to `.blocks.normalization`."""
+        """Return the dropout of the network. Equivalent to `.blocks.dropout`."""
         return self.blocks.dropout
 
     def __init__(
@@ -88,11 +91,11 @@ class RecurrentNeuralNetwork(DeeplayModule):
         ):
             """Torch automatically overwrites dropout==0 for RNN with num_layers=1. To allow for hidden layers of different size, we include dropout layers separately. """
             self.blocks.append(
-                LayerActivationNormalizationDropout(
+                RecurrentBlock(
                     Layer(nn.RNN, c_in, c_out), 
                     Layer(nn.Identity, num_features=f_out),
                     Layer(nn.Identity, num_features=f_out),
-                    Layer(RecurrentDropout,p=0)
+                    Layer(RecurrentDropout,0.0)
                 )
             )
 

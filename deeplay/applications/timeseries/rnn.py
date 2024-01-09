@@ -1,10 +1,20 @@
 from typing import Optional,overload,Sequence,List,Dict,Any,Literal,Union,Type
-from .. import DeeplayModule, Layer, LayerList, LayerActivationNormalizationDropout,RecurrentNeuralNetwork,MultiLayerPerceptron
+from deeplay import DeeplayModule, Layer, LayerList, RecurrentBlock,MultiLayerPerceptron,LayerActivationNormalizationDropout
 
 import torch
 
+class RecurrentDropout(torch.nn.Module):
+    def __init__(self, p=0.0):
+        super(RecurrentDropout, self).__init__()
+        self.p = p
+        self.dropout = torch.nn.Dropout(p=self.p)
 
-class RNN(DeeplayModule):
+    def forward(self, x):
+        if isinstance(x[0],torch.nn.utils.rnn.PackedSequence):
+            return torch.nn.utils.rnn.PackedSequence(self.dropout(x[0].data),x[0].batch_sizes),x[1]
+        return self.dropout(x[0]),x[1]
+
+class rnn(DeeplayModule):
     """
     Recurrent Neural Network (RNN) module.
 
@@ -52,7 +62,7 @@ class RNN(DeeplayModule):
     batch_first: bool
     dropout: float
     embedding: Optional[torch.nn.Embedding] 
-    blocks: LayerList[LayerActivationNormalizationDropout]
+    blocks: LayerList[RecurrentBlock]
 
     @property
     def input(self):
@@ -150,46 +160,48 @@ class RNN(DeeplayModule):
             out_activation = Layer(out_activation)
 
         self.blocks = LayerList()
-        self.rnn = RecurrentNeuralNetwork(
-        in_features,
-        hidden_features=[],
-        out_features=hidden_features[0])
-        self.rnn.blocks[0].layer.configure(self.rnn_class, bidirectional=bidirectional,batch_first=batch_first)
-        self.rnn.blocks.dropout.configure(p=dropout)
-        self.blocks.append(self.rnn)
-
+        self.blocks.append(
+                RecurrentBlock(
+                    Layer(self.rnn_class, in_features, hidden_features[0],bidirectional=bidirectional,batch_first=batch_first), 
+                    Layer(torch.nn.Identity),
+                    Layer(torch.nn.Identity),
+                    Layer(RecurrentDropout,dropout)
+                )
+            )
+        
         if len(hidden_features) > 1:
             for i in range(len(hidden_features) - 1):
-                self.rnn = RecurrentNeuralNetwork(
-                in_features=hidden_features[i] * 2 if bidirectional else hidden_features[i],
-                hidden_features=[],
-                out_features=hidden_features[i + 1])
-                self.rnn.blocks[0].layer.configure(self.rnn_class, bidirectional=bidirectional,batch_first=batch_first)
-                self.blocks.append(self.rnn)
-                if i<len(hidden_features) - 2:
-                    self.rnn.blocks.dropout.configure(p=dropout)
+    
+                self.blocks.append(
+                    RecurrentBlock(
+                        Layer(self.rnn_class, 
+                              hidden_features[i] * 2 if bidirectional else hidden_features[i],
+                              hidden_features[i + 1],bidirectional=bidirectional,batch_first=batch_first), 
+                        Layer(torch.nn.Identity),
+                        Layer(torch.nn.Identity),
+                        Layer(RecurrentDropout,dropout) if i < len(hidden_features) - 2 else Layer(RecurrentDropout,0.0)
+                    )
+                )
 
         # Define the output layer
         if self.out_features is not None:
-            self.output_layer=MultiLayerPerceptron(in_features=hidden_features[-1],hidden_features=[],out_features=self.out_features,out_activation=out_activation)
-            self.blocks.append(self.output_layer)
+            self.blocks.append(LayerActivationNormalizationDropout(
+                Layer(torch.nn.Linear, hidden_features[-1], self.out_features),
+                out_activation,
+                Layer(torch.nn.Identity, num_features=self.out_features),
+                Layer(torch.nn.Dropout, p=0),
+            ))
 
-    def forward(self, x, lengths: Optional[torch.Tensor] = None):
+    def forward(self, x):
 
         if self.embedding:
             x = self.embedding(x)
             x = self.embedding_dropout(x)
-        if lengths is not None:
-            x = torch.nn.utils.rnn.pack_padded_sequence(x, lengths, enforce_sorted=False)
 
         outputs=x
         for block in self.blocks[:-1]:
-            outputs=block(outputs)
-        if not self.out_features:
-             outputs,hidden=self.blocks[-1](outputs)
-             
-        if lengths is not None:
-           outputs, _ = torch.nn.utils.rnn.pad_packed_sequence(outputs)
+            outputs,hidden=block(outputs)
+
         if self.bidirectional:
            outputs = outputs[:, :, :self.hidden_features[-1]] + outputs[:, :, self.hidden_features[-1]:]
 
