@@ -114,7 +114,6 @@ class External(DeeplayModule):
             # hack for external
             classtype = kwargs.pop("classtype")
 
-            print("sent:", (classtype, self._args), kwargs)
             self.__init__(*(classtype, self._args), **kwargs)
             self._run_hooks("after_init")
             self._is_constructing = False

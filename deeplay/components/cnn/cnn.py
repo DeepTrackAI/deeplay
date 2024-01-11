@@ -155,7 +155,6 @@ class ConvolutionalNeuralNetwork(DeeplayModule):
             if i == 0:
                 pool_layer = Layer(nn.Identity)
             elif pool is None:
-                print("here")
                 pool_layer = Layer(nn.Identity)
             elif isinstance(pool, type) and issubclass(pool, nn.Module):
                 pool_layer = Layer(pool)
