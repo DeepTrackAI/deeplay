@@ -34,6 +34,21 @@ class Module(dl.DeeplayModule):
         self.y = dl.Layer(nn.Linear, a, b)
 
 
+class VariadicModule(dl.DeeplayModule):
+    def __init__(self, *args, **kwargs):
+        self._args = args
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+
+class VariadicModuleWithPositional(dl.DeeplayModule):
+    def __init__(self, a, *args, **kwargs):
+        self.a = a
+        self._args = args
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+
 class Module2(dl.DeeplayModule):
     def __init__(self, foo):
         super().__init__()
@@ -238,6 +253,44 @@ class TestDeeplayModule(unittest.TestCase):
         self.assertEqual(parent.foo.bar.a, 7)
         self.assertEqual(parent.foo.bar.b, 8)
         self.assertEqual(parent.foo.bar.c, "F")
+
+    def test_variadic_module(self):
+        external = dl.External(VariadicModule, 10, 20, arg=30)
+        built = external.build()
+        created = external.create()
+        self.assertIsInstance(created, VariadicModule)
+        self.assertIsInstance(built, VariadicModule)
+
+        self.assertEqual(built._args, (10, 20))
+        self.assertEqual(built.arg, 30)
+
+        self.assertEqual(created._args, (10, 20))
+        self.assertEqual(created.arg, 30)
+
+        self.assertEqual(len(built.kwargs), 1)
+        self.assertEqual(built.kwargs["arg"], 30)
+
+    def test_variadic_module_with_positional(self):
+        external = dl.External(VariadicModuleWithPositional, 0, 10, 20, arg=30)
+        built = external.build()
+        created = external.create()
+        self.assertIsInstance(created, VariadicModuleWithPositional)
+        self.assertIsInstance(built, VariadicModuleWithPositional)
+
+        self.assertEqual(built.a, 0)
+        self.assertEqual(built._args, (10, 20))
+        self.assertEqual(built.arg, 30)
+
+        self.assertEqual(created.a, 0)
+        self.assertEqual(created._args, (10, 20))
+        self.assertEqual(created.arg, 30)
+
+        self.assertEqual(built.kwargs["a"], 0)
+        self.assertEqual(built.kwargs["arg"], 30)
+
+        external.configure(a=1)
+        built = external.build()
+        self.assertEqual(built.a, 1)
 
 
 class ModelWithLayer(dl.DeeplayModule):
