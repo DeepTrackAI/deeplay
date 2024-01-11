@@ -486,7 +486,6 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         super().__setattr__(name, value)
 
     def _build_arguments_from(self, *args, **kwargs):
-        # params = self.get_signature().parameters
         argspec = self.get_argspec()
 
         params = argspec.args
