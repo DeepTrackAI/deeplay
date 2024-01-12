@@ -524,25 +524,29 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
             self._modules.clear()
             self._is_constructing = True
 
-            argspec = self.get_argspec()
-            signature = self.get_signature()
-
-            args = ()
-            kwargs = self.kwargs.copy()
-
-            # extract positional arguments from kwargs
-            # and put them in args
-            if argspec.varargs is not None:
-                for name, param in signature.parameters.items():
-                    if param.kind == param.VAR_POSITIONAL:
-                        break
-                    if param.name in kwargs:
-                        args += (kwargs.pop(param.name),)
+            args, kwargs = self.get_init_args()
             self.__init__(*(args + self._args), **kwargs)
 
             self._run_hooks("after_init")
             self._is_constructing = False
             self.__post_init__()
+
+    def get_init_args(self):
+        argspec = self.get_argspec()
+        signature = self.get_signature()
+
+        args = ()
+        kwargs = self.kwargs.copy()
+
+        # extract positional arguments from kwargs
+        # and put them in args
+        if argspec.varargs is not None:
+            for name, param in signature.parameters.items():
+                if param.kind == param.VAR_POSITIONAL:
+                    break
+                if param.name in kwargs:
+                    args += (kwargs.pop(param.name),)
+        return args, kwargs
 
     @classmethod
     def get_argspec(cls):

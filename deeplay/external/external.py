@@ -105,19 +105,11 @@ class External(DeeplayModule):
 
     create = build
 
-    def __construct__(self):
-        with not_top_level(ExtendedConstructorMeta):
-            self._modules.clear()
-            self._is_constructing = True
-
-            kwargs = self.kwargs.copy()
-            # hack for external
-            classtype = kwargs.pop("classtype")
-
-            self.__init__(*(classtype, self._args), **kwargs)
-            self._run_hooks("after_init")
-            self._is_constructing = False
-            self.__post_init__()
+    def get_init_args(self):
+        kwargs = self.kwargs.copy()
+        # hack for external
+        classtype = kwargs.pop("classtype")
+        return (classtype,), kwargs
 
     def get_argspec(self):
         classtype = self.classtype
