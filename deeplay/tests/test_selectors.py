@@ -1,18 +1,19 @@
-import deeplay as dl
+from .. import DeeplayModule, LayerList, LayerActivation, Layer
 import unittest
+import torch.nn as nn
 
 
-class TestModule(dl.DeeplayModule):
+class TestModule(DeeplayModule):
     def __init__(self):
-        self.encoder = dl.LayerList()
-        self.decoder = dl.LayerList()
+        self.encoder = LayerList()
+        self.decoder = LayerList()
 
         for i in range(4):
             self.encoder.append(
-                dl.LayerActivation(dl.Layer(nn.Conv2d, 3, 3, 1, 1), dl.Layer(nn.ReLU))
+                LayerActivation(Layer(nn.Conv2d, 3, 3, 1, 1), dl.Layer(nn.ReLU))
             )
             self.decoder.append(
-                dl.LayerActivation(dl.Layer(nn.Conv2d, 3, 3, 1, 1), dl.Layer(nn.ReLU))
+                LayerActivation(Layer(nn.Conv2d, 3, 3, 1, 1), dl.Layer(nn.ReLU))
             )
 
 
@@ -21,13 +22,13 @@ class TestSelectors(unittest.TestCase):
         self.module = TestModule()
 
     def test_selector_str(self):
-        selections = self.module["encoder"]
+        selections = self.module["encoder"].list_names()
         self.assertListEqual(selections, [("encoder",)])
 
     def test_selector_str_bar(self):
-        selections = self.module["encoder|decoder"]
+        selections = self.module["encoder|decoder"].list_names()
         self.assertListEqual(selections, [("encoder",), ("decoder",)])
 
     def test_selector_str_comma(self):
-        selections = self.module["encoder,decoder"]
+        selections = self.module["encoder,decoder"].list_names()
         self.assertListEqual(selections, [("encoder", "decoder")])
