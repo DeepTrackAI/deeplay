@@ -608,7 +608,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
             idx += 1
         return Selection(self, selections)
 
-    def __getitem__(self, selector) -> "Selection":
+    def __getitem__(self, selector):
         return self.getitem_with_selections(selector)
 
     def _build_arguments_from(self, *args, **kwargs):
