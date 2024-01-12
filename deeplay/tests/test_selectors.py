@@ -10,10 +10,10 @@ class TestModule(DeeplayModule):
 
         for i in range(4):
             self.encoder.append(
-                LayerActivation(Layer(nn.Conv2d, 3, 3, 1, 1), dl.Layer(nn.ReLU))
+                LayerActivation(Layer(nn.Conv2d, 3, 3, 1, 1), Layer(nn.ReLU))
             )
             self.decoder.append(
-                LayerActivation(Layer(nn.Conv2d, 3, 3, 1, 1), dl.Layer(nn.ReLU))
+                LayerActivation(Layer(nn.Conv2d, 3, 3, 1, 1), Layer(nn.ReLU))
             )
 
 
