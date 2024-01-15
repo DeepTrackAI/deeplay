@@ -301,7 +301,7 @@ class TestLayer(unittest.TestCase):
         layer.set_output_map("x")
 
         layer = layer.build()
-        inp = dl.ToDict(x=torch.randn(10, 1))
+        inp = {"x": torch.randn(10, 1)}
         out = layer(inp)
         self.assertEqual(out["x"].shape, (10, 20))
 
@@ -311,7 +311,7 @@ class TestLayer(unittest.TestCase):
         layer.set_output_map()
 
         layer = layer.build()
-        inp = dl.ToDict(x=torch.randn(10, 1))
+        inp = {"x": torch.randn(10, 1)}
         out = layer(inp)
         self.assertEqual(out.shape, (10, 20))
 
@@ -391,7 +391,7 @@ class TestSequential(unittest.TestCase):
 
         model.build()
 
-        inp = dl.ToDict(x=torch.randn(10, 1), A=torch.randn(10, 10))
+        inp = {"x": torch.randn(10, 1), "A": torch.randn(10, 10)}
         out = model(inp)
         self.assertEqual(out["x"].shape, (10, 1))
 
@@ -405,7 +405,7 @@ class TestSequential(unittest.TestCase):
         model.set_output_map("x")
 
         model.build()
-        inp = dl.ToDict(x=torch.randn(10, 1))
+        inp = {"x": torch.randn(10, 1)}
         out = model(inp)
         self.assertEqual(out["x"].shape, (10, 1))
 
@@ -421,7 +421,7 @@ class TestSequential(unittest.TestCase):
         model[1].set_output_map("x", x1=0, x2=0)
 
         model.build()
-        inp = dl.ToDict(x=torch.randn(10, 1))
+        inp = {"x": torch.randn(10, 1)}
         out = model(inp)
         self.assertEqual(out["x"].shape, (10, 1))
         self.assertEqual(torch.all(out["x1"] == out["x2"]), True)
