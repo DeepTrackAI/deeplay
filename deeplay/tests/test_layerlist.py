@@ -228,6 +228,30 @@ class TestLayerList(unittest.TestCase):
         llist.build()
         self.assertEqual(len(llist.layers), 2)
 
+    def test_set_mapping(self):
+        class AggregationRelu(nn.Module):
+            def forward(self, x, A):
+                return nn.functional.relu(A @ x)
+
+        llist = LayerList(
+            LayerActivation(Layer(nn.Linear, 1, 16), Layer(AggregationRelu)),
+            LayerActivation(Layer(nn.Linear, 16, 16), Layer(AggregationRelu)),
+            LayerActivation(Layer(nn.Linear, 16, 1), Layer(AggregationRelu)),
+        )
+        llist.layer.set_input_map("x")
+        llist.layer.set_output_map("x")
+
+        llist.activation.set_input_map("x", "A")
+        llist.activation.set_output_map("x")
+
+        for layer in llist.layer:
+            self.assertEqual(layer.input_args, ("x",))
+            self.assertEqual(layer.output_args, {"x": 0})
+
+        for activation in llist.activation:
+            self.assertEqual(activation.input_args, ("x", "A"))
+            self.assertEqual(activation.output_args, {"x": 0})
+
     def test_configuration_applies_in_wrapped(self):
         class MLP(DeeplayModule):
             def __init__(self, in_features, hidden_features, out_features):
