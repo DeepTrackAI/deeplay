@@ -28,8 +28,9 @@ class TestComponentDict(unittest.TestCase):
         out = model(inp)
 
         class MultiInputModule(nn.Module):
-            def forward(self, x, y):
-                return x * y
+            def forward(self, x):
+                a, b = x
+                return a * b
 
         model = Sequential(FromDict("a", "b"), MultiInputModule())
         model.build()
