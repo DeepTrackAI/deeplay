@@ -131,7 +131,7 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
         ...
 
     def __getitem__(self, index: Union[int, slice]) -> "Union[T, LayerList[T]]":
-        return super().__getitem__(index)  # type: ignore
+        return nn.ModuleList.__getitem__(self, index)  # type: ignore
 
 
 class Sequential(LayerList, Generic[T]):
