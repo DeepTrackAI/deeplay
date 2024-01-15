@@ -120,3 +120,11 @@ class TestComponentCNN(unittest.TestCase):
 
         for a, b in itertools.combinations(cnn_with_pool_layer.blocks, 2):
             self.assertIsNot(a.pool, b.pool)
+
+    def test_cnn_configure(self):
+        cnn_with_pool_module = ConvolutionalNeuralNetwork(3, [4, 4, 4], 1)
+        cnn_with_pool_module.configure(pool=nn.MaxPool2d(2))
+        cnn_with_pool_module.build()
+
+        for block in cnn_with_pool_module.blocks[1:]:
+            self.assertIsInstance(block.pool, nn.MaxPool2d)
