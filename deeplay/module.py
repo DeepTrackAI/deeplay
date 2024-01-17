@@ -79,6 +79,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     _user_config: Dict[Tuple[str, ...], Any]
     _is_constructing: bool = False
     _is_building: bool = False
+    _init_method = "__init__"
 
     _args: tuple
     _kwargs: dict
@@ -343,6 +344,8 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         kwargs = self._actual_init_args["kwargs"]
 
         # Make sure that we don't modify the original arguments
+        # TODO we should maybe use deepcopy here to make sure that
+        # the same object in two places are the same object even after
         args = tuple(a.new() if isinstance(a, DeeplayModule) else a for a in args)
         _args = tuple(_a.new() if isinstance(_a, DeeplayModule) else _a for _a in _args)
         kwargs = {
@@ -651,7 +654,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
             self._is_constructing = True
 
             args, kwargs = self.get_init_args()
-            self.__init__(*(args + self._args), **kwargs)
+            getattr(self, self._init_method)(*(args + self._args), **kwargs)
 
             self._run_hooks("after_init")
             self._is_constructing = False
