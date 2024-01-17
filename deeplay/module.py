@@ -119,10 +119,10 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
             "kwargs": kwargs,
         }
 
-        self._kwargs = self._build_arguments_from(*args, **kwargs)
+        self._kwargs, variadic_args = self._build_arguments_from(*args, **kwargs)
 
         # Arguments provided as args are not configurable (though they themselves can be).
-        self._args = _args
+        self._args = _args + variadic_args
         self._is_constructing = False
         self._is_building = False
 
@@ -459,8 +459,6 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
         subconfigs = {**mysub, **recevier_subconfigs}
 
-        # print("giving config with keys", subconfigs.keys(), "to", name)
-        # print("available keys", my_subconfigs.keys())
         receiver._take_user_configuration(subconfigs)
 
     def _collect_user_configuration(self):
@@ -614,7 +612,9 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         return self.getitem_with_selections(selector)
 
     def _build_arguments_from(self, *args, **kwargs):
-        params = self.get_signature().parameters
+        argspec = self.get_argspec()
+
+        params = argspec.args
 
         arguments = {}
 
@@ -622,11 +622,15 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         for param_name, arg in zip(params, args):
             arguments[param_name] = arg
 
+        variadic_args = ()
+        if argspec.varargs is not None:
+            variadic_args = args[len(params) :]
+
         # Add/Override with keyword arguments
         arguments.update(kwargs)
 
         arguments.pop("self", None)
-        return arguments
+        return arguments, variadic_args
 
     def _assert_valid_configurable(self, *args):
         if args[0] not in self.configurables:
@@ -645,10 +649,30 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         with not_top_level(ExtendedConstructorMeta):
             self._modules.clear()
             self._is_constructing = True
-            self.__init__(*self._args, **self.kwargs)
+
+            args, kwargs = self.get_init_args()
+            self.__init__(*(args + self._args), **kwargs)
+
             self._run_hooks("after_init")
             self._is_constructing = False
             self.__post_init__()
+
+    def get_init_args(self):
+        argspec = self.get_argspec()
+        signature = self.get_signature()
+
+        args = ()
+        kwargs = self.kwargs.copy()
+
+        # extract positional arguments from kwargs
+        # and put them in args
+        if argspec.varargs is not None:
+            for name, param in signature.parameters.items():
+                if param.kind == param.VAR_POSITIONAL:
+                    break
+                if param.name in kwargs:
+                    args += (kwargs.pop(param.name),)
+        return args, kwargs
 
     @classmethod
     def get_argspec(cls):
@@ -684,6 +708,7 @@ class Selection(DeeplayModule):
             for item in selection:
                 s += ".".join(item) + "\n"
         return s
+
 
     def list_names(self):
         names = []

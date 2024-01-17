@@ -6,6 +6,7 @@ import deeplay as dl
 
 from deeplay import (
     DeeplayModule,
+    Sequential,
 )  # Import your actual module here
 
 
@@ -32,6 +33,21 @@ class Module(dl.DeeplayModule):
         self.c = c
         self.x = dl.External(DummyClass, a, b, c)
         self.y = dl.Layer(nn.Linear, a, b)
+
+
+class VariadicModule(dl.DeeplayModule):
+    def __init__(self, *args, **kwargs):
+        self._args = args
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+
+class VariadicModuleWithPositional(dl.DeeplayModule):
+    def __init__(self, a, *args, **kwargs):
+        self.a = a
+        self._args = args
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
 
 class Module2(dl.DeeplayModule):
@@ -239,6 +255,44 @@ class TestDeeplayModule(unittest.TestCase):
         self.assertEqual(parent.foo.bar.b, 8)
         self.assertEqual(parent.foo.bar.c, "F")
 
+    def test_variadic_module(self):
+        external = dl.External(VariadicModule, 10, 20, arg=30)
+        built = external.build()
+        created = external.create()
+        self.assertIsInstance(created, VariadicModule)
+        self.assertIsInstance(built, VariadicModule)
+
+        self.assertEqual(built._args, (10, 20))
+        self.assertEqual(built.arg, 30)
+
+        self.assertEqual(created._args, (10, 20))
+        self.assertEqual(created.arg, 30)
+
+        self.assertEqual(len(built.kwargs), 1)
+        self.assertEqual(built.kwargs["arg"], 30)
+
+    def test_variadic_module_with_positional(self):
+        external = dl.External(VariadicModuleWithPositional, 0, 10, 20, arg=30)
+        built = external.build()
+        created = external.create()
+        self.assertIsInstance(created, VariadicModuleWithPositional)
+        self.assertIsInstance(built, VariadicModuleWithPositional)
+
+        self.assertEqual(built.a, 0)
+        self.assertEqual(built._args, (10, 20))
+        self.assertEqual(built.arg, 30)
+
+        self.assertEqual(created.a, 0)
+        self.assertEqual(created._args, (10, 20))
+        self.assertEqual(created.arg, 30)
+
+        self.assertEqual(built.kwargs["a"], 0)
+        self.assertEqual(built.kwargs["arg"], 30)
+
+        external.configure(a=1)
+        built = external.build()
+        self.assertEqual(built.a, 1)
+
 
 class ModelWithLayer(dl.DeeplayModule):
     def __init__(self, in_features=10, out_features=20):
@@ -294,6 +348,26 @@ class TestLayer(unittest.TestCase):
         y = layer(x)
         self.assertEqual(y.shape, x.shape)
 
+    def test_forward_with_input_dict(self):
+        layer = dl.Layer(nn.Linear, 1, 20)
+        layer.set_input_map("x")
+        layer.set_output_map("x")
+
+        layer = layer.build()
+        inp = {"x": torch.randn(10, 1)}
+        out = layer(inp)
+        self.assertEqual(out["x"].shape, (10, 20))
+
+    def test_forward_with_input_dict_and_numeric_output(self):
+        layer = dl.Layer(nn.Linear, 1, 20)
+        layer.set_input_map("x")
+        layer.set_output_map()
+
+        layer = layer.build()
+        inp = {"x": torch.randn(10, 1)}
+        out = layer(inp)
+        self.assertEqual(out.shape, (10, 20))
+
     def test_in_module(self):
         model = ModelWithLayer()
         model.configure("layer_1", in_features=10, out_features=20)
@@ -345,6 +419,65 @@ class TestLayer(unittest.TestCase):
         testclass.build()
 
         self.assertIsInstance(testclass.model.output.normalization, nn.BatchNorm1d)
+
+
+class TestSequential(unittest.TestCase):
+    def test_forward_with_input_dict(self):
+        class AggregationRelu(nn.Module):
+            def forward(self, x, A):
+                return nn.functional.relu(A @ x)
+
+        model = Sequential(
+            dl.Layer(nn.Linear, 1, 20),
+            dl.Layer(AggregationRelu),
+            dl.Layer(nn.Linear, 20, 1),
+        )
+
+        model[0].set_input_map("x")
+        model[0].set_output_map("x")
+
+        model[1].set_input_map("x", "A")
+        model[1].set_output_map("x")
+
+        model[2].set_input_map("x")
+        model[2].set_output_map("x")
+
+        model.build()
+
+        inp = {"x": torch.randn(10, 1), "A": torch.randn(10, 10)}
+        out = model(inp)
+        self.assertEqual(out["x"].shape, (10, 1))
+
+    def test_set_mapping_1(self):
+        model = Sequential(
+            dl.Layer(nn.Linear, 1, 20),
+            dl.Layer(nn.ReLU),
+            dl.Layer(nn.Linear, 20, 1),
+        )
+        model.set_input_map("x")
+        model.set_output_map("x")
+
+        model.build()
+        inp = {"x": torch.randn(10, 1)}
+        out = model(inp)
+        self.assertEqual(out["x"].shape, (10, 1))
+
+    def test_set_mapping_2(self):
+        model = Sequential(
+            dl.Layer(nn.Linear, 1, 20),
+            dl.Layer(nn.ReLU),
+            dl.Layer(nn.Linear, 20, 1),
+        )
+        model.set_input_map("x")
+        model.set_output_map("x")
+
+        model[1].set_output_map("x", x1=0, x2=0)
+
+        model.build()
+        inp = {"x": torch.randn(10, 1)}
+        out = model(inp)
+        self.assertEqual(out["x"].shape, (10, 1))
+        self.assertEqual(torch.all(out["x1"] == out["x2"]), True)
 
 
 if __name__ == "__main__":

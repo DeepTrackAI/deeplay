@@ -27,6 +27,14 @@ class Block(DeeplayModule):
         for name, val in kwargs.items():
             setattr(self, name, val)
 
+    def set_input_map(self, *args: str, **kwargs: str):
+        for name in self.order:
+            getattr(self, name).set_input_map(*args, **kwargs)
+
+    def set_output_map(self, *args: str, **kwargs: int):
+        for name in self.order:
+            getattr(self, name).set_output_map(*args, **kwargs)
+
     @overload
     def configure(self, **kwargs: DeeplayModule) -> None:
         ...
