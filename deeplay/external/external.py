@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import Any, Callable, Optional, TypeVar, overload
 import inspect
 from ..module import DeeplayModule
+from ..meta import ExtendedConstructorMeta, not_top_level
 
 import torch.nn as nn
 
@@ -100,10 +101,15 @@ class External(DeeplayModule):
         obj = self.classtype(*args, **kwargs)
 
         self._run_hooks("after_build", obj)
-
         return obj
 
     create = build
+
+    def get_init_args(self):
+        kwargs = self.kwargs.copy()
+        # hack for external
+        classtype = kwargs.pop("classtype")
+        return (classtype,), kwargs
 
     def get_argspec(self):
         classtype = self.classtype

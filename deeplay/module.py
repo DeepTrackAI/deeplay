@@ -119,10 +119,10 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
             "kwargs": kwargs,
         }
 
-        self._kwargs = self._build_arguments_from(*args, **kwargs)
+        self._kwargs, variadic_args = self._build_arguments_from(*args, **kwargs)
 
         # Arguments provided as args are not configurable (though they themselves can be).
-        self._args = _args
+        self._args = _args + variadic_args
         self._is_constructing = False
         self._is_building = False
 
@@ -459,8 +459,6 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
         subconfigs = {**mysub, **recevier_subconfigs}
 
-        # print("giving config with keys", subconfigs.keys(), "to", name)
-        # print("available keys", my_subconfigs.keys())
         receiver._take_user_configuration(subconfigs)
 
     def _collect_user_configuration(self):
@@ -487,8 +485,136 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
             self._setattr_recording.add(name)
         super().__setattr__(name, value)
 
+    def _select_string(self, structure, selections, select, ellipsis=False):
+        selects = select.split(",")
+        selects = [select.strip() for select in selects]
+
+        selects_and_slices = []
+
+        for select in selects:
+            slicer = slice(None)
+            if "#" in select:
+                select, slice_str = select.split("#")
+                slice_str = slice_str.split(":")
+                slice_ints = [int(item) if item else None for item in slice_str]
+                if len(slice_str) == 1:
+                    if slice_ints[0] is None:
+                        slicer = slice(slice_ints[0], None)
+                    else:
+                        slicer = slice(slice_ints[0], slice_ints[0] + 1)
+                elif len(slice_str) == 2:
+                    slicer = slice(slice_ints[0], slice_ints[1])
+                else:
+                    slicer = slice(
+                        slice_ints[0],
+                        slice_ints[1],
+                        slice_ints[2],
+                    )
+            selects_and_slices.append((select, slicer))
+
+        new_selections = [[] for _ in range(len(selections))]
+        for select, slicer in selects_and_slices:
+            bar_selects = select.split("|")
+            bar_selects = [bar_select.strip() for bar_select in bar_selects]
+
+            for i, group in enumerate(selections):
+                group = selections[i]
+                new_group = []
+                for item in group:
+                    if ellipsis:
+                        for name in structure:
+                            if (
+                                len(name) > len(item)
+                                and name[-1] in bar_selects
+                                and name[: len(item)] == item
+                            ):
+                                new_group.append(name)
+                    else:
+                        for bar_select in bar_selects:
+                            new_select = item + (bar_select,)
+                            if new_select in structure:
+                                new_group.append(new_select)
+
+                new_group = new_group[slicer]
+                new_selections[i] += new_group
+
+        for i, group in enumerate(new_selections):
+            selections[i] = group
+
+    def getitem_with_selections(self, selector, selections=None):
+        if selections is None:
+            selections = [[()]]
+
+        names, _ = zip(*self.named_modules())
+
+        structure = {}
+        for name in names:
+            if name == "":
+                continue
+            key = tuple(name.split("."))
+            base = key[:-1]
+            name = key[-1]
+
+            if base not in structure:
+                structure[base] = []
+
+            structure[base].append(name)
+            structure[key] = []
+
+        if not isinstance(selector, tuple):
+            selector = (selector,)
+
+        selections = [[()]]
+        idx = 0
+        while idx < len(selector):
+            # flatten selections
+            new_selections = []
+            for group in selections:
+                new_selections += group
+            selections = [[item] for item in new_selections]
+
+            select = selector[idx]
+            if isinstance(select, int):
+                select = slice(select, select + 1)
+            if isinstance(select, str):
+                self._select_string(structure, selections, select)
+            if isinstance(select, type(...)):
+                if idx + 1 < len(selector):
+                    if not isinstance(selector[idx + 1], str):
+                        raise RuntimeError("Ellipsis must be followed by a string")
+                    idx += 1
+                    select = selector[idx]
+                    self._select_string(structure, selections, select, ellipsis=True)
+                else:
+                    for i, group in enumerate(selections):
+                        group = selections[i]
+                        new_group = []
+                        for item in group:
+                            for name in structure:
+                                if name[: len(item)] == item:
+                                    new_group.append(name)
+                        selections[i] = new_group
+            elif isinstance(select, slice):
+                for i, group in enumerate(selections):
+                    group = selections[i]
+                    new_group = []
+                    for item in group:
+                        children = structure[item]
+                        children = children[select]
+                        new_group += [item + (child,) for child in children]
+
+                    selections[i] = new_group
+
+            idx += 1
+        return Selection(self, selections)
+
+    def __getitem__(self, selector) -> "Selection":
+        return self.getitem_with_selections(selector)
+
     def _build_arguments_from(self, *args, **kwargs):
-        params = self.get_signature().parameters
+        argspec = self.get_argspec()
+
+        params = argspec.args
 
         arguments = {}
 
@@ -496,11 +622,15 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         for param_name, arg in zip(params, args):
             arguments[param_name] = arg
 
+        variadic_args = ()
+        if argspec.varargs is not None:
+            variadic_args = args[len(params) :]
+
         # Add/Override with keyword arguments
         arguments.update(kwargs)
 
         arguments.pop("self", None)
-        return arguments
+        return arguments, variadic_args
 
     def _assert_valid_configurable(self, *args):
         if args[0] not in self.configurables:
@@ -519,10 +649,30 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         with not_top_level(ExtendedConstructorMeta):
             self._modules.clear()
             self._is_constructing = True
-            self.__init__(*self._args, **self.kwargs)
+
+            args, kwargs = self.get_init_args()
+            self.__init__(*(args + self._args), **kwargs)
+
             self._run_hooks("after_init")
             self._is_constructing = False
             self.__post_init__()
+
+    def get_init_args(self):
+        argspec = self.get_argspec()
+        signature = self.get_signature()
+
+        args = ()
+        kwargs = self.kwargs.copy()
+
+        # extract positional arguments from kwargs
+        # and put them in args
+        if argspec.varargs is not None:
+            for name, param in signature.parameters.items():
+                if param.kind == param.VAR_POSITIONAL:
+                    break
+                if param.name in kwargs:
+                    args += (kwargs.pop(param.name),)
+        return args, kwargs
 
     @classmethod
     def get_argspec(cls):
@@ -541,3 +691,32 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         raise NotImplementedError(
             "forward method not implemented for {}".format(self.__class__.__name__)
         )
+
+
+class Selection(DeeplayModule):
+    def __init__(self, model, selections):
+        super().__init__()
+        self.model = model
+        self.selections = selections
+
+    def __getitem__(self, selector):
+        return self.model.getitem_with_selections(selector, self.selections.copy())
+
+    def __repr__(self):
+        for selection in self.selections:
+            for item in selection:
+                print(item)
+
+    def list_names(self):
+        names = []
+        for selection in self.selections:
+            for item in selection:
+                names.append(item)
+        return names
+
+    def configure(self, *args, **kwargs):
+        for selection in self.selections:
+            for item in selection:
+                for name, module in self.model.named_modules():
+                    if name.split(".") == item:
+                        module.configure(*args, **kwargs)
