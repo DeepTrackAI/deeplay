@@ -703,9 +703,11 @@ class Selection(DeeplayModule):
         return self.model.getitem_with_selections(selector, self.selections.copy())
 
     def __repr__(self):
+        s = ""
         for selection in self.selections:
             for item in selection:
-                print(item)
+                s += ".".join(item) + "\n"
+        return s
 
     def list_names(self):
         names = []
@@ -718,5 +720,5 @@ class Selection(DeeplayModule):
         for selection in self.selections:
             for item in selection:
                 for name, module in self.model.named_modules():
-                    if name.split(".") == item:
+                    if name == ".".join(item):
                         module.configure(*args, **kwargs)
