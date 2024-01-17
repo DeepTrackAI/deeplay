@@ -5,7 +5,6 @@ from deeplay import (
     GraphConvolutionalNeuralNetwork,
     dense_laplacian_normalization,
     Layer,
-    ToDict,
 )
 
 import itertools

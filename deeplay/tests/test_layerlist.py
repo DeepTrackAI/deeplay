@@ -1,7 +1,7 @@
 import unittest
 import torch
 import torch.nn as nn
-from deeplay import LayerList, DeeplayModule, Layer, LayerActivation, ToDict
+from deeplay import LayerList, DeeplayModule, Layer, LayerActivation
 import itertools
 
 
@@ -304,4 +304,3 @@ class TestLayerList(unittest.TestCase):
         self.assertEqual(testclass.model.blocks[0].layer.out_features, 2)
         self.assertEqual(testclass.model.blocks[1].layer.out_features, 2)
         self.assertEqual(testclass.model.blocks[2].layer.out_features, 2)
-
