@@ -500,9 +500,12 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
                 select, slice_str = select.split("#")
                 slice_str = slice_str.split(":")
                 slice_ints = [int(item) if item else None for item in slice_str]
+
                 if len(slice_str) == 1:
                     if slice_ints[0] is None:
                         slicer = slice(slice_ints[0], None)
+                    elif slice_ints[0] == -1:
+                        slicer = slice(-1, None)
                     else:
                         slicer = slice(slice_ints[0], slice_ints[0] + 1)
                 elif len(slice_str) == 2:
@@ -578,7 +581,10 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
             select = selector[idx]
             if isinstance(select, int):
-                select = slice(select, select + 1)
+                if select == -1:
+                    select = slice(select, None)
+                else:
+                    select = slice(select, select + 1)
             if isinstance(select, str):
                 self._select_string(structure, selections, select)
             if isinstance(select, type(...)):
