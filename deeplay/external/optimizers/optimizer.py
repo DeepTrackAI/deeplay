@@ -4,8 +4,6 @@ from ..external import External
 
 import torch
 
-torch.optim.Optimizer
-
 
 class Optimizer(External):
     @property

@@ -12,6 +12,8 @@ T = TypeVar("T")
 class External(DeeplayModule):
     __extra_configurables__ = ["classtype"]
 
+    _init_method = "_actual_init"
+
     @property
     def kwargs(self):
         full_kwargs = super().kwargs
@@ -42,8 +44,7 @@ class External(DeeplayModule):
         super().__pre_init__(*args, classtype=classtype, **kwargs)
         self.assert_not_positional_only_and_variadic()
 
-    def __init__(self, classtype, *args, **kwargs):
-        super().__init__()
+    def _actual_init(self, classtype, *args, **kwargs):
         self.classtype = classtype
         self.assert_not_positional_only_and_variadic()
 

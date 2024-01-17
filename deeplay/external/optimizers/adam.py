@@ -5,15 +5,14 @@ from .optimizer import Optimizer
 
 import torch
 
-torch.optim.Adam
-
 
 class Adam(Optimizer):
-    def __pre_init__(self, classtype=None, **optimzer_kwargs):
+    def __pre_init__(self, **optimzer_kwargs):
+        optimzer_kwargs.pop("classtype", None)
         super().__pre_init__(torch.optim.Adam, **optimzer_kwargs)
 
-    def __init__(self, **optimzer_kwargs):
-        super().__init__(**optimzer_kwargs)
+    # def __init__(self, **optimzer_kwargs):
+    #     super().__init__(**optimzer_kwargs)
 
     # def __init__(self, **optimzer_kwargs):
     #     super().__init__(**optimzer_kwargs)
