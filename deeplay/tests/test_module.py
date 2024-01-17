@@ -354,6 +354,7 @@ class TestLayer(unittest.TestCase):
         layer.set_output_map("x")
 
         layer = layer.build()
+        
         inp = {"x": torch.randn(10, 1)}
         out = layer(inp)
         self.assertEqual(out["x"].shape, (10, 20))
@@ -364,6 +365,7 @@ class TestLayer(unittest.TestCase):
         layer.set_output_map()
 
         layer = layer.build()
+        
         inp = {"x": torch.randn(10, 1)}
         out = layer(inp)
         self.assertEqual(out.shape, (10, 20))
@@ -458,6 +460,7 @@ class TestSequential(unittest.TestCase):
         model.set_output_map("x")
 
         model.build()
+        
         inp = {"x": torch.randn(10, 1)}
         out = model(inp)
         self.assertEqual(out["x"].shape, (10, 1))
@@ -474,6 +477,7 @@ class TestSequential(unittest.TestCase):
         model[1].set_output_map("x", x1=0, x2=0)
 
         model.build()
+        
         inp = {"x": torch.randn(10, 1)}
         out = model(inp)
         self.assertEqual(out["x"].shape, (10, 1))
