@@ -1,7 +1,7 @@
 import unittest
 import torch
 import torch.nn as nn
-from deeplay import LayerList, DeeplayModule, Layer, LayerActivation
+from deeplay import LayerList, DeeplayModule, Layer, LayerActivation, Sequential
 import itertools
 
 
@@ -304,3 +304,64 @@ class TestLayerList(unittest.TestCase):
         self.assertEqual(testclass.model.blocks[0].layer.out_features, 2)
         self.assertEqual(testclass.model.blocks[1].layer.out_features, 2)
         self.assertEqual(testclass.model.blocks[2].layer.out_features, 2)
+
+
+class TestSequential(unittest.TestCase):
+    def test_set_inp_out_mapping_1(self):
+        model = Sequential(
+            Layer(nn.Linear, 1, 20),
+            Layer(nn.ReLU),
+            Layer(nn.Linear, 20, 1),
+        )
+        model.set_input_map("x")
+        model.set_output_map("x")
+
+        model.build()
+
+        inp = {"x": torch.randn(10, 1)}
+        out = model(inp)
+        self.assertEqual(out["x"].shape, (10, 1))
+
+    def test_set_inp_out_mapping_2(self):
+        model = Sequential(
+            Layer(nn.Linear, 1, 20),
+            Layer(nn.ReLU),
+            Layer(nn.Linear, 20, 1),
+        )
+        model.set_input_map("x")
+        model.set_output_map("x")
+
+        model[1].set_output_map("x", x1=0, x2=0)
+
+        model.build()
+
+        inp = {"x": torch.randn(10, 1)}
+        out = model(inp)
+        self.assertEqual(out["x"].shape, (10, 1))
+        self.assertEqual(torch.all(out["x1"] == out["x2"]), True)
+
+    def test_forward_with_input_dict(self):
+        class AggregationRelu(nn.Module):
+            def forward(self, x, A):
+                return nn.functional.relu(A @ x)
+
+        model = Sequential(
+            Layer(nn.Linear, 1, 20),
+            Layer(AggregationRelu),
+            Layer(nn.Linear, 20, 1),
+        )
+
+        model[0].set_input_map("x")
+        model[0].set_output_map("x")
+
+        model[1].set_input_map("x", "A")
+        model[1].set_output_map("x")
+
+        model[2].set_input_map("x")
+        model[2].set_output_map("x")
+
+        model.build()
+
+        inp = {"x": torch.randn(10, 1), "A": torch.randn(10, 10)}
+        out = model(inp)
+        self.assertEqual(out["x"].shape, (10, 1))

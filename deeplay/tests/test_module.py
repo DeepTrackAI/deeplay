@@ -354,7 +354,7 @@ class TestLayer(unittest.TestCase):
         layer.set_output_map("x")
 
         layer = layer.build()
-        
+
         inp = {"x": torch.randn(10, 1)}
         out = layer(inp)
         self.assertEqual(out["x"].shape, (10, 20))
@@ -365,7 +365,7 @@ class TestLayer(unittest.TestCase):
         layer.set_output_map()
 
         layer = layer.build()
-        
+
         inp = {"x": torch.randn(10, 1)}
         out = layer(inp)
         self.assertEqual(out.shape, (10, 20))
@@ -422,66 +422,16 @@ class TestLayer(unittest.TestCase):
 
         self.assertIsInstance(testclass.model.output.normalization, nn.BatchNorm1d)
 
-
-class TestSequential(unittest.TestCase):
-    def test_forward_with_input_dict(self):
-        class AggregationRelu(nn.Module):
-            def forward(self, x, A):
-                return nn.functional.relu(A @ x)
-
-        model = Sequential(
-            dl.Layer(nn.Linear, 1, 20),
-            dl.Layer(AggregationRelu),
-            dl.Layer(nn.Linear, 20, 1),
-        )
-
-        model[0].set_input_map("x")
-        model[0].set_output_map("x")
-
-        model[1].set_input_map("x", "A")
-        model[1].set_output_map("x")
-
-        model[2].set_input_map("x")
-        model[2].set_output_map("x")
-
-        model.build()
-
-        inp = {"x": torch.randn(10, 1), "A": torch.randn(10, 10)}
-        out = model(inp)
-        self.assertEqual(out["x"].shape, (10, 1))
-
-    def test_set_mapping_1(self):
-        model = Sequential(
-            dl.Layer(nn.Linear, 1, 20),
-            dl.Layer(nn.ReLU),
-            dl.Layer(nn.Linear, 20, 1),
-        )
+    def test_inp_out_mapping(self):
+        model = ModelWithLayer(in_features=10, out_features=20)
         model.set_input_map("x")
-        model.set_output_map("x")
-
+        model.set_output_map("y")
         model.build()
-        
-        inp = {"x": torch.randn(10, 1)}
+
+        inp = {"x": torch.randn(10, 10)}
         out = model(inp)
-        self.assertEqual(out["x"].shape, (10, 1))
-
-    def test_set_mapping_2(self):
-        model = Sequential(
-            dl.Layer(nn.Linear, 1, 20),
-            dl.Layer(nn.ReLU),
-            dl.Layer(nn.Linear, 20, 1),
-        )
-        model.set_input_map("x")
-        model.set_output_map("x")
-
-        model[1].set_output_map("x", x1=0, x2=0)
-
-        model.build()
-        
-        inp = {"x": torch.randn(10, 1)}
-        out = model(inp)
-        self.assertEqual(out["x"].shape, (10, 1))
-        self.assertEqual(torch.all(out["x1"] == out["x2"]), True)
+        self.assertEqual(out["y"].shape, (10, 20))
+        self.assertTrue((inp["x"] == out["x"]).all())
 
 
 if __name__ == "__main__":
