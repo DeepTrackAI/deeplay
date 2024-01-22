@@ -3,14 +3,20 @@ import torch
 import torch.nn as nn
 from deeplay import (
     GraphConvolutionalNeuralNetwork,
+    MessagePassingNeuralNetwork,
     dense_laplacian_normalization,
+    Sum,
+    Mean,
+    Prod,
+    Min,
+    Max,
     Layer,
 )
 
 import itertools
 
 
-class TestComponentGNN(unittest.TestCase):
+class TestComponentGCN(unittest.TestCase):
     def test_gnn_defaults(self):
         gnn = GraphConvolutionalNeuralNetwork(2, [4], 1)
         gnn.build()
@@ -32,7 +38,7 @@ class TestComponentGNN(unittest.TestCase):
 
     def test_gnn_change_depth(self):
         gnn = GraphConvolutionalNeuralNetwork(2, [4], 3)
-        gnn.configure(hidden_channels=[4, 4])
+        gnn.configure(hidden_features=[4, 4])
         gnn.create()
         gnn.build()
         self.assertEqual(len(gnn.blocks), 3)
@@ -171,3 +177,159 @@ class TestComponentGNN(unittest.TestCase):
 
         out = gnn(inp)
         self.assertTrue(torch.all(out["x"] == 0))
+
+
+class TestComponentMPN(unittest.TestCase):
+    def test_mpn_defaults(self):
+        gnn = MessagePassingNeuralNetwork([4], 1)
+        gnn.build()
+        gnn.create()
+
+        self.assertEqual(len(gnn.blocks), 2)
+
+        self.assertEqual(gnn.transform[0].mlp.layer.out_features, 4)
+        self.assertEqual(gnn.update[0].mlp.layer.out_features, 4)
+
+        self.assertEqual(gnn.output.update.mlp.layer.out_features, 1)
+
+        inp = {}
+        inp["x"] = torch.randn(10, 2)
+        inp["A"] = torch.randint(0, 10, (2, 30))
+        inp["edgefeat"] = torch.ones(30, 1)
+
+        out = gnn(inp)
+
+        self.assertEqual(out["x"].shape, (10, 1))
+        self.assertEqual(out["edgefeat"].shape, (30, 1))
+        self.assertTrue(torch.all(inp["A"] == out["A"]))
+
+    def test_gnn_change_depth(self):
+        gnn = MessagePassingNeuralNetwork([4], 1)
+        gnn.configure(hidden_features=[4, 4])
+        gnn.create()
+        gnn.build()
+        self.assertEqual(len(gnn.blocks), 3)
+
+    def test_gnn_activation_change(self):
+        gnn = MessagePassingNeuralNetwork([4, 4], 1)
+        gnn.configure(out_activation=nn.Sigmoid)
+        gnn.create()
+        gnn.build()
+        self.assertIsInstance(gnn.output.transform.mlp.activation, nn.Sigmoid)
+        self.assertIsInstance(gnn.output.update.mlp.activation, nn.Sigmoid)
+
+    def test_gnn_default_propagation(self):
+        gnn = MessagePassingNeuralNetwork([4], 1)
+        gnn.build()
+        gnn.create()
+
+        inp = {}
+        inp["x"] = torch.randn(10, 2)
+        inp["A"] = torch.randint(0, 10, (2, 30))
+        inp["edgefeat"] = torch.ones(30, 1)
+
+        # by default, the propagation is a sum
+        propagator = gnn.propagate[0]
+        out = propagator(inp)
+
+        uniques = torch.unique(inp["A"][1], return_counts=True)
+        expected = torch.zeros(10, 1)
+        expected[uniques[0]] = uniques[1].unsqueeze(1).float()
+
+        self.assertTrue(torch.all(out["aggregate"] == expected))
+
+    def test_gnn_propagation_change_Mean(self):
+        gnn = MessagePassingNeuralNetwork([4], 1)
+
+        gnn.blocks[0].replace("propagate", Mean())
+        gnn.blocks.propagate.set_input_map("x", "A", "edgefeat")
+        gnn.blocks.propagate.set_output_map("aggregate")
+
+        gnn.create()
+        gnn.build()
+
+        inp = {}
+        inp["x"] = torch.randn(10, 2)
+        inp["A"] = torch.randint(0, 10, (2, 3))
+        inp["edgefeat"] = torch.ones(3, 1)
+
+        propagator = gnn.propagate[0]
+        out = propagator(inp)
+
+        uniques = torch.unique(inp["A"][1])
+        expected = torch.zeros(10, 1)
+        expected[uniques] = 1.0
+
+        self.assertTrue(torch.all(out["aggregate"] == expected))
+
+    def test_gnn_propagation_change_Prod(self):
+        gnn = MessagePassingNeuralNetwork([4], 1)
+
+        gnn.blocks[0].replace("propagate", Prod())
+        gnn.blocks.propagate.set_input_map("x", "A", "edgefeat")
+        gnn.blocks.propagate.set_output_map("aggregate")
+
+        gnn.create()
+        gnn.build()
+
+        inp = {}
+        inp["x"] = torch.randn(10, 2)
+        inp["A"] = torch.randint(0, 10, (2, 20))
+        inp["edgefeat"] = torch.ones(20, 1)
+
+        propagator = gnn.propagate[0]
+        out = propagator(inp)
+
+        uniques = torch.unique(inp["A"][1])
+        expected = torch.zeros(10, 1)
+        expected[uniques] = 1.0
+
+        self.assertTrue(torch.all(out["aggregate"] == expected))
+
+    def test_gnn_propagation_change_Min(self):
+        gnn = MessagePassingNeuralNetwork([4], 1)
+
+        gnn.blocks[0].replace("propagate", Min())
+        gnn.blocks.propagate.set_input_map("x", "A", "edgefeat")
+        gnn.blocks.propagate.set_output_map("aggregate")
+
+        gnn.create()
+        gnn.build()
+
+        inp = {}
+        inp["x"] = torch.randn(10, 2)
+        inp["A"] = torch.randint(0, 10, (2, 20))
+        inp["edgefeat"] = torch.ones(20, 1)
+
+        propagator = gnn.propagate[0]
+        out = propagator(inp)
+
+        uniques = torch.unique(inp["A"][1])
+        expected = torch.zeros(10, 1)
+        expected[uniques] = 1.0
+
+        self.assertTrue(torch.all(out["aggregate"] == expected))
+
+    def test_gnn_propagation_change_Max(self):
+        gnn = MessagePassingNeuralNetwork([4], 1)
+
+        gnn.blocks[0].replace("propagate", Max())
+        gnn.blocks.propagate.set_input_map("x", "A", "edgefeat")
+        gnn.blocks.propagate.set_output_map("aggregate")
+
+        gnn.create()
+        gnn.build()
+
+        inp = {}
+        inp["x"] = torch.randn(10, 2)
+        inp["A"] = torch.randint(0, 10, (2, 20))
+        inp["edgefeat"] = torch.ones(20, 1)
+
+        propagator = gnn.propagate[0]
+        out = propagator(inp)
+
+        uniques = torch.unique(inp["A"][1])
+        expected = torch.zeros(10, 1)
+        expected[uniques] = 1.0
+
+        self.assertTrue(torch.all(out["aggregate"] == expected))
