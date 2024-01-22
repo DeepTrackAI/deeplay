@@ -2,7 +2,7 @@ from typing import List, Optional, Literal, Any, Sequence, Type, overload, Union
 
 from deeplay import DeeplayModule, Layer, LayerList
 
-from ..TPU import TransformPropagateUpdate
+from ..tpu import TransformPropagateUpdate
 from .normalization import sparse_laplacian_normalization
 
 import torch
@@ -10,9 +10,9 @@ import torch.nn as nn
 
 
 class GraphConvolutionalNeuralNetwork(DeeplayModule):
-    in_channels: Optional[int]
-    hidden_channels: Sequence[Optional[int]]
-    out_channels: int
+    in_features: Optional[int]
+    hidden_features: Sequence[Optional[int]]
+    out_features: int
     blocks: LayerList[TransformPropagateUpdate]
 
     @property
@@ -47,32 +47,32 @@ class GraphConvolutionalNeuralNetwork(DeeplayModule):
 
     def __init__(
         self,
-        in_channels: int,
-        hidden_channels: Sequence[int],
-        out_channels: int,
+        in_features: int,
+        hidden_features: Sequence[int],
+        out_features: int,
         out_activation: Union[Type[nn.Module], nn.Module, None] = None,
     ):
         super().__init__()
 
-        self.in_channels = in_channels
-        self.hidden_channels = hidden_channels
-        self.out_channels = out_channels
+        self.in_features = in_features
+        self.hidden_features = hidden_features
+        self.out_features = out_features
 
-        if in_channels is None:
-            raise ValueError("in_channels must be specified")
+        if in_features is None:
+            raise ValueError("in_features must be specified")
 
-        if out_channels is None:
-            raise ValueError("out_channels must be specified")
+        if out_features is None:
+            raise ValueError("out_features must be specified")
 
-        if in_channels <= 0:
-            raise ValueError(f"in_channels must be positive, got {in_channels}")
+        if in_features <= 0:
+            raise ValueError(f"in_features must be positive, got {in_features}")
 
-        if out_channels <= 0:
-            raise ValueError(f"out_channels must be positive, got {out_channels}")
+        if out_features <= 0:
+            raise ValueError(f"out_features must be positive, got {out_features}")
 
-        if any(h <= 0 for h in hidden_channels):
+        if any(h <= 0 for h in hidden_features):
             raise ValueError(
-                f"all hidden_channels must be positive, got {hidden_channels}"
+                f"all hidden_features must be positive, got {hidden_features}"
             )
 
         if out_activation is None:
@@ -108,7 +108,7 @@ class GraphConvolutionalNeuralNetwork(DeeplayModule):
         self.blocks = LayerList()
 
         for i, (c_in, c_out) in enumerate(
-            zip([in_channels, *hidden_channels], [*hidden_channels, out_channels])
+            zip([in_features, *hidden_features], [*hidden_features, out_features])
         ):
             transform = Layer(nn.Linear, c_in, c_out)
             transform.set_input_map("x")
@@ -118,7 +118,7 @@ class GraphConvolutionalNeuralNetwork(DeeplayModule):
             propagate.set_input_map("x", "A")
             propagate.set_output_map("x")
 
-            update = Layer(nn.ReLU) if i < len(self.hidden_channels) else out_activation
+            update = Layer(nn.ReLU) if i < len(self.hidden_features) else out_activation
             update.set_input_map("x")
             update.set_output_map("x")
 
@@ -139,9 +139,9 @@ class GraphConvolutionalNeuralNetwork(DeeplayModule):
     def configure(
         self,
         /,
-        in_channels: Optional[int] = None,
-        hidden_channels: Optional[List[int]] = None,
-        out_channels: Optional[int] = None,
+        in_features: Optional[int] = None,
+        hidden_features: Optional[List[int]] = None,
+        out_features: Optional[int] = None,
         out_activation: Union[Type[nn.Module], nn.Module, None] = None,
     ) -> None:
         ...
