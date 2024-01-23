@@ -606,25 +606,6 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         self._user_config.update(d)
         receiver.set_root_module(self.root_module)
 
-        # else:
-        #     # Happens when receiver is created inside of current module.
-        #     # class Model(dl.DeeplayModule):
-        #     #    def __init__(self):
-        #     #        self.encoder = dl.Encoder() # encoder.root_module is Model
-
-    # def _collect_user_configuration(self) -> UserConfig:
-    #     config = UserConfig(self.get_user_configuration())
-    #     for name, value in self.named_modules():
-    #         if name == "":
-    #             continue
-    #         if isinstance(value, DeeplayModule):
-    #             name_as_tuple = tuple(name.split("."))
-    #             local_user_config = value.get_user_configuration()
-    #             for key, value in local_user_config.items():
-    #                 config[name_as_tuple + key] = value
-
-    #     return config
-
     def __setattr__(self, name, value):
         if name == "_user_config" and hasattr(self, "_user_config"):
             if not isinstance(value, UserConfig):
