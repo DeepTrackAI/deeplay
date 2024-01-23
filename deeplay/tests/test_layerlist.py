@@ -1,7 +1,14 @@
 import unittest
 import torch
 import torch.nn as nn
-from deeplay import LayerList, DeeplayModule, Layer, LayerActivation, Sequential
+from deeplay import (
+    LayerList,
+    DeeplayModule,
+    Layer,
+    LayerActivation,
+    Sequential,
+    Parallel,
+)
 import itertools
 
 
@@ -365,3 +372,35 @@ class TestSequential(unittest.TestCase):
         inp = {"x": torch.randn(10, 1), "A": torch.randn(10, 10)}
         out = model(inp)
         self.assertEqual(out["x"].shape, (10, 1))
+
+
+class Module_1(DeeplayModule):
+    def forward(self, x):
+        return x, x * 2
+
+
+class Module_2(nn.Module):
+    def forward(self, x):
+        return x / 2
+
+
+class TestParallel(unittest.TestCase):
+    def test_parallel(self):
+        model_1 = Module_1()
+        model_1.set_input_map("x")
+        model_1.set_output_map("x1", "x2")  # adds x1, x2 to output
+
+        model_2 = Layer(Module_2)
+        model_2.set_input_map("x")
+        model_2.set_output_map("x3")  # adds x3 to output
+
+        model = Parallel(model_1, model_2)
+        model.build()
+
+        inp = {"x": 2.0}
+        out = model(inp)
+
+        self.assertEqual(out["x"], 2.0)
+        self.assertEqual(out["x1"], 2.0)
+        self.assertEqual(out["x2"], 4.0)
+        self.assertEqual(out["x3"], 1.0)
