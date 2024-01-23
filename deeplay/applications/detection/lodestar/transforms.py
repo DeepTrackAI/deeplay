@@ -65,7 +65,6 @@ class RandomTranslation2d(Transform):
     @staticmethod
     def _backward(x: torch.Tensor, dx, dy, indices):
         sub_v = torch.zeros_like(x)
-        # print(sub_v.shape, dx.shape, dy.shape)
         sub_v[:, indices[0]] = dy
         sub_v[:, indices[1]] = dx
         return x - sub_v
