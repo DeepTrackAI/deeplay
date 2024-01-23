@@ -575,14 +575,34 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
             if receiver.root_module is not receiver:
                 receiver.set_root_module(self.root_module)
             return
-
+        if receiver.root_module is self.root_module:
+            return
         # if receiver.root_module is receiver:
         # Happens when receiver is created outside of current module.
         # encoder = dl.Encoder()
         # model = dl.Model(encoder=encoder) # encoder.root_module is encoder
-        subconfig = receiver._user_config.prefix([tag + (name,) for tag in self.tag])
+        # print("prefixing", name, "My tag:", self.tag)
+        mytags = self.tag
+        # if receiver.root_module is not receiver:
+        receivertags = receiver.tag
+        # sort longest tag first
+        receivertags.sort(key=lambda x: len(x), reverse=True)
 
-        self._user_config.update(subconfig)
+        d = {}
+        for _, model in self.named_modules():
+            if isinstance(model, DeeplayModule):
+                tags = model.tag
+                subconfig = receiver._user_config.take(tags)
+                for key, value in subconfig.items():
+                    for tag in receivertags:
+                        if len(key) >= len(tag) and key[: len(tag)] == tag:
+                            key = key[len(tag) :]
+                            break
+
+                    for tag in mytags:
+                        d[tag + (name,) + key] = value
+
+        self._user_config.update(d)
         receiver.set_root_module(self.root_module)
 
         # else:
