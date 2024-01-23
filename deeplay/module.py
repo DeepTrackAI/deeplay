@@ -171,7 +171,11 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     def kwargs(self):
         kwdict = self._kwargs.copy()
         for key, value in self._user_config.take(self.tag).items():
-            if key[-1] not in ["__hooks__", "__constructor_hooks__", "__user_hooks__"]:
+            if key[-1] not in [
+                "__parent_hooks__",
+                "__constructor_hooks__",
+                "__user_hooks__",
+            ]:
                 kwdict[key[-1]] = value
 
         return kwdict
@@ -183,7 +187,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     @property
     def _hooks(self):
         return {
-            k: v + self.__hooks__[k] + self.__user_hooks__[k]
+            k: v + self.__parent_hooks__[k] + self.__user_hooks__[k]
             for k, v in self.__constructor_hooks__.items()
         }
 
@@ -211,7 +215,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         if self.is_constructing:
             return self.__constructor_hooks__
         else:
-            return self.__hooks__
+            return self.__parent_hooks__
 
     @property
     def is_constructing(self):
@@ -253,7 +257,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         }
         self._base_user_config = UserConfig()
 
-        self.__hooks__ = {
+        self.__parent_hooks__ = {
             "before_build": [],
             "after_build": [],
             "after_init": [],
