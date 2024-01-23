@@ -185,7 +185,9 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         self._kwargs = value
 
     @property
-    def _hooks(self):
+    def __hooks__(self):
+        """A dictionary of all hooks.
+        Ordered __constructor_hooks__ > __parent_hooks__ > __user_hooks__"""
         return {
             k: v + self.__parent_hooks__[k] + self.__user_hooks__[k]
             for k, v in self.__constructor_hooks__.items()
@@ -193,6 +195,10 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
     @property
     def __user_hooks__(self):
+        """A dictionary of all user hooks.
+
+        User hooks are hooks added after the creation of the root module.
+        """
         user_config = self._user_config
         tags = self.tag
         for tag in tags:
@@ -210,6 +216,12 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
     @property
     def __active_hooks__(self):
+        """Selects the dict of hooks that is currently relevant.
+
+        If after the root module has been created, __user_hooks__ is returned.
+        If inside the constructor, __constructor_hooks__ is returned.
+        Else, __parent_hooks__ is returned.
+        """
         if ExtendedConstructorMeta._is_top_level["value"]:
             return self.__user_hooks__
         if self.is_constructing:
@@ -801,7 +813,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     def _run_hooks(self, hook_name, instance=None):
         if instance is None:
             instance = self
-        for hook in self._hooks[hook_name]:
+        for hook in self.__hooks__[hook_name]:
             hook(instance)
 
     def __construct__(self):
