@@ -14,7 +14,7 @@ def _create_forward_with_input_dict(
     input_kwargs: Dict[str, str],
     output_args: Optional[Dict[str, int]],
 ):
-    def forward_with_input_dict(self, x):
+    def forward_with_input_dict(self, x, overwrite_output: bool = True):
         assert isinstance(
             x, dict
         ), "Input must be a dictionary, but found {}. Please check if the module require an input/output mapping.".format(
@@ -40,13 +40,16 @@ def _create_forward_with_input_dict(
             f"but it should return {expected_outputs}"
         )
 
-        x.update(
-            map(
-                lambda key, value: (key, outputs[value]),
-                *zip(*output_args.items()),
+        if overwrite_output:
+            x.update(
+                map(
+                    lambda key, value: (key, outputs[value]),
+                    *zip(*output_args.items()),
+                )
             )
-        )
-        return x
+            return x
+        else:
+            return {key: outputs[value] for key, value in output_args.items()}
 
     return forward_with_input_dict
 

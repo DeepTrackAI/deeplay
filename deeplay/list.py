@@ -139,3 +139,12 @@ class Sequential(LayerList, Generic[T]):
         for layer in self:
             x = layer(x)
         return x
+
+
+class Parallel(LayerList, Generic[T]):
+    def forward(self, x):
+        if isinstance(x, dict):
+            updates = [layer(x, overwrite_output=False) for layer in self]
+            return {**x, **{k: v for update in updates for k, v in update.items()}}
+
+        return [layer(x) for layer in self]
