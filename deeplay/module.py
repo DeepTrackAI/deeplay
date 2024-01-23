@@ -255,10 +255,6 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
         return self.root_module._user_config
 
-    @_user_config.setter
-    def _user_config(self, value):
-        ...
-
     def __pre_init__(self, *args, _args=(), **kwargs):
         super().__init__()
         self._root_module = (self,)
@@ -570,17 +566,6 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
             self._assert_valid_configurable(name)
             self._user_config.set_for_tags(self.tag, name, value)
         self.__construct__()
-
-    def _take_user_configuration(self, config):
-        # Update instead of replace to ensure that configurations
-        # done before passsing the module to some wrapper are not lost.
-        # Example:
-        # module = ExampleModule(a=0)
-        # module.configure(a=1)
-        # module = Wrapper(module=module)
-        # module.build()
-        # module.module.a == 1 # True
-        self._user_config = config
 
     def _give_user_configuration(self, receiver: "DeeplayModule", name):
         if receiver._user_config is self._user_config:

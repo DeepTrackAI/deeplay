@@ -17,9 +17,6 @@ class ExtendedConstructorMeta(type):
         # if isinstance(obj, cls):
         cls.__pre_init__(obj, *args, **kwargs)
 
-        if __user_config is not None:
-            obj._user_config = __user_config
-
         # if cls._is_top_level["value"]:
         with not_top_level(cls, obj):
             obj.__construct__()
