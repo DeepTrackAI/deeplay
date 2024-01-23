@@ -1,5 +1,5 @@
 import inspect
-from typing import Any, Dict, Tuple, List, Set
+from typing import Any, Dict, Tuple, List, Set, Literal
 
 import torch.nn as nn
 import copy
@@ -121,8 +121,10 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
     __extra_configurables__: List[str] = []
     __config_containers__: List[str] = ["_user_config"]
-
-    _user_config: UserConfig
+    __parent_hooks__: Dict[Literal["before_build", "after_build", "after_init"], list]
+    __constructor_hooks__: Dict[
+        Literal["before_build", "after_build", "after_init"], list
+    ]
     _is_building: bool = False
     _init_method = "__init__"
 
@@ -134,7 +136,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     _tag: Tuple[str, ...]
 
     @property
-    def tag(self) -> List[Tuple[str, ...]]:
+    def tags(self) -> List[Tuple[str, ...]]:
         tags = [
             tuple(name.split("."))
             for name, module in self.root_module.named_modules(remove_duplicate=False)
@@ -147,17 +149,8 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
             )
         return tags
 
-    @tag.setter
-    def tag(self, value: Tuple[str, ...]):
-        ...
-        # for name, module in self.named_modules():
-        #     name = name.split(".")
-        #     name = () if name == [""] else tuple(name)
-        #     if isinstance(module, DeeplayModule):
-        #         module._tag = value + tuple(name)
-
     @property
-    def configurables(self):
+    def configurables(self) -> Set[str]:
         argspec = self.get_argspec()
         argset = {*argspec.args, *argspec.kwonlyargs, *self.__extra_configurables__}
         # TODO: should we do this?
@@ -168,9 +161,9 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         return argset
 
     @property
-    def kwargs(self):
+    def kwargs(self) -> Dict[str, Any]:
         kwdict = self._kwargs.copy()
-        for key, value in self._user_config.take(self.tag).items():
+        for key, value in self._user_config.take(self.tags).items():
             if key[-1] not in [
                 "__parent_hooks__",
                 "__constructor_hooks__",
@@ -185,7 +178,9 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         self._kwargs = value
 
     @property
-    def __hooks__(self):
+    def __hooks__(
+        self,
+    ) -> Dict[Literal["before_build", "after_build", "after_init"], list]:
         """A dictionary of all hooks.
         Ordered __constructor_hooks__ > __parent_hooks__ > __user_hooks__"""
         return {
@@ -194,28 +189,35 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         }
 
     @property
-    def __user_hooks__(self):
+    def __user_hooks__(
+        self,
+    ) -> Dict[Literal["before_build", "after_build", "after_init"], list]:
         """A dictionary of all user hooks.
 
         User hooks are hooks added after the creation of the root module.
         """
         user_config = self._user_config
-        tags = self.tag
+        tags = self.tags
         for tag in tags:
             if tag + ("__user_hooks__",) in user_config:
                 return user_config[tag + ("__user_hooks__",)]
         # not found, add
-        __user_hooks__ = {
+        __user_hooks__: Dict[
+            Literal["before_build", "after_build", "after_init"], list
+        ] = {
             "before_build": [],
             "after_build": [],
             "after_init": [],
         }
         for tag in tags:
             user_config[tag + ("__user_hooks__",)] = __user_hooks__
+
         return __user_hooks__
 
     @property
-    def __active_hooks__(self):
+    def __active_hooks__(
+        self,
+    ) -> Dict[Literal["before_build", "after_build", "after_init"], list]:
         """Selects the dict of hooks that is currently relevant.
 
         If after the root module has been created, __user_hooks__ is returned.
@@ -230,7 +232,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
             return self.__parent_hooks__
 
     @property
-    def is_constructing(self):
+    def is_constructing(self) -> bool:
         return self._is_constructing if hasattr(self, "_is_constructing") else False
 
     @is_constructing.setter
@@ -238,7 +240,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         self._is_constructing = value
 
     @property
-    def root_module(self):
+    def root_module(self) -> "DeeplayModule":
         return self._root_module[0]
 
     def set_root_module(self, value):
@@ -247,7 +249,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
             module._root_module = (value,)
 
     @property
-    def _user_config(self):
+    def _user_config(self) -> UserConfig:
         if self.root_module is None:
             return self._base_user_config
         if self.root_module is self:
@@ -258,11 +260,13 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     def __pre_init__(self, *args, _args=(), **kwargs):
         super().__init__()
         self._root_module = (self,)
+
         self._actual_init_args = {
             "args": args,
             "_args": _args,
             "kwargs": kwargs,
         }
+
         self._base_user_config = UserConfig()
 
         self.__parent_hooks__ = {
@@ -556,7 +560,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         return self._user_config
 
     def get_from_user_config(self, key):
-        v = self._user_config.take(self.tag)
+        v = self._user_config.take(self.tags)
         v = [value for k, value in v.items() if k[-1] == key]
 
         return v[-1]
@@ -564,7 +568,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     def _configure_kwargs(self, kwargs):
         for name, value in kwargs.items():
             self._assert_valid_configurable(name)
-            self._user_config.set_for_tags(self.tag, name, value)
+            self._user_config.set_for_tags(self.tags, name, value)
         self.__construct__()
 
     def _give_user_configuration(self, receiver: "DeeplayModule", name):
@@ -578,17 +582,17 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         # Happens when receiver is created outside of current module.
         # encoder = dl.Encoder()
         # model = dl.Model(encoder=encoder) # encoder.root_module is encoder
-        # print("prefixing", name, "My tag:", self.tag)
-        mytags = self.tag
+        # print("prefixing", name, "My tag:", self.tags)
+        mytags = self.tags
         # if receiver.root_module is not receiver:
-        receivertags = receiver.tag
+        receivertags = receiver.tags
         # sort longest tag first
         receivertags.sort(key=lambda x: len(x), reverse=True)
 
         d = {}
         for _, model in self.named_modules():
             if isinstance(model, DeeplayModule):
-                tags = model.tag
+                tags = model.tags
                 subconfig = receiver._user_config.take(tags)
                 for key, value in subconfig.items():
                     for tag in receivertags:
