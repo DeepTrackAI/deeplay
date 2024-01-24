@@ -578,13 +578,8 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
             return
         if receiver.root_module is self.root_module:
             return
-        # if receiver.root_module is receiver:
-        # Happens when receiver is created outside of current module.
-        # encoder = dl.Encoder()
-        # model = dl.Model(encoder=encoder) # encoder.root_module is encoder
-        # print("prefixing", name, "My tag:", self.tags)
+
         mytags = self.tags
-        # if receiver.root_module is not receiver:
         receivertags = receiver.tags
         # sort longest tag first
         receivertags.sort(key=lambda x: len(x), reverse=True)
