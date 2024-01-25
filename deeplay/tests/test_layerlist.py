@@ -385,7 +385,15 @@ class Module_2(nn.Module):
 
 
 class TestParallel(unittest.TestCase):
-    def test_parallel(self):
+    def test_parallel_default(self):
+        model = Parallel(Module_1(), Layer(Module_2))
+        model.build()
+
+        out = model(2.0)
+        self.assertEqual(out[0], (2.0, 4.0))
+        self.assertEqual(out[1], 1.0)
+
+    def test_parallel_with_dict_inputs(self):
         model_1 = Module_1()
         model_1.set_input_map("x")
         model_1.set_output_map("x1", "x2")  # adds x1, x2 to output
@@ -404,3 +412,44 @@ class TestParallel(unittest.TestCase):
         self.assertEqual(out["x1"], 2.0)
         self.assertEqual(out["x2"], 4.0)
         self.assertEqual(out["x3"], 1.0)
+
+    def test_parallel_with_kwargs(self):
+        model_1 = Module_1()
+        model_1.set_input_map("x")
+        model_1.set_output_map("x1", "x2")
+
+        model_2 = Layer(Module_2)
+        model_2.set_input_map("x")
+
+        model = Parallel(model_1, x3=model_2)
+        model.build()
+
+        inp = {"x": 2.0}
+        out = model(inp)
+
+        self.assertEqual(out["x"], 2.0)
+        self.assertEqual(out["x1"], 2.0)
+        self.assertEqual(out["x2"], 4.0)
+        self.assertEqual(out["x3"], 1.0)
+
+    def test_parallel_with_kwargs_2(self):
+        model_1 = Module_1()
+        model_1.set_input_map("x")
+        model_1.set_output_map("x1", "x2")
+
+        model_2 = Layer(Module_2)
+        model_2.set_input_map("x")
+        model_2.set_output_map("x3", x4=0)
+
+        model = Parallel(model_1, x5=model_2)
+        model.build()
+
+        inp = {"x": 2.0}
+        out = model(inp)
+
+        self.assertEqual(out["x"], 2.0)
+        self.assertEqual(out["x1"], 2.0)
+        self.assertEqual(out["x2"], 4.0)
+        self.assertTrue("x3" not in out)
+        self.assertTrue("x4" not in out)
+        self.assertEqual(out["x5"], 1.0)
