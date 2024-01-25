@@ -468,10 +468,15 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         # `built_module` is the same instance as `module`, now fully configured and initialized
         ```
         """
+
+        from .external import Optimizer
+
         self._run_hooks("before_build")
 
         for name, value in self.named_children():
-            if isinstance(value, DeeplayModule):
+            if isinstance(value, Optimizer):
+                ... # skip optimizers
+            elif isinstance(value, DeeplayModule):
                 if value._has_built:
                     continue
                 value = value.build()

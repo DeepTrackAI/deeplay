@@ -50,11 +50,8 @@ class VariationalAutoEncoder(Application):
         self.optimizer = optimizer or Adam(lr=1e-3)
 
         @self.optimizer.params
-        def params():
+        def params(self):
             return self.parameters()
-
-    def configure_optimizers(self):
-        return self.optimizer
 
     def _get_default_encoder(self, channels):
         encoder = ConvolutionalEncoder2d(

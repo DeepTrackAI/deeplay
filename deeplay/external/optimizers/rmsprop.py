@@ -13,16 +13,3 @@ class RMSprop(Optimizer):
         optimzer_kwargs.pop("classtype", None)
         super().__pre_init__(torch.optim.RMSprop, **optimzer_kwargs)
 
-    def params(
-        self,
-        func: Callable[
-            [],
-            Union[
-                Iterable[torch.nn.Parameter],
-                Dict[str, Iterable[torch.nn.Parameter]],
-                List[Dict[str, Iterable[torch.nn.Parameter]]],
-            ],
-        ],
-    ):
-        self.configure(params=func)
-        return self
