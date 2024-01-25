@@ -31,5 +31,15 @@ class Optimizer(External):
             ],
         ],
     ):
-        self.configure(params=func(self.root_module))
+        try:
+            self.configure(params=func(self.root_module))
+        except TypeError:
+            import warnings
+
+            # deprecation warning
+            warnings.warn(
+                "Providing a parameter function to the optimizer with no arguments is deprecated. Please use a function with one argument (the root model).",
+                DeprecationWarning,
+            )
+            self.configure(params=func())
         return self
