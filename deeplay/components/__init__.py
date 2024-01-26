@@ -4,3 +4,4 @@ from .dcgan import *
 from .gnn import *
 from .cyclegan import *
 from .dict import *
+from .transformer import *
