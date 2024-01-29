@@ -6,7 +6,7 @@ import copy
 import inspect
 
 from .meta import ExtendedConstructorMeta, not_top_level
-from .decorators import before_build, after_init
+from .decorators import before_build, after_init, after_build
 from functools import partial
 
 
