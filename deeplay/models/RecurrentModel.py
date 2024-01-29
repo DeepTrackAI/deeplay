@@ -14,9 +14,9 @@ class RecurrentDropout(torch.nn.Module):
             return torch.nn.utils.rnn.PackedSequence(self.dropout(x[0].data),x[0].batch_sizes),x[1]
         return self.dropout(x[0]),x[1]
 
-class rnn(DeeplayModule):
+class RecurrentModel(DeeplayModule):
     """
-    Recurrent Neural Network (RNN) module.
+    Recurrent Neural Network (RNN) model.
 
     This RNN can be configured to be a simple RNN, LSTM, or GRU, with options for bidirectionality, 
     number of layers, and other typical RNN configurations. It supports embedding layers and can be 
