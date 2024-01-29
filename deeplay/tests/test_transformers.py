@@ -40,6 +40,16 @@ class TestComponentTransformerEncoder(unittest.TestCase):
         self.assertEqual(tel.blocks[0].feed_forward.layer[0].in_features, 4)
         self.assertEqual(tel.blocks[0].feed_forward.layer[-1].out_features, 4)
 
+    def test_variable_hidden_layers(self):
+        tel = TransformerEncoderLayer(4, [4, 8, 16], 4, 2)
+        tel.build()
+        self.assertEqual(len(tel.blocks), 4)
+
+        self.assertEqual(tel.blocks[0].multihead.layer.attention.embed_dim, 4)
+        self.assertEqual(tel.blocks[1].multihead.layer.attention.embed_dim, 8)
+        self.assertEqual(tel.blocks[2].multihead.layer.attention.embed_dim, 16)
+        self.assertEqual(tel.blocks[3].multihead.layer.attention.embed_dim, 4)
+
     def test_tel_multihead_subcomponents(self):
         tel = TransformerEncoderLayer(4, [4], 4, 2)
         tel.multihead[0].layer.configure("return_attn", True)
