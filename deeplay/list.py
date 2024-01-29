@@ -30,7 +30,7 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
 
     @after_init
     def append(self, module: DeeplayModule) -> "LayerList[T]":
-        super().append(module)
+        super(LayerList, self).append(module)
         if isinstance(module, DeeplayModule) and not module._has_built:
             self._give_user_configuration(module, self._get_abs_string_index(-1))
             module.__construct__()

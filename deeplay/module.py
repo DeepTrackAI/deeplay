@@ -1,11 +1,57 @@
 import inspect
-from typing import Any, Dict, Tuple, List, Set, Optional
+from typing import Any, Dict, Tuple, List, Set, Optional, Literal
 
 import torch.nn as nn
+import copy
+import inspect
 
 from .meta import ExtendedConstructorMeta, not_top_level
-from .decorators import after_build
+from .decorators import before_build, after_init
 from functools import partial
+
+
+class UserConfig(dict):
+    __hook_containers__ = [
+        ("__user_hooks__",),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def update(self, __m):
+        for key, value in __m.items():
+            if key[-1] == "__user_hooks__":
+                if key not in self:
+                    self[key] = value.copy()
+                else:
+                    for hook_name, hooks in value.items():
+                        self[key][hook_name] += hooks
+            else:
+                self[key] = value
+
+    def prefix(self, tags: List[Tuple[str, ...]]):
+        d = {}
+        for tag in tags:
+            for key, value in self.items():
+                d[tag + key] = value
+        return UserConfig(d)
+
+    def take(self, tags: List[Tuple[str, ...]]):
+        res = UserConfig()
+        for tag in tags:
+            res.update(
+                {
+                    key: value
+                    for key, value in self.items()
+                    if len(key) == len(tag) + 1 and key[: len(tag)] == tag
+                }
+            )
+
+        return res
+
+    def set_for_tags(self, tags: List[Tuple[str, ...]], key, value):
+        for tag in tags:
+            self[tag + (key,)] = value
 
 
 def _create_forward_with_input_dict(
@@ -118,10 +164,11 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     """
 
     __extra_configurables__: List[str] = []
-    __config_containers__: List[str] = ["_user_config", "_hooks"]
-
-    _user_config: Dict[Tuple[str, ...], Any]
-    _is_constructing: bool = False
+    __config_containers__: List[str] = ["_user_config"]
+    __parent_hooks__: Dict[Literal["before_build", "after_build", "after_init"], list]
+    __constructor_hooks__: Dict[
+        Literal["before_build", "after_build", "after_init"], list
+    ]
     _is_building: bool = False
     _init_method = "__init__"
 
@@ -130,9 +177,24 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     _actual_init_args: dict
     _has_built: bool
     _setattr_recording: Set[str]
+    _tag: Tuple[str, ...]
 
     @property
-    def configurables(self):
+    def tags(self) -> List[Tuple[str, ...]]:
+        tags = [
+            tuple(name.split("."))
+            for name, module in self.root_module.named_modules(remove_duplicate=False)
+            if module is self
+        ]
+        tags = [() if tag == ("",) else tag for tag in tags]
+        if not tags:
+            raise RuntimeError(
+                f"Module {type(self)} is not a child of root module: {self.root_module}"
+            )
+        return tags
+
+    @property
+    def configurables(self) -> Set[str]:
         argspec = self.get_argspec()
         argset = {*argspec.args, *argspec.kwonlyargs, *self.__extra_configurables__}
         # TODO: should we do this?
@@ -143,11 +205,15 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         return argset
 
     @property
-    def kwargs(self):
+    def kwargs(self) -> Dict[str, Any]:
         kwdict = self._kwargs.copy()
-        for key, value in self._user_config.items():
-            if len(key) == 1:
-                kwdict[key[0]] = value
+        for key, value in self._user_config.take(self.tags).items():
+            if key[-1] not in [
+                "__parent_hooks__",
+                "__constructor_hooks__",
+                "__user_hooks__",
+            ]:
+                kwdict[key[-1]] = value
 
         return kwdict
 
@@ -155,8 +221,89 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     def kwargs(self, value):
         self._kwargs = value
 
+    @property
+    def __hooks__(
+        self,
+    ) -> Dict[Literal["before_build", "after_build", "after_init"], list]:
+        """A dictionary of all hooks.
+        Ordered __constructor_hooks__ > __parent_hooks__ > __user_hooks__"""
+        return {
+            k: v + self.__parent_hooks__[k] + self.__user_hooks__[k]
+            for k, v in self.__constructor_hooks__.items()
+        }
+
+    @property
+    def __user_hooks__(
+        self,
+    ) -> Dict[Literal["before_build", "after_build", "after_init"], list]:
+        """A dictionary of all user hooks.
+
+        User hooks are hooks added after the creation of the root module.
+        """
+        user_config = self._user_config
+        tags = self.tags
+        for tag in tags:
+            if tag + ("__user_hooks__",) in user_config:
+                return user_config[tag + ("__user_hooks__",)]
+        # not found, add
+        __user_hooks__: Dict[
+            Literal["before_build", "after_build", "after_init"], list
+        ] = {
+            "before_build": [],
+            "after_build": [],
+            "after_init": [],
+        }
+        for tag in tags:
+            user_config[tag + ("__user_hooks__",)] = __user_hooks__
+
+        return __user_hooks__
+
+    @property
+    def __active_hooks__(
+        self,
+    ) -> Dict[Literal["before_build", "after_build", "after_init"], list]:
+        """Selects the dict of hooks that is currently relevant.
+
+        If after the root module has been created, __user_hooks__ is returned.
+        If inside the constructor, __constructor_hooks__ is returned.
+        Else, __parent_hooks__ is returned.
+        """
+        if ExtendedConstructorMeta._is_top_level["value"]:
+            return self.__user_hooks__
+        if self.is_constructing:
+            return self.__constructor_hooks__
+        else:
+            return self.__parent_hooks__
+
+    @property
+    def is_constructing(self) -> bool:
+        return self._is_constructing if hasattr(self, "_is_constructing") else False
+
+    @is_constructing.setter
+    def is_constructing(self, value):
+        self._is_constructing = value
+
+    @property
+    def root_module(self) -> "DeeplayModule":
+        return self._root_module[0]
+
+    def set_root_module(self, value):
+        self._root_module = (value,)
+        for name, module in self.named_modules():
+            module._root_module = (value,)
+
+    @property
+    def _user_config(self) -> UserConfig:
+        if self.root_module is None:
+            return self._base_user_config
+        if self.root_module is self:
+            return self._base_user_config
+
+        return self.root_module._user_config
+
     def __pre_init__(self, *args, _args=(), **kwargs):
         super().__init__()
+        self._root_module = (self,)
 
         self._actual_init_args = {
             "args": args,
@@ -164,22 +311,27 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
             "kwargs": kwargs,
         }
 
-        self._kwargs, variadic_args = self._build_arguments_from(*args, **kwargs)
+        self._base_user_config = UserConfig()
 
-        # Arguments provided as args are not configurable (though they themselves can be).
-        self._args = _args + variadic_args
-        self._is_constructing = False
-        self._is_building = False
-
-        self._user_config = {}
-        self._hooks = {
+        self.__parent_hooks__ = {
+            "before_build": [],
+            "after_build": [],
+            "after_init": [],
+        }
+        self.__constructor_hooks__ = {
             "before_build": [],
             "after_build": [],
             "after_init": [],
         }
 
-        self._has_built = False
+        self._kwargs, variadic_args = self._build_arguments_from(*args, **kwargs)
 
+        # Arguments provided as args are not configurable (though they themselves can be).
+        self._args = _args + variadic_args
+        self.is_constructing = False
+        self._is_building = False
+
+        self._has_built = False
         self._setattr_recording = set()
 
     def __init__(self, *args, **kwargs):  # type: ignore
@@ -397,10 +549,15 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         # `built_module` is the same instance as `module`, now fully configured and initialized
         ```
         """
+
+        from .external import Optimizer
+
         self._run_hooks("before_build")
 
         for name, value in self.named_children():
-            if isinstance(value, DeeplayModule):
+            if isinstance(value, Optimizer):
+                ...  # skip optimizers
+            elif isinstance(value, DeeplayModule):
                 if value._has_built:
                     continue
                 value = value.build()
@@ -419,31 +576,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         return self
 
     def new(self):
-        user_config = self._collect_user_configuration()
-        args = self._actual_init_args["args"]
-        _args = self._args
-        kwargs = self._actual_init_args["kwargs"]
-
-        # Make sure that we don't modify the original arguments
-        # TODO we should maybe use deepcopy here to make sure that
-        # the same object in two places are the same object even after
-        args = tuple(a.new() if isinstance(a, DeeplayModule) else a for a in args)
-        _args = tuple(_a.new() if isinstance(_a, DeeplayModule) else _a for _a in _args)
-        kwargs = {
-            k: v.new() if isinstance(v, DeeplayModule) else v for k, v in kwargs.items()
-        }
-
-        obj = ExtendedConstructorMeta.__call__(
-            type(self),
-            *args,
-            _args=tuple(_args),
-            **kwargs,
-        )
-
-        for container in self.__config_containers__:
-            setattr(obj, container, getattr(self, container).copy())
-
-        return obj
+        return copy.deepcopy(self)
 
     def register_before_build_hook(self, func):
         """
@@ -456,7 +589,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
             a single argument, which is the module instance.
 
         """
-        self._hooks["before_build"].append(func)
+        self.__active_hooks__["before_build"].append(func)
 
     def register_after_build_hook(self, func):
         """
@@ -470,7 +603,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
         """
 
-        self._hooks["after_build"].append(func)
+        self.__active_hooks__["after_build"].append(func)
 
     def register_after_init_hook(self, func):
         """
@@ -483,8 +616,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
             a single argument, which is the module instance.
 
         """
-
-        self._hooks["after_init"].append(func)
+        self.__active_hooks__["after_init"].append(func)
 
     def get_user_configuration(self):
         """
@@ -513,61 +645,61 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         """
         return self._user_config
 
+    def get_from_user_config(self, key):
+        v = self._user_config.take(self.tags)
+        v = [value for k, value in v.items() if k[-1] == key]
+
+        return v[-1]
+
     def _configure_kwargs(self, kwargs):
         for name, value in kwargs.items():
             self._assert_valid_configurable(name)
-            self._user_config[(name,)] = value
-        self.__construct__()
-
-    def _take_user_configuration(self, config):
-        # Update instead of replace to ensure that configurations
-        # done before passsing the module to some wrapper are not lost.
-        # Example:
-        # module = ExampleModule(a=0)
-        # module.configure(a=1)
-        # module = Wrapper(module=module)
-        # module.build()
-        # module.module.a == 1 # True
-        self._user_config.update(config)
+            self._user_config.set_for_tags(self.tags, name, value)
         self.__construct__()
 
     def _give_user_configuration(self, receiver: "DeeplayModule", name):
-        my_subconfigs = self._collect_user_configuration()
-        recevier_subconfigs = receiver._collect_user_configuration()
+        if receiver._user_config is self._user_config:
+            if receiver.root_module is not receiver:
+                receiver.set_root_module(self.root_module)
+            return
+        if receiver.root_module is self.root_module:
+            return
 
-        mysub = {
-            key[1:]: value
-            for key, value in my_subconfigs.items()
-            if len(key) > 1 and key[0] == name
-        }
+        mytags = self.tags
+        receivertags = receiver.tags
+        # sort longest tag first
+        receivertags.sort(key=lambda x: len(x), reverse=True)
 
-        subconfigs = {**mysub, **recevier_subconfigs}
+        d = {}
+        for _, model in self.named_modules():
+            if isinstance(model, DeeplayModule):
+                tags = model.tags
+                subconfig = receiver._user_config.take(tags)
+                for key, value in subconfig.items():
+                    for tag in receivertags:
+                        if len(key) >= len(tag) and key[: len(tag)] == tag:
+                            key = key[len(tag) :]
+                            break
 
-        receiver._take_user_configuration(subconfigs)
+                    for tag in mytags:
+                        d[tag + (name,) + key] = value
 
-    def _collect_user_configuration(self):
-        config = self.get_user_configuration()
-        for name, value in self.named_modules():
-            if name == "":
-                continue
-            if isinstance(value, DeeplayModule):
-                name_as_tuple = tuple(name.split("."))
-                local_user_config = value.get_user_configuration()
-                for key, value in local_user_config.items():
-                    config[name_as_tuple + key] = value
-
-        return config
+        self._user_config.update(d)
+        receiver.set_root_module(self.root_module)
 
     def __setattr__(self, name, value):
         if name == "_user_config" and hasattr(self, "_user_config"):
-            self._take_user_configuration(value)
+            if not isinstance(value, UserConfig):
+                raise ValueError("User configuration must be a UserConfig instance.")
+            super().__setattr__(name, value)
 
-        if self._is_constructing:
+        super().__setattr__(name, value)
+
+        if self.is_constructing:
             if isinstance(value, DeeplayModule) and not value._has_built:
                 self._give_user_configuration(value, name)
                 value.__construct__()
             self._setattr_recording.add(name)
-        super().__setattr__(name, value)
 
     def _select_string(self, structure, selections, select, ellipsis=False):
         selects = select.split(",")
@@ -581,9 +713,12 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
                 select, slice_str = select.split("#")
                 slice_str = slice_str.split(":")
                 slice_ints = [int(item) if item else None for item in slice_str]
+
                 if len(slice_str) == 1:
                     if slice_ints[0] is None:
                         slicer = slice(slice_ints[0], None)
+                    elif slice_ints[0] == -1:
+                        slicer = slice(-1, None)
                     else:
                         slicer = slice(slice_ints[0], slice_ints[0] + 1)
                 elif len(slice_str) == 2:
@@ -659,7 +794,10 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
             select = selector[idx]
             if isinstance(select, int):
-                select = slice(select, select + 1)
+                if select == -1:
+                    select = slice(select, None)
+                else:
+                    select = slice(select, select + 1)
             if isinstance(select, str):
                 self._select_string(structure, selections, select)
             if isinstance(select, type(...)):
@@ -726,19 +864,20 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     def _run_hooks(self, hook_name, instance=None):
         if instance is None:
             instance = self
-        for hook in self._hooks[hook_name]:
+        for hook in self.__hooks__[hook_name]:
             hook(instance)
 
     def __construct__(self):
-        with not_top_level(ExtendedConstructorMeta):
+        with not_top_level(ExtendedConstructorMeta, self):
             self._modules.clear()
-            self._is_constructing = True
+
+            self.is_constructing = True
 
             args, kwargs = self.get_init_args()
             getattr(self, self._init_method)(*(args + self._args), **kwargs)
 
             self._run_hooks("after_init")
-            self._is_constructing = False
+            self.is_constructing = False
             self.__post_init__()
 
     def get_init_args(self):
@@ -775,6 +914,10 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         raise NotImplementedError(
             "forward method not implemented for {}".format(self.__class__.__name__)
         )
+
+    @after_init
+    def set_p(self, p):
+        self.p = p
 
 
 class Selection(DeeplayModule):

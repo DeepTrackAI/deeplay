@@ -33,7 +33,7 @@ class Classifier(Application):
         self.make_targets_one_hot = make_targets_one_hot
 
         @self.optimizer.params
-        def params():
+        def params(self):
             return self.model.parameters()
 
     def compute_loss(self, y_hat, y):
@@ -41,9 +41,6 @@ class Classifier(Application):
             y = F.one_hot(y, num_classes=y_hat.size(1)).float()
 
         return self.loss(y_hat, y)
-
-    def configure_optimizers(self):
-        return self.optimizer
 
     def forward(self, x):
         return self.model(x)

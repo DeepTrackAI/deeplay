@@ -67,15 +67,8 @@ class Application(DeeplayModule, L.LightningModule):
 
     def configure_optimizers(self):
         try:
-            return self.optimizer
-        except AttributeError as e:
-            raise AttributeError(
-                "Application has no configured optimizer. Make sure to pass optimizer=... to the constructor."
-            ) from e
+            return self.optimizer.create()
 
-    def configure_optimizers(self):
-        try:
-            return self.optimizer
         except AttributeError as e:
             raise AttributeError(
                 "Application has no configured optimizer. Make sure to pass optimizer=... to the constructor."
@@ -220,7 +213,7 @@ class Application(DeeplayModule, L.LightningModule):
             else:
 
                 @optimizer.params
-                def f():
+                def f(self):
                     return self.parameters()
 
     def named_children(self) -> Iterator[Tuple[str, Module]]:
