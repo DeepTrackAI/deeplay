@@ -502,7 +502,7 @@ class ConvolutionalEncoderDecoder2d(DeeplayModule):
         return x
 
 
-class concat(DeeplayModule):
+class Cat(DeeplayModule):
     def __init__(self, dim=1):
         super().__init__()
 
@@ -526,7 +526,7 @@ class UNet2d(ConvolutionalEncoderDecoder2d):
         out_activation: Optional[Type[nn.Module]] = nn.ReLU,
         pool: Optional[Union[Type[nn.Module], nn.Module, None]] = None,
         upsample: Optional[Union[Type[nn.Module], nn.Module, None]] = None,
-        skip: Optional[Type[nn.Module]] = concat(),
+        skip: Optional[Type[nn.Module]] = Cat(),
     ):
         super().__init__(
             in_channels=in_channels,
