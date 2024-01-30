@@ -200,3 +200,12 @@ class TestSelectors(unittest.TestCase):
                 ("decoder", "1", "activation"),
             ],
         )
+
+    def test_selector_minus_one(self):
+        selections = self.module[..., "activation#-1"].list_names()
+        self.assertListEqual(
+            selections,
+            [
+                ("decoder", "3", "activation"),
+            ],
+        )
