@@ -356,12 +356,20 @@ class ConvolutionalDecoder2d(DeeplayModule):
         for i, c_out in enumerate(self.channels + [self.out_channels]):
             c_in = self.in_channels if i == 0 else self.channels[i - 1]
 
+            layer = Layer(nn.Conv2d, c_in, c_out, 3, 1, 1)
+            if i == len(self.channels):
+                activation = out_activation
+            else:
+                activation = Layer(nn.ReLU)
+            normalization = Layer(nn.Identity, num_features=c_out)
+
             if i == len(self.channels):
                 upsample_layer = Layer(nn.Identity)
             else:
                 if upsample is None:
                     upsample_layer = Layer(
-                        nn.LazyConvTranspose2d,
+                        nn.ConvTranspose2d,
+                        c_out,
                         c_out,
                         kernel_size=2,
                         stride=2,
@@ -372,13 +380,6 @@ class ConvolutionalDecoder2d(DeeplayModule):
                     upsample_layer = upsample.new()
                 else:
                     upsample_layer = upsample
-
-            layer = Layer(nn.LazyConv2d, c_out, 3, 1, 1)
-            if i == len(self.channels):
-                activation = out_activation
-            else:
-                activation = Layer(nn.ReLU)
-            normalization = Layer(nn.Identity, num_features=c_out)
 
             block = LayerActivationNormalizationUpsample(
                 layer=layer,
@@ -516,6 +517,7 @@ class UNet2d(ConvolutionalEncoderDecoder2d):
     in_channels: Optional[int]
     channels: Sequence[Optional[int]]
     out_channels: Optional[int]
+    out_activation: Optional[Type[nn.Module]]
     skip: Optional[Type[nn.Module]]
 
     def __init__(
@@ -523,7 +525,7 @@ class UNet2d(ConvolutionalEncoderDecoder2d):
         in_channels: Optional[int],
         channels: Sequence[int],
         out_channels=int,
-        out_activation: Optional[Type[nn.Module]] = nn.ReLU,
+        out_activation: Optional[Type[nn.Module]] = nn.Identity,
         pool: Optional[Union[Type[nn.Module], nn.Module, None]] = None,
         upsample: Optional[Union[Type[nn.Module], nn.Module, None]] = None,
         skip: Optional[Type[nn.Module]] = concat(),
@@ -540,6 +542,7 @@ class UNet2d(ConvolutionalEncoderDecoder2d):
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.skip = skip
+        self.decoder.blocks.layer.configure(nn.LazyConv2d)
 
     def forward(self, x):
         acts = []
