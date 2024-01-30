@@ -1,6 +1,8 @@
-from typing import Any, overload, Iterator, List, Generic, TypeVar, Union, Tuple
+from typing import Any, overload, Iterator, List, Generic, TypeVar, Union, Tuple, Dict
 
+import torch
 from torch import nn
+
 from .module import DeeplayModule
 from .decorators import after_init
 
@@ -139,3 +141,42 @@ class Sequential(LayerList, Generic[T]):
         for layer in self:
             x = layer(x)
         return x
+
+
+class Parallel(LayerList, Generic[T]):
+    def __pre_init__(
+        self,
+        *layers: Union[T, List[T]],
+        _args: Tuple[T, ...] = (),
+        **kwargs: Dict[str, T],
+    ):
+        self._keys = [(idx + len(layers), key) for idx, key in enumerate(kwargs)]
+        super().__pre_init__(
+            *(layers + tuple(kwargs.values())),
+            _args=_args,
+        )
+
+    def __init__(self, *layers: T, **kwargs):
+        for idx, key in self._keys:
+            if isinstance(layers[idx], DeeplayModule):
+                layers[idx].set_output_map(key)
+            else:
+                raise TypeError(
+                    f"Keyword argument '{key}' must correspond to a DeeplayModule instance. Received {type(layers[idx].__class__)} instead."
+                )
+        super().__init__(*layers)
+
+    def forward(self, x):
+        if (
+            isinstance(x, torch.Tensor)
+            or (isinstance(x, tuple) and all(isinstance(_x, torch.Tensor) for _x in x))
+        ) and self._keys:
+            raise ValueError(
+                f"Key arguments {[key for _, key in self._keys]} were provided but input was not a dictionary. Got {type(x)} instead."
+            )
+
+        if isinstance(x, dict):
+            updates = [layer(x, overwrite_output=False) for layer in self]
+            return {**x, **{k: v for update in updates for k, v in update.items()}}
+
+        return [layer(x) for layer in self]
