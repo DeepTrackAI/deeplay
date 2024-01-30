@@ -59,7 +59,7 @@ class VariationalAutoEncoder(Application):
             channels,
             channels[-1],
         )
-        encoder.post.configure(nn.Flatten)
+        encoder.postprocess.configure(nn.Flatten)
         return encoder
 
     def _get_default_decoder(self, channels, red_size):
@@ -68,7 +68,7 @@ class VariationalAutoEncoder(Application):
             channels,
             1,
         )
-        decoder.pre.configure(
+        decoder.preprocess.configure(
             nn.Unflatten,
             dim=1,
             unflattened_size=(channels[0], red_size[0], red_size[1]),

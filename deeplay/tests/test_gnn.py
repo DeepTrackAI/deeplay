@@ -215,6 +215,7 @@ class TestComponentMPN(unittest.TestCase):
         gnn.configure(out_activation=nn.Sigmoid)
         gnn.create()
         gnn.build()
+        
         self.assertIsInstance(gnn.output.transform.activation, nn.Sigmoid)
         self.assertIsInstance(gnn.output.update.activation, nn.Sigmoid)
 
