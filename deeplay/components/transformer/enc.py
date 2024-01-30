@@ -57,6 +57,10 @@ class TransformerEncoderLayer(DeeplayModule):
     --------
     >>> tel = TransformerEncoderLayer(4, [4, 16], 4, 2)
     >>> tel.build()
+    >>> seq_len, batch_size,features = 2, 10, 4
+    >>> input_seq = torch.randn(seq_len, batch_size, features)
+    >>> tel(input_seq).shape
+    torch.Size([2, 10, 4])
 
 
     Return Values
