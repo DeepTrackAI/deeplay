@@ -14,15 +14,56 @@ from functools import reduce
 
 
 class Add(DeeplayModule):
+    """Addition module.
+
+    Adds input tensors element-wise.
+
+    Examples
+    --------
+    >>> add = Add()
+    >>> add(torch.randn(4, 4), torch.randn(4, 4))
+    """
+
     def forward(self, *x):
-        """
-        Add the input tensors element-wise.
-        """
         x = itertools.chain(*x) if isinstance(x[0], tuple) else x
         return reduce(lambda a, b: torch.add(a, b), x)
 
 
 class TransformerEncoderLayer(DeeplayModule):
+    """Transformer encoder module.
+
+    Configurables
+    -------------
+    - in_features (int): Number of input features. If None, the input shape is inferred in the first forward pass. (Default: None)
+    - hidden_features (list[int]): Number of hidden units in each layer.
+    - out_features (int): Number of output features.
+    - num_heads (int): Number of attention heads.
+
+    Shorthands
+    ----------
+    - `input`: Equivalent to `.blocks[0]`.
+    - `hidden`: Equivalent to `.blocks[:-1]`.
+    - `output`: Equivalent to `.blocks[-1]`.
+    - `multihead`: Equivalent to `.blocks.multihead`.
+    - `feed_forward`: Equivalent to `.blocks.feed_forward`.
+
+    Evaluation
+    ----------
+    >>> for block in tel.blocks:
+    >>>    x = block(x)
+    >>> return x
+
+    Examples
+    --------
+    >>> tel = TransformerEncoderLayer(4, [4, 16], 4, 2)
+    >>> tel.build()
+
+
+    Return Values
+    -------------
+    The forward method returns the processed tensor.
+    """
+
     input_features: int
     hidden_features: Sequence[Optional[int]]
     out_features: int
