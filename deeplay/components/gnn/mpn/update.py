@@ -1,7 +1,7 @@
-from .ct import CombineTransform
+from .cla import CombineLayerActivation
 
 
-class Update(CombineTransform):
+class Update(CombineLayerActivation):
     """Update module for MPN."""
 
     def get_forward_args(self, x):
