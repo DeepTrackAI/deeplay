@@ -1,10 +1,13 @@
 from functools import wraps
+import time
+import datetime
 
 
 class Callback:
     """A deepcopy safe callback."""
 
     def __init__(self, func, *args, **kwargs):
+        self.timestamp = time.perf_counter_ns()
         self.func = func
         self.args = args
         self.kwargs = kwargs

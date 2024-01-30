@@ -230,10 +230,26 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     ) -> Dict[Literal["before_build", "after_build", "after_init"], list]:
         """A dictionary of all hooks.
         Ordered __constructor_hooks__ > __parent_hooks__ > __user_hooks__"""
-        return {
+        all_hooks = {
             k: v + self.__parent_hooks__[k] + self.__user_hooks__[k]
             for k, v in self.__constructor_hooks__.items()
         }
+
+        for key, value in all_hooks.items():
+            all_hooks[key] = sorted(value, key=lambda x: x.timestamp)
+            # warn if two hooks have the same timestamp
+            if len(all_hooks[key]) > 1:
+                for i in range(len(all_hooks[key]) - 1):
+                    if all_hooks[key][i].timestamp == all_hooks[key][i + 1].timestamp:
+                        import warnings
+
+                        warnings.warn(
+                            f"Two hooks have the same timestamp: {all_hooks[key][i].func} and {all_hooks[key][i+1].func}.\n "
+                            "This may cause unexpected behavior.\n "
+                            "Please report this issue to the github repository: "
+                            "https://github.com/DeepTrackAI/deeplay"
+                        )
+        return all_hooks
 
     @property
     def __user_hooks__(
@@ -345,26 +361,28 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     def __post_init__(self):
         ...
 
+    @after_init
     def set_input_map(self, *args: str, **kwargs: str):
         self.__dict__.update(
             {"input_args": args, "input_kwargs": kwargs, "_input_mapped": True}
         )
-        self._execute_mapping_if_valid()
 
+    @after_init
     def set_output_map(self, *args: str, **kwargs: int):
         output_args = {arg: i for i, arg in enumerate(args)}
         output_args.update(kwargs)
 
         self.__dict__.update({"output_args": output_args, "_output_mapped": True})
-        self._execute_mapping_if_valid()
 
     def _execute_mapping_if_valid(self):
         if getattr(self, "_input_mapped", False) and getattr(
             self, "_output_mapped", False
         ):
-            self._set_mapping(self.input_args, self.input_kwargs, self.output_args)
+            self._set_mapping(
+                self, self.input_args, self.input_kwargs, self.output_args
+            )
 
-    @after_build
+    @staticmethod
     def _set_mapping(
         module,
         input_args: List[str],
@@ -573,6 +591,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
                         # We circumvent this by setting the attribute using object.__setattr__
                         object.__setattr__(self, name, value)
 
+        self._execute_mapping_if_valid()
         self._has_built = True
         self._run_hooks("after_build")
 
