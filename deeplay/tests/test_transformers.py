@@ -12,16 +12,17 @@ class TestComponentTransformerEncoder(unittest.TestCase):
         tel.build()
         self.assertEqual(len(tel.blocks), 2)
 
-        self.assertEqual(tel.blocks[0].multihead.layer.attention.embed_dim, 4)
-        self.assertEqual(tel.blocks[0].multihead.layer.attention.num_heads, 2)
+        for i in range(2):
+            self.assertEqual(tel.blocks[i].multihead.layer.attention.embed_dim, 4)
+            self.assertEqual(tel.blocks[i].multihead.layer.attention.num_heads, 2)
 
-        self.assertEqual(tel.blocks[0].feed_forward.layer[0].in_features, 4)
-        self.assertEqual(tel.blocks[0].feed_forward.layer[-1].out_features, 4)
+            self.assertEqual(tel.blocks[i].feed_forward.layer.layer[0].in_features, 4)
+            self.assertEqual(tel.blocks[i].feed_forward.layer.layer[-1].out_features, 4)
 
         # test on a batch of 2
-        x = torch.randn(2, 10, 4)
+        x = torch.randn(10, 2, 4)
         y = tel(x)
-        self.assertEqual(y.shape, (2, 10, 4))
+        self.assertEqual(y.shape, (10, 2, 4))
 
     def test_tel_change_depth(self):
         tel = TransformerEncoderLayer(4, [4], 4, 2)
@@ -37,8 +38,8 @@ class TestComponentTransformerEncoder(unittest.TestCase):
         self.assertEqual(tel.blocks[0].multihead.layer.attention.embed_dim, 4)
         self.assertEqual(tel.blocks[0].multihead.layer.attention.num_heads, 2)
 
-        self.assertEqual(tel.blocks[0].feed_forward.layer[0].in_features, 4)
-        self.assertEqual(tel.blocks[0].feed_forward.layer[-1].out_features, 4)
+        self.assertEqual(tel.blocks[0].feed_forward.layer.layer[0].in_features, 4)
+        self.assertEqual(tel.blocks[0].feed_forward.layer.layer[-1].out_features, 4)
 
     def test_variable_hidden_layers(self):
         tel = TransformerEncoderLayer(4, [4, 8, 16], 4, 2)

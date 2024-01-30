@@ -1,6 +1,6 @@
 from typing import List, Optional, Literal, Any, Sequence, Type, overload, Union
 
-from .. import DeeplayModule, Layer, LayerList
+from .. import DeeplayModule, Layer, LayerList, MultiLayerPerceptron
 from . import LayerSkipNormalization, MultiheadSelfAttention
 
 from deeplay.blocks.sequential import SequentialBlock
@@ -147,10 +147,8 @@ class TransformerEncoderLayer(DeeplayModule):
                     # Second sub-block is feed forward followed by skip connection
                     # and normalization
                     feed_forward=LayerSkipNormalization(
-                        layer=Sequential(
-                            Layer(nn.Linear, f_out, f_out),
-                            Layer(nn.ReLU),
-                            Layer(nn.Linear, f_out, f_out),
+                        layer=MultiLayerPerceptron(
+                            f_out, [f_out], f_out, flatten_input=False
                         ),
                         skip=Add(),
                         normalization=Layer(nn.LayerNorm, f_out),
