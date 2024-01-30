@@ -4,4 +4,4 @@ from .transformation import *
 from .propagation import Sum, Mean, Max, Min, Prod
 from .update import *
 
-from .ct import CombineTransform
+from .cla import CombineLayerActivation
