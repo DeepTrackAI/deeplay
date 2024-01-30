@@ -6,8 +6,9 @@ import copy
 import inspect
 
 from .meta import ExtendedConstructorMeta, not_top_level
-from .decorators import before_build, after_init
+from .decorators import after_init, after_build
 from functools import partial
+
 
 class UserConfig(dict):
     __hook_containers__ = [
@@ -558,7 +559,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
         for name, value in self.named_children():
             if isinstance(value, Optimizer):
-                ... # skip optimizers
+                ...  # skip optimizers
             elif isinstance(value, DeeplayModule):
                 if value._has_built:
                     continue
