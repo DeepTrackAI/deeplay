@@ -1,7 +1,14 @@
 import unittest
 import torch
 import torch.nn as nn
-from deeplay import LayerList, DeeplayModule, Layer, LayerActivation
+from deeplay import (
+    LayerList,
+    DeeplayModule,
+    Layer,
+    LayerActivation,
+    Sequential,
+    Parallel,
+)
 import itertools
 
 
@@ -304,3 +311,145 @@ class TestLayerList(unittest.TestCase):
         self.assertEqual(testclass.model.blocks[0].layer.out_features, 2)
         self.assertEqual(testclass.model.blocks[1].layer.out_features, 2)
         self.assertEqual(testclass.model.blocks[2].layer.out_features, 2)
+
+
+class TestSequential(unittest.TestCase):
+    def test_set_inp_out_mapping_1(self):
+        model = Sequential(
+            Layer(nn.Linear, 1, 20),
+            Layer(nn.ReLU),
+            Layer(nn.Linear, 20, 1),
+        )
+        model.set_input_map("x")
+        model.set_output_map("x")
+
+        model.build()
+
+        inp = {"x": torch.randn(10, 1)}
+        out = model(inp)
+        self.assertEqual(out["x"].shape, (10, 1))
+
+    def test_set_inp_out_mapping_2(self):
+        model = Sequential(
+            Layer(nn.Linear, 1, 20),
+            Layer(nn.ReLU),
+            Layer(nn.Linear, 20, 1),
+        )
+        model.set_input_map("x")
+        model.set_output_map("x")
+
+        model[1].set_output_map("x", x1=0, x2=0)
+
+        model.build()
+
+        inp = {"x": torch.randn(10, 1)}
+        out = model(inp)
+        self.assertEqual(out["x"].shape, (10, 1))
+        self.assertEqual(torch.all(out["x1"] == out["x2"]), True)
+
+    def test_forward_with_input_dict(self):
+        class AggregationRelu(nn.Module):
+            def forward(self, x, A):
+                return nn.functional.relu(A @ x)
+
+        model = Sequential(
+            Layer(nn.Linear, 1, 20),
+            Layer(AggregationRelu),
+            Layer(nn.Linear, 20, 1),
+        )
+
+        model[0].set_input_map("x")
+        model[0].set_output_map("x")
+
+        model[1].set_input_map("x", "A")
+        model[1].set_output_map("x")
+
+        model[2].set_input_map("x")
+        model[2].set_output_map("x")
+
+        model.build()
+
+        inp = {"x": torch.randn(10, 1), "A": torch.randn(10, 10)}
+        out = model(inp)
+        self.assertEqual(out["x"].shape, (10, 1))
+
+
+class Module_1(DeeplayModule):
+    def forward(self, x):
+        return x, x * 2
+
+
+class Module_2(nn.Module):
+    def forward(self, x):
+        return x / 2
+
+
+class TestParallel(unittest.TestCase):
+    def test_parallel_default(self):
+        model = Parallel(Module_1(), Layer(Module_2))
+        model.build()
+
+        out = model(2.0)
+        self.assertEqual(out[0], (2.0, 4.0))
+        self.assertEqual(out[1], 1.0)
+
+    def test_parallel_with_dict_inputs(self):
+        model_1 = Module_1()
+        model_1.set_input_map("x")
+        model_1.set_output_map("x1", "x2")  # adds x1, x2 to output
+
+        model_2 = Layer(Module_2)
+        model_2.set_input_map("x")
+        model_2.set_output_map("x3")  # adds x3 to output
+
+        model = Parallel(model_1, model_2)
+        model.build()
+
+        inp = {"x": 2.0}
+        out = model(inp)
+
+        self.assertEqual(out["x"], 2.0)
+        self.assertEqual(out["x1"], 2.0)
+        self.assertEqual(out["x2"], 4.0)
+        self.assertEqual(out["x3"], 1.0)
+
+    def test_parallel_with_kwargs(self):
+        model_1 = Module_1()
+        model_1.set_input_map("x")
+        model_1.set_output_map("x1", "x2")
+
+        model_2 = Layer(Module_2)
+        model_2.set_input_map("x")
+
+        model = Parallel(model_1, x3=model_2)
+        model.build()
+
+        inp = {"x": 2.0}
+        out = model(inp)
+
+        self.assertEqual(out["x"], 2.0)
+        self.assertEqual(out["x1"], 2.0)
+        self.assertEqual(out["x2"], 4.0)
+        self.assertEqual(out["x3"], 1.0)
+
+    def test_parallel_with_kwargs_2(self):
+        model_1 = Module_1()
+        model_1.set_input_map("x")
+        model_1.set_output_map("x1", "x2")
+
+        model_2 = Layer(Module_2)
+        model_2.set_input_map("x")
+        model_2.set_output_map("x3", x4=0)
+
+        model = Parallel(model_1, x5=model_2)
+        model.build()
+
+        inp = {"x": 2.0}
+        out = model(inp)
+
+        self.assertEqual(out["x"], 2.0)
+        self.assertEqual(out["x1"], 2.0)
+        self.assertEqual(out["x2"], 4.0)
+        self.assertTrue("x3" not in out)
+        self.assertTrue("x4" not in out)
+        self.assertEqual(out["x5"], 1.0)

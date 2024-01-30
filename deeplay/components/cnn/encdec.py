@@ -502,12 +502,14 @@ class ConvolutionalEncoderDecoder2d(DeeplayModule):
         return x
 
 
-class concat(nn.Module):
-    def __init__(self):
+class concat(DeeplayModule):
+    def __init__(self, dim=1):
         super().__init__()
 
-    def forward(self, x, y):
-        return torch.cat([x, y], dim=1)
+        self.dim = dim
+
+    def forward(self, *x):
+        return torch.cat(x, dim=self.dim)
 
 
 class UNet2d(ConvolutionalEncoderDecoder2d):

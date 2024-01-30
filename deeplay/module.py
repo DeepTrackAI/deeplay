@@ -1,10 +1,57 @@
 import inspect
-from typing import Any, Dict, Tuple, List, Set
+from typing import Any, Dict, Tuple, List, Set, Optional
 
 import torch.nn as nn
 
 from .meta import ExtendedConstructorMeta, not_top_level
-from .decorators import before_build
+from .decorators import after_build
+from functools import partial
+
+
+def _create_forward_with_input_dict(
+    old_forward,
+    input_args: List[str],
+    input_kwargs: Dict[str, str],
+    output_args: Optional[Dict[str, int]],
+):
+    def forward_with_input_dict(self, x, overwrite_output: bool = True):
+        assert isinstance(
+            x, dict
+        ), "Input must be a dictionary, but found {}. Please check if the module require an input/output mapping.".format(
+            type(x)
+        )
+        x = x.copy()
+
+        outputs = old_forward(
+            self,
+            *map(x.get, input_args),
+            **{key: x.get(value) for key, value in input_kwargs.items()},
+        )
+
+        if not output_args:
+            return outputs
+
+        if not isinstance(outputs, tuple):
+            outputs = (outputs,)
+
+        expected_outputs = len(set(output_args.values()))
+        assert len(outputs) == expected_outputs, (
+            f"module {type(self).__name__} returned {len(outputs)} outputs, "
+            f"but it should return {expected_outputs}"
+        )
+
+        if overwrite_output:
+            x.update(
+                map(
+                    lambda key, value: (key, outputs[value]),
+                    *zip(*output_args.items()),
+                )
+            )
+            return x
+        else:
+            return {key: outputs[value] for key, value in output_args.items()}
+
+    return forward_with_input_dict
 
 
 class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
@@ -146,7 +193,44 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     def __post_init__(self):
         ...
 
-    @before_build
+    def set_input_map(self, *args: str, **kwargs: str):
+        self.__dict__.update(
+            {"input_args": args, "input_kwargs": kwargs, "_input_mapped": True}
+        )
+        self._execute_mapping_if_valid()
+
+    def set_output_map(self, *args: str, **kwargs: int):
+        output_args = {arg: i for i, arg in enumerate(args)}
+        output_args.update(kwargs)
+
+        self.__dict__.update({"output_args": output_args, "_output_mapped": True})
+        self._execute_mapping_if_valid()
+
+    def _execute_mapping_if_valid(self):
+        if getattr(self, "_input_mapped", False) and getattr(
+            self, "_output_mapped", False
+        ):
+            self._set_mapping(self.input_args, self.input_kwargs, self.output_args)
+
+    @after_build
+    def _set_mapping(
+        module,
+        input_args: List[str],
+        input_kwargs: Dict[str, str],
+        output_args: Dict[str, int],
+    ):
+        # monkey patch the forward method to include dict
+        # using type(module) to get the base implementation of forward.
+        # This is necessary so that multiple calls to set_input_dict don't
+        # chain the monkey patching.
+        # We use partial to bind the instance to make it a method.
+        module.forward = partial(
+            _create_forward_with_input_dict(
+                type(module).forward, input_args, input_kwargs, output_args
+            ),
+            module,
+        )
+
     def replace(self, target: str, replacement: nn.Module):
         """
         Replaces a child module with another module.
