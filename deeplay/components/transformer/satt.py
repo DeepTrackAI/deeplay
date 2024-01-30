@@ -7,14 +7,14 @@ import torch.nn as nn
 class MultiheadSelfAttention(DeeplayModule):
     features: int
     num_heads: int
-    projection: DeeplayModule
+    projection: nn.Module
     return_attn: bool
 
     def __init__(
         self,
         features: int,
         num_heads: int,
-        projection: DeeplayModule = Layer(nn.Identity),
+        projection: nn.Module = nn.Identity(),
         return_attn: bool = False,
     ):
         super().__init__()
