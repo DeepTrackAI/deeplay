@@ -213,7 +213,7 @@ class Application(DeeplayModule, L.LightningModule):
             else:
 
                 @optimizer.params
-                def f(self):
+                def f():
                     return self.parameters()
 
     def named_children(self) -> Iterator[Tuple[str, Module]]:
