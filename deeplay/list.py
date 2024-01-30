@@ -144,17 +144,19 @@ class Sequential(LayerList, Generic[T]):
 
 
 class Parallel(LayerList, Generic[T]):
+    _keys: List[Tuple[int, str]]
+
     def __pre_init__(
         self,
         *layers: Union[T, List[T]],
         _args: Tuple[T, ...] = (),
         **kwargs: Dict[str, T],
     ):
-        self._keys = [(idx + len(layers), key) for idx, key in enumerate(kwargs)]
         super().__pre_init__(
             *(layers + tuple(kwargs.values())),
             _args=_args,
         )
+        self._keys = [(idx + len(layers), key) for idx, key in enumerate(kwargs)]
 
     def __init__(self, *layers: T, **kwargs):
         for idx, key in self._keys:
