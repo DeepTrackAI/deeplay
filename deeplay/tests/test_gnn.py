@@ -187,10 +187,10 @@ class TestComponentMPN(unittest.TestCase):
 
         self.assertEqual(len(gnn.blocks), 2)
 
-        self.assertEqual(gnn.transform[0].mlp.layer.out_features, 4)
-        self.assertEqual(gnn.update[0].mlp.layer.out_features, 4)
+        self.assertEqual(gnn.transform[0].layer.out_features, 4)
+        self.assertEqual(gnn.update[0].layer.out_features, 4)
 
-        self.assertEqual(gnn.output.update.mlp.layer.out_features, 1)
+        self.assertEqual(gnn.output.update.layer.out_features, 1)
 
         inp = {}
         inp["x"] = torch.randn(10, 2)
@@ -215,8 +215,9 @@ class TestComponentMPN(unittest.TestCase):
         gnn.configure(out_activation=nn.Sigmoid)
         gnn.create()
         gnn.build()
-        self.assertIsInstance(gnn.output.transform.mlp.activation, nn.Sigmoid)
-        self.assertIsInstance(gnn.output.update.mlp.activation, nn.Sigmoid)
+        
+        self.assertIsInstance(gnn.output.transform.activation, nn.Sigmoid)
+        self.assertIsInstance(gnn.output.update.activation, nn.Sigmoid)
 
     def test_gnn_default_propagation(self):
         gnn = MessagePassingNeuralNetwork([4], 1)

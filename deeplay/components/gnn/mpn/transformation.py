@@ -1,7 +1,7 @@
-from .ct import CombineTransform
+from .cla import CombineLayerActivation
 
 
-class Transform(CombineTransform):
+class Transform(CombineLayerActivation):
     """Transform module for MPN."""
 
     def get_forward_args(self, x):
