@@ -1,6 +1,7 @@
 from typing import List, Optional, Literal, Any, Sequence, Type, overload, Union
 
 from deeplay import DeeplayModule, Layer, LayerList
+from deeplay.components.cnn import Cat
 
 from ..tpu import TransformPropagateUpdate
 
@@ -80,10 +81,11 @@ class MessagePassingNeuralNetwork(DeeplayModule):
             activation = (
                 Layer(nn.ReLU) if i < len(hidden_features) - 1 else out_activation
             )
+
             transform = Transform(
-                None,
-                c_out,
-                activation=activation,
+                combine=Cat(),
+                layer=Layer(nn.LazyLinear, c_out),
+                activation=activation.new(),
             )
             transform.set_input_map("x", "A", "edgefeat")
             transform.set_output_map("edgefeat")
@@ -93,9 +95,9 @@ class MessagePassingNeuralNetwork(DeeplayModule):
             propagate.set_output_map("aggregate")
 
             update = Update(
-                None,
-                c_out,
-                activation=activation,
+                combine=Cat(),
+                layer=Layer(nn.LazyLinear, c_out),
+                activation=activation.new(),
             )
             update.set_input_map("x", "aggregate")
             update.set_output_map("x")
