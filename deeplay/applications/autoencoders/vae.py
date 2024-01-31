@@ -92,9 +92,6 @@ class VariationalAutoEncoder(Application):
         x = self.decoder(x)
         return x
 
-    def configure_optimizers(self):
-        return self.optimizer
-
     def training_step(self, batch, batch_idx):
         x, y = self.train_preprocess(batch)
         y_hat, mu, log_var = self(x)
