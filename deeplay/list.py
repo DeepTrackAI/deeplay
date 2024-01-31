@@ -32,7 +32,7 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
 
     @after_init
     def append(self, module: DeeplayModule) -> "LayerList[T]":
-        super().append(module)
+        super(LayerList, self).append(module)
         if isinstance(module, DeeplayModule) and not module._has_built:
             self._give_user_configuration(module, self._get_abs_string_index(-1))
             module.__construct__()
@@ -120,7 +120,7 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
                 if hasattr(layer, name) and isinstance(getattr(layer, name), nn.Module)
             ]
             if len(submodules) > 0:
-                return LayerList(*submodules)
+                return ReferringLayerList(*submodules)
             else:
                 raise
 
@@ -133,7 +133,17 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
         ...
 
     def __getitem__(self, index: Union[int, slice]) -> "Union[T, LayerList[T]]":
-        return nn.ModuleList.__getitem__(self, index)  # type: ignore
+        if isinstance(index, int):
+            return getattr(self, self._get_abs_string_index(index))
+        else:
+            indices = list(range(len(self)))[index]
+            return ReferringLayerList(*[self[idx] for idx in indices])
+
+
+class ReferringLayerList(LayerList, Generic[T]):
+    def __init__(self, *layers: T):
+        for idx, layer in enumerate(layers):
+            nn.ModuleList.append(self, layer)
 
 
 class Sequential(LayerList, Generic[T]):
@@ -144,17 +154,19 @@ class Sequential(LayerList, Generic[T]):
 
 
 class Parallel(LayerList, Generic[T]):
+    _keys: List[Tuple[int, str]]
+
     def __pre_init__(
         self,
         *layers: Union[T, List[T]],
         _args: Tuple[T, ...] = (),
         **kwargs: Dict[str, T],
     ):
-        self._keys = [(idx + len(layers), key) for idx, key in enumerate(kwargs)]
         super().__pre_init__(
             *(layers + tuple(kwargs.values())),
             _args=_args,
         )
+        self._keys = [(idx + len(layers), key) for idx, key in enumerate(kwargs)]
 
     def __init__(self, *layers: T, **kwargs):
         for idx, key in self._keys:

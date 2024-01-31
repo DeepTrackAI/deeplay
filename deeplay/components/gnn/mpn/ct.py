@@ -38,7 +38,7 @@ class CombineTransform(DeeplayModule):
                 if in_features
                 else Layer(nn.LazyLinear, out_features)
             ),
-            activation=activation,
+            activation=activation.new(),
         )
 
     def forward(self, *x):

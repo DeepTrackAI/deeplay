@@ -50,11 +50,8 @@ class WassersteinAutoEncoder(Application):
         self.optimizer = optimizer or Adam(lr=5e-3)
 
         @self.optimizer.params
-        def params():
+        def params(self):
             return self.parameters()
-
-    def configure_optimizers(self):
-        return self.optimizer
 
     def _get_default_encoder(self, channels):
         encoder = ConvolutionalEncoder2d(
@@ -114,9 +111,6 @@ class WassersteinAutoEncoder(Application):
         x = self.fc_dec(z)
         x = self.decoder(x)
         return x
-
-    def configure_optimizers(self):
-        return self.optimizer
 
     def training_step(self, batch, batch_idx):
         x, y = self.train_preprocess(batch)

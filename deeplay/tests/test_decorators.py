@@ -1,8 +1,10 @@
 import unittest
 
-from deeplay import DeeplayModule, External
-from deeplay.decorators import before_build, after_build
+from deeplay import DeeplayModule, External, Layer
+from deeplay.decorators import before_build, after_build, after_init
 from unittest.mock import Mock
+
+import torch.nn as nn
 
 
 class DecoratedModule(DeeplayModule):
@@ -23,6 +25,33 @@ class DecoratedExternal(External):
     @after_build
     def run_function_after_build(self, func):
         func(self)
+
+
+class LayerExpanded(Layer):
+    # @before_build # breaks the code
+    @after_init
+    def set_p(self, v):
+        self.p = v
+
+
+class TestModule1(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+
+class TestModule(DeeplayModule):
+    def __init__(self):
+        self.encoder = LayerExpanded(TestModule1)
+        self.decoder = LayerExpanded(TestModule1)
+
+
+# module = TestModule()
+# module.encoder.set_p(2)
+# print("before:", module.encoder.p)
+
+# module["encoder"]
+
+# print("after:", module.encoder.p)
 
 
 class DummyClass:
@@ -56,11 +85,14 @@ class TestDecorators(unittest.TestCase):
 
         module = DecoratedModule()
 
+        def wrapped(mock):
+            return lambda x: mock(x)
+
         for mock in before_build_mocks:
-            module.run_function_before_build(mock)
+            module.run_function_before_build(wrapped(mock))
 
         for mock in after_build_mocks:
-            module.run_function_after_build(mock)
+            module.run_function_after_build(wrapped(mock))
 
         new_module = module.new()
 
@@ -111,11 +143,14 @@ class TestDecorators(unittest.TestCase):
 
         external = DecoratedExternal(DummyClass)
 
+        def wrapped(mock):
+            return lambda x: mock(x)
+
         for mock in before_build_mocks:
-            external.run_function_before_build(mock)
+            external.run_function_before_build(wrapped(mock))
 
         for mock in after_build_mocks:
-            external.run_function_after_build(mock)
+            external.run_function_after_build(wrapped(mock))
 
         new_external = external.new()
 
@@ -126,3 +161,20 @@ class TestDecorators(unittest.TestCase):
 
         for mock in after_build_mocks:
             mock.assert_called_with(built)
+
+    def test_hooks_survive_select(self):
+        module = TestModule()
+        module.encoder.set_p(2)
+
+        self.assertTrue(hasattr(module.encoder, "p"))
+        self.assertEqual(module.encoder.p, 2)
+
+        module["encoder"]
+
+        self.assertTrue(hasattr(module.encoder, "p"))
+        self.assertEqual(module.encoder.p, 2)
+
+        module = module.new()
+
+        self.assertTrue(hasattr(module.encoder, "p"))
+        self.assertEqual(module.encoder.p, 2)
