@@ -102,7 +102,8 @@ class VariationalAutoEncoder(Application):
         x, y = self.train_preprocess(batch)
         y_hat, mu, log_var = self(x)
         rec_loss, KLD = self.compute_loss(y_hat, y, mu, log_var)
-        loss = {"rec_loss": rec_loss, "KL": KLD}
+        tot_loss = rec_loss + self.beta * KLD
+        loss = {"rec_loss": rec_loss, "KL": KLD, "total_loss": tot_loss}
         for name, v in loss.items():
             self.log(
                 f"train_{name}",
@@ -112,7 +113,7 @@ class VariationalAutoEncoder(Application):
                 prog_bar=True,
                 logger=True,
             )
-        return rec_loss + self.beta * KLD  # sum(loss.values())
+        return tot_loss
 
     def compute_loss(self, y_hat, y, mu, log_var):
         rec_loss = self.reconstruction_loss(y_hat, y)
