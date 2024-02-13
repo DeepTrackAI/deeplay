@@ -6,6 +6,7 @@ import deeplay as dl
 
 from deeplay import (
     DeeplayModule,
+    Sequential,
 )  # Import your actual module here
 
 
@@ -32,6 +33,21 @@ class Module(dl.DeeplayModule):
         self.c = c
         self.x = dl.External(DummyClass, a, b, c)
         self.y = dl.Layer(nn.Linear, a, b)
+
+
+class VariadicModule(dl.DeeplayModule):
+    def __init__(self, *args, **kwargs):
+        self._args = args
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+
+class VariadicModuleWithPositional(dl.DeeplayModule):
+    def __init__(self, a, *args, **kwargs):
+        self.a = a
+        self._args = args
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
 
 class Module2(dl.DeeplayModule):
@@ -239,6 +255,44 @@ class TestDeeplayModule(unittest.TestCase):
         self.assertEqual(parent.foo.bar.b, 8)
         self.assertEqual(parent.foo.bar.c, "F")
 
+    def test_variadic_module(self):
+        external = dl.External(VariadicModule, 10, 20, arg=30)
+        built = external.build()
+        created = external.create()
+        self.assertIsInstance(created, VariadicModule)
+        self.assertIsInstance(built, VariadicModule)
+
+        self.assertEqual(built._args, (10, 20))
+        self.assertEqual(built.arg, 30)
+
+        self.assertEqual(created._args, (10, 20))
+        self.assertEqual(created.arg, 30)
+
+        self.assertEqual(len(built.kwargs), 1)
+        self.assertEqual(built.kwargs["arg"], 30)
+
+    def test_variadic_module_with_positional(self):
+        external = dl.External(VariadicModuleWithPositional, 0, 10, 20, arg=30)
+        built = external.build()
+        created = external.create()
+        self.assertIsInstance(created, VariadicModuleWithPositional)
+        self.assertIsInstance(built, VariadicModuleWithPositional)
+
+        self.assertEqual(built.a, 0)
+        self.assertEqual(built._args, (10, 20))
+        self.assertEqual(built.arg, 30)
+
+        self.assertEqual(created.a, 0)
+        self.assertEqual(created._args, (10, 20))
+        self.assertEqual(created.arg, 30)
+
+        self.assertEqual(built.kwargs["a"], 0)
+        self.assertEqual(built.kwargs["arg"], 30)
+
+        external.configure(a=1)
+        built = external.build()
+        self.assertEqual(built.a, 1)
+
 
 class ModelWithLayer(dl.DeeplayModule):
     def __init__(self, in_features=10, out_features=20):
@@ -294,6 +348,28 @@ class TestLayer(unittest.TestCase):
         y = layer(x)
         self.assertEqual(y.shape, x.shape)
 
+    def test_forward_with_input_dict(self):
+        layer = dl.Layer(nn.Linear, 1, 20)
+        layer.set_input_map("x")
+        layer.set_output_map("x")
+
+        layer = layer.build()
+
+        inp = {"x": torch.randn(10, 1)}
+        out = layer(inp)
+        self.assertEqual(out["x"].shape, (10, 20))
+
+    def test_forward_with_input_dict_and_numeric_output(self):
+        layer = dl.Layer(nn.Linear, 1, 20)
+        layer.set_input_map("x")
+        layer.set_output_map()
+
+        layer = layer.build()
+
+        inp = {"x": torch.randn(10, 1)}
+        out = layer(inp)
+        self.assertEqual(out.shape, (10, 20))
+
     def test_in_module(self):
         model = ModelWithLayer()
         model.configure("layer_1", in_features=10, out_features=20)
@@ -328,6 +404,34 @@ class TestLayer(unittest.TestCase):
         model.build()
 
         self.assertEqual(model.foo.num_features, 20)
+
+    def test_configure_in_init(self):
+        class TestClass(dl.DeeplayModule):
+            def __init__(self, model=None):
+                super().__init__()
+
+                model = dl.MultiLayerPerceptron(None, [64], 10)
+                model.output.normalization.configure(nn.BatchNorm1d)
+                self.model = model
+
+        testclass = TestClass()
+
+        self.assertEqual(testclass.model.output.normalization.classtype, nn.BatchNorm1d)
+
+        testclass.build()
+
+        self.assertIsInstance(testclass.model.output.normalization, nn.BatchNorm1d)
+
+    def test_inp_out_mapping(self):
+        model = ModelWithLayer(in_features=10, out_features=20)
+        model.set_input_map("x")
+        model.set_output_map("y")
+        model.build()
+
+        inp = {"x": torch.randn(10, 10)}
+        out = model(inp)
+        self.assertEqual(out["y"].shape, (10, 20))
+        self.assertTrue((inp["x"] == out["x"]).all())
 
 
 if __name__ == "__main__":

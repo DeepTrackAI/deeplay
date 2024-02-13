@@ -2,6 +2,8 @@ from __future__ import annotations
 from typing import Any, Callable, Optional, TypeVar, overload
 import inspect
 from ..module import DeeplayModule
+from ..meta import ExtendedConstructorMeta, not_top_level
+from weakref import WeakKeyDictionary
 
 import torch.nn as nn
 
@@ -10,6 +12,8 @@ T = TypeVar("T")
 
 class External(DeeplayModule):
     __extra_configurables__ = ["classtype"]
+
+    _init_method = "_actual_init"
 
     @property
     def kwargs(self):
@@ -41,8 +45,7 @@ class External(DeeplayModule):
         super().__pre_init__(*args, classtype=classtype, **kwargs)
         self.assert_not_positional_only_and_variadic()
 
-    def __init__(self, classtype, *args, **kwargs):
-        super().__init__()
+    def _actual_init(self, classtype, *args, **kwargs):
         self.classtype = classtype
         self.assert_not_positional_only_and_variadic()
 
@@ -98,12 +101,18 @@ class External(DeeplayModule):
                 kwargs.pop(key)
 
         obj = self.classtype(*args, **kwargs)
+        self._execute_mapping_if_valid(obj)
 
         self._run_hooks("after_build", obj)
-
         return obj
 
     create = build
+
+    def get_init_args(self):
+        kwargs = self.kwargs.copy()
+        # hack for external
+        classtype = kwargs.pop("classtype")
+        return (classtype,), kwargs
 
     def get_argspec(self):
         classtype = self.classtype
@@ -157,6 +166,14 @@ class External(DeeplayModule):
         if self.get_argspec().varkw is not None:
             return
         return super()._assert_valid_configurable(*args)
+
+    def _execute_mapping_if_valid(self, module):
+        if getattr(self, "_input_mapped", False) and getattr(
+            self, "_output_mapped", False
+        ):
+            self._set_mapping(
+                module, self.input_args, self.input_kwargs, self.output_args
+            )
 
     def __repr__(self):
         classkwargs = ", ".join(

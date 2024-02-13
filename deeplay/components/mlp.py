@@ -99,12 +99,14 @@ class MultiLayerPerceptron(DeeplayModule):
         hidden_features: Sequence[Optional[int]],
         out_features: int,
         out_activation: Union[Type[nn.Module], nn.Module, None] = None,
+        flatten_input: bool = True,
     ):
         super().__init__()
 
         self.in_features = in_features
         self.hidden_features = hidden_features
         self.out_features = out_features
+        self.flatten_input = flatten_input
 
         if out_features <= 0:
             raise ValueError(
@@ -154,7 +156,7 @@ class MultiLayerPerceptron(DeeplayModule):
         )
 
     def forward(self, x):
-        x = nn.Flatten()(x)
+        x = nn.Flatten()(x) if self.flatten_input else x
         for block in self.blocks:
             x = block(x)
         return x

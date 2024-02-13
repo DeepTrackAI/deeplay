@@ -1,8 +1,10 @@
-from typing import Any, overload, Iterator, List, Generic, TypeVar, Union, Tuple
+from typing import Any, overload, Iterator, List, Generic, TypeVar, Union, Tuple, Dict
 
+import torch
 from torch import nn
-from .module import DeeplayModule
 
+from .module import DeeplayModule
+from .decorators import after_init
 
 T = TypeVar("T", bound=nn.Module)
 
@@ -28,24 +30,42 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
                 self._give_user_configuration(layer, self._get_abs_string_index(idx))
                 layer.__construct__()
 
+    @after_init
     def append(self, module: DeeplayModule) -> "LayerList[T]":
-        if not self._has_built:
-            self._args = (*self._args, module)
-            self.__construct__()
+        super(LayerList, self).append(module)
+        if isinstance(module, DeeplayModule) and not module._has_built:
+            self._give_user_configuration(module, self._get_abs_string_index(-1))
+            module.__construct__()
+        return self
 
-        else:
-            super().append(module)
+    @after_init
+    def pop(self, key: int = -1) -> T:
+        return super().pop(key)
 
+    @after_init
+    def insert(self, index: int, module: DeeplayModule) -> "LayerList[T]":
+        super().insert(index, module)
+        if isinstance(module, DeeplayModule) and not module._has_built:
+            self._give_user_configuration(module, self._get_abs_string_index(index))
+            module.__construct__()
         return self
 
 
-    def pop(self, index: int = -1) -> T:
-        args = list(self._args)
-        args.pop(index)
-        self._args = tuple(args)
-        self.__construct__()
+    @after_init
+    def extend(self, modules: List[DeeplayModule]) -> "LayerList[T]":
+        super().extend(modules)
+        for idx, module in enumerate(modules):
+            if isinstance(module, DeeplayModule) and not module._has_built:
+                self._give_user_configuration(
+                    module, self._get_abs_string_index(idx + len(self) - len(modules))
+                )
+                module.__construct__()
+        return self
 
-        return self[index]
+    @after_init
+    def remove(self, module: DeeplayModule) -> "LayerList[T]":
+        super().remove(module)
+        return self
 
     @overload
     def configure(
@@ -75,6 +95,14 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
             for layer in self:
                 layer.configure(*args, **kwargs)
 
+    def set_input_map(self, *args: str, **kwargs: str):
+        for layer in self:
+            layer.set_input_map(*args, **kwargs)
+
+    def set_output_map(self, *args: str, **kwargs: int):
+        for layer in self:
+            layer.set_output_map(*args, **kwargs)
+
     def __iter__(self) -> Iterator[T]:
         return super().__iter__()  # type: ignore
 
@@ -93,7 +121,7 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
                 if hasattr(layer, name) and isinstance(getattr(layer, name), nn.Module)
             ]
             if len(submodules) > 0:
-                return LayerList(*submodules)
+                return ReferringLayerList(*submodules)
             else:
                 raise
 
@@ -106,7 +134,17 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
         ...
 
     def __getitem__(self, index: Union[int, slice]) -> "Union[T, LayerList[T]]":
-        return super().__getitem__(index)  # type: ignore
+        if isinstance(index, int):
+            return getattr(self, self._get_abs_string_index(index))
+        else:
+            indices = list(range(len(self)))[index]
+            return ReferringLayerList(*[self[idx] for idx in indices])
+
+
+class ReferringLayerList(LayerList, Generic[T]):
+    def __init__(self, *layers: T):
+        for idx, layer in enumerate(layers):
+            nn.ModuleList.append(self, layer)
 
 
 class Sequential(LayerList, Generic[T]):
@@ -114,3 +152,44 @@ class Sequential(LayerList, Generic[T]):
         for layer in self:
             x = layer(x)
         return x
+
+
+class Parallel(LayerList, Generic[T]):
+    _keys: List[Tuple[int, str]]
+
+    def __pre_init__(
+        self,
+        *layers: Union[T, List[T]],
+        _args: Tuple[T, ...] = (),
+        **kwargs: Dict[str, T],
+    ):
+        super().__pre_init__(
+            *(layers + tuple(kwargs.values())),
+            _args=_args,
+        )
+        self._keys = [(idx + len(layers), key) for idx, key in enumerate(kwargs)]
+
+    def __init__(self, *layers: T, **kwargs):
+        for idx, key in self._keys:
+            if isinstance(layers[idx], DeeplayModule):
+                layers[idx].set_output_map(key)
+            else:
+                raise TypeError(
+                    f"Keyword argument '{key}' must correspond to a DeeplayModule instance. Received {type(layers[idx].__class__)} instead."
+                )
+        super().__init__(*layers)
+
+    def forward(self, x):
+        if (
+            isinstance(x, torch.Tensor)
+            or (isinstance(x, tuple) and all(isinstance(_x, torch.Tensor) for _x in x))
+        ) and self._keys:
+            raise ValueError(
+                f"Key arguments {[key for _, key in self._keys]} were provided but input was not a dictionary. Got {type(x)} instead."
+            )
+
+        if isinstance(x, dict):
+            updates = [layer(x, overwrite_output=False) for layer in self]
+            return {**x, **{k: v for update in updates for k, v in update.items()}}
+
+        return [layer(x) for layer in self]

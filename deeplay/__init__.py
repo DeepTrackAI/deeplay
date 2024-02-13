@@ -11,7 +11,7 @@ warnings.filterwarnings("ignore", category=UserWarning, module="torch.nn.modules
 
 from .meta import ExtendedConstructorMeta
 from .module import DeeplayModule
-from .list import LayerList, Sequential
+from .list import LayerList, Sequential, Parallel
 from .external import *
 from .blocks import *
 from .components import *

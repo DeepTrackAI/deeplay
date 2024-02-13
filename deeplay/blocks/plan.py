@@ -6,9 +6,11 @@ from typing import (
     Any,
 )
 
+
 import torch.nn as nn
 
 from .sequential import SequentialBlock
+from ..external import Layer
 
 
 class PoolLayerActivationNormalization(SequentialBlock):
@@ -20,12 +22,12 @@ class PoolLayerActivationNormalization(SequentialBlock):
 
     def __init__(
         self,
-        pool: nn.Module,
-        layer: nn.Module,
-        activation: nn.Module,
-        normalization: nn.Module,
+        pool: Layer,
+        layer: Layer,
+        activation: Layer,
+        normalization: Layer,
         order: List[str] = ["pool", "layer", "activation", "normalization"],
-        **kwargs: nn.Module,
+        **kwargs: Layer,
     ):
         super().__init__(
             pool=pool,

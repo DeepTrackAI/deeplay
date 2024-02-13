@@ -1,7 +1,14 @@
 import unittest
 import torch
 import torch.nn as nn
-from deeplay import LayerList, DeeplayModule, Layer, LayerActivation
+from deeplay import (
+    LayerList,
+    DeeplayModule,
+    Layer,
+    LayerActivation,
+    Sequential,
+    Parallel,
+)
 import itertools
 
 
@@ -52,6 +59,7 @@ class TestLayerList(unittest.TestCase):
     def test_create_list(self):
         for Wrapper in [Wrapper1, Wrapper2, Wrapper3]:
             module = Wrapper(5)
+            self.assertEqual(len(module.layers), 5, Wrapper)
             module.build()
             self.assertEqual(len(module.layers), 5, Wrapper)
             for i in range(5):
@@ -181,7 +189,7 @@ class TestLayerList(unittest.TestCase):
         nets = llist.net
         self.assertEqual(len(nets), 2)
         self.assertIsInstance(nets[0], nn.Linear)
-        self.assertIsInstance(nets[1], nn.Linear) 
+        self.assertIsInstance(nets[1], nn.Linear)
 
     def test_slice_does_not_mutate(self):
         llist = LayerList(
@@ -197,3 +205,251 @@ class TestLayerList(unittest.TestCase):
         for layer in llist[0:]:
             self.assertTrue(layer._has_built)
 
+    def test_layer_list_append_after_init(self):
+        llist = Wrapper1(3)
+        llist.layers.append(Layer(nn.Linear, 1, 1))
+        self.assertEqual(len(llist.layers), 4)
+        llist.build()
+        self.assertEqual(len(llist.layers), 4)
+
+    def test_layer_list_extend_after_init(self):
+        llist = Wrapper1(3)
+        llist.layers.extend([Layer(nn.Linear, 1, 1), Layer(nn.Linear, 1, 1)])
+        self.assertEqual(len(llist.layers), 5)
+        llist.build()
+        self.assertEqual(len(llist.layers), 5)
+
+    def test_layer_list_insert_after_init(self):
+        llist = Wrapper1(3)
+        llist.layers.insert(1, Layer(nn.Tanh))
+        self.assertEqual(len(llist.layers), 4)
+        self.assertIs(llist.layers[1].classtype, nn.Tanh)
+        llist.build()
+        self.assertEqual(len(llist.layers), 4)
+        self.assertIsInstance(llist.layers[1], nn.Tanh)
+
+    def test_layer_list_pop_after_init(self):
+        llist = Wrapper1(3)
+        llist.layers.pop()
+        self.assertEqual(len(llist.layers), 2)
+        llist.build()
+        self.assertEqual(len(llist.layers), 2)
+
+    def test_set_mapping(self):
+        class AggregationRelu(nn.Module):
+            def forward(self, x, A):
+                return nn.functional.relu(A @ x)
+
+        llist = LayerList(
+            LayerActivation(Layer(nn.Linear, 1, 16), Layer(AggregationRelu)),
+            LayerActivation(Layer(nn.Linear, 16, 16), Layer(AggregationRelu)),
+            LayerActivation(Layer(nn.Linear, 16, 1), Layer(AggregationRelu)),
+        )
+        llist.layer.set_input_map("x")
+        llist.layer.set_output_map("x")
+
+        llist.activation.set_input_map("x", "A")
+        llist.activation.set_output_map("x")
+
+        for layer in llist.layer:
+            self.assertEqual(layer.input_args, ("x",))
+            self.assertEqual(layer.output_args, {"x": 0})
+
+        for activation in llist.activation:
+            self.assertEqual(activation.input_args, ("x", "A"))
+            self.assertEqual(activation.output_args, {"x": 0})
+
+    def test_configuration_applies_in_wrapped(self):
+        class MLP(DeeplayModule):
+            def __init__(self, in_features, hidden_features, out_features):
+                self.in_features = in_features
+                self.hidden_features = hidden_features
+                self.out_features = out_features
+
+                self.blocks = LayerList()
+                self.blocks.append(
+                    LayerActivation(
+                        Layer(nn.Linear, in_features, hidden_features[0]),
+                        Layer(nn.ReLU),
+                    )
+                )
+
+                self.hidden_blocks = LayerList()
+                for i in range(len(hidden_features) - 1):
+                    self.hidden_blocks.append(
+                        LayerActivation(
+                            Layer(
+                                nn.Linear, hidden_features[i], hidden_features[i + 1]
+                            ),
+                            Layer(nn.ReLU),
+                        )
+                    )
+
+                self.blocks.extend(self.hidden_blocks)
+                self.blocks.insert(
+                    1,
+                    LayerActivation(
+                        Layer(nn.Linear, hidden_features[-1], out_features),
+                        Layer(nn.Sigmoid),
+                    ),
+                )
+
+        class TestClass(DeeplayModule):
+            def __init__(self, model=None):
+                super().__init__()
+
+                model = MLP(1, [1, 1], 1)
+                model.blocks[0].layer.configure(in_features=1, out_features=2)
+                model.blocks[1].layer.configure(in_features=1, out_features=2)
+                model.blocks[2].layer.configure(in_features=1, out_features=2)
+
+                self.model = model
+
+        testclass = TestClass()
+        testclass.build()
+        self.assertEqual(len(testclass.model.blocks), 3)
+        self.assertEqual(testclass.model.blocks[0].layer.out_features, 2)
+        self.assertEqual(testclass.model.blocks[1].layer.out_features, 2)
+        self.assertEqual(testclass.model.blocks[2].layer.out_features, 2)
+
+
+class TestSequential(unittest.TestCase):
+    def test_set_inp_out_mapping_1(self):
+        model = Sequential(
+            Layer(nn.Linear, 1, 20),
+            Layer(nn.ReLU),
+            Layer(nn.Linear, 20, 1),
+        )
+        model.set_input_map("x")
+        model.set_output_map("x")
+
+        model.build()
+
+        inp = {"x": torch.randn(10, 1)}
+        out = model(inp)
+        self.assertEqual(out["x"].shape, (10, 1))
+
+    def test_set_inp_out_mapping_2(self):
+        model = Sequential(
+            Layer(nn.Linear, 1, 20),
+            Layer(nn.ReLU),
+            Layer(nn.Linear, 20, 1),
+        )
+        model.set_input_map("x")
+        model.set_output_map("x")
+
+        model[1].set_output_map("x", x1=0, x2=0)
+
+        model.build()
+
+        inp = {"x": torch.randn(10, 1)}
+        out = model(inp)
+        self.assertEqual(out["x"].shape, (10, 1))
+        self.assertEqual(torch.all(out["x1"] == out["x2"]), True)
+
+    def test_forward_with_input_dict(self):
+        class AggregationRelu(nn.Module):
+            def forward(self, x, A):
+                return nn.functional.relu(A @ x)
+
+        model = Sequential(
+            Layer(nn.Linear, 1, 20),
+            Layer(AggregationRelu),
+            Layer(nn.Linear, 20, 1),
+        )
+
+        model[0].set_input_map("x")
+        model[0].set_output_map("x")
+
+        model[1].set_input_map("x", "A")
+        model[1].set_output_map("x")
+
+        model[2].set_input_map("x")
+        model[2].set_output_map("x")
+
+        model.build()
+
+        inp = {"x": torch.randn(10, 1), "A": torch.randn(10, 10)}
+        out = model(inp)
+        self.assertEqual(out["x"].shape, (10, 1))
+
+
+class Module_1(DeeplayModule):
+    def forward(self, x):
+        return x, x * 2
+
+
+class Module_2(nn.Module):
+    def forward(self, x):
+        return x / 2
+
+
+class TestParallel(unittest.TestCase):
+    def test_parallel_default(self):
+        model = Parallel(Module_1(), Layer(Module_2))
+        model.build()
+
+        out = model(2.0)
+        self.assertEqual(out[0], (2.0, 4.0))
+        self.assertEqual(out[1], 1.0)
+
+    def test_parallel_with_dict_inputs(self):
+        model_1 = Module_1()
+        model_1.set_input_map("x")
+        model_1.set_output_map("x1", "x2")  # adds x1, x2 to output
+
+        model_2 = Layer(Module_2)
+        model_2.set_input_map("x")
+        model_2.set_output_map("x3")  # adds x3 to output
+
+        model = Parallel(model_1, model_2)
+        model.build()
+
+        inp = {"x": 2.0}
+        out = model(inp)
+
+        self.assertEqual(out["x"], 2.0)
+        self.assertEqual(out["x1"], 2.0)
+        self.assertEqual(out["x2"], 4.0)
+        self.assertEqual(out["x3"], 1.0)
+
+    def test_parallel_with_kwargs(self):
+        model_1 = Module_1()
+        model_1.set_input_map("x")
+        model_1.set_output_map("x1", "x2")
+
+        model_2 = Layer(Module_2)
+        model_2.set_input_map("x")
+
+        model = Parallel(model_1, x3=model_2)
+        model.build()
+
+        inp = {"x": 2.0}
+        out = model(inp)
+
+        self.assertEqual(out["x"], 2.0)
+        self.assertEqual(out["x1"], 2.0)
+        self.assertEqual(out["x2"], 4.0)
+        self.assertEqual(out["x3"], 1.0)
+
+    def test_parallel_with_kwargs_2(self):
+        model_1 = Module_1()
+        model_1.set_input_map("x")
+        model_1.set_output_map("x1", "x2")
+
+        model_2 = Layer(Module_2)
+        model_2.set_input_map("x")
+        model_2.set_output_map("x3", x4=0)
+
+        model = Parallel(model_1, x5=model_2)
+        model.build()
+
+        inp = {"x": 2.0}
+        out = model(inp)
+
+        self.assertEqual(out["x"], 2.0)
+        self.assertEqual(out["x1"], 2.0)
+        self.assertEqual(out["x2"], 4.0)
+        self.assertTrue("x3" not in out)
+        self.assertTrue("x4" not in out)
+        self.assertEqual(out["x5"], 1.0)

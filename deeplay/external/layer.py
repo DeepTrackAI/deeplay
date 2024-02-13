@@ -1,5 +1,6 @@
-from typing import Any, Callable, Type, overload
+from typing import Any, Type, overload, Dict, Union, List, Optional
 from .external import External
+from functools import partial
 
 import torch.nn as nn
 
@@ -20,5 +21,5 @@ class Layer(External):
 
     def forward(self, x):
         raise RuntimeError(
-            "Unexpected call to forward. Did you forget to `create` or `build`?"
+            "Unexpected call to forward. Did you forget to call `.build()` or `.create()` on the model?"
         )

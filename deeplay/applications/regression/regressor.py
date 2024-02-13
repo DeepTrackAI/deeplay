@@ -28,11 +28,8 @@ class Regressor(Application):
         self.optimizer = optimizer or Adam(lr=1e-3)
 
         @self.optimizer.params
-        def params():
+        def params(self):
             return self.model.parameters()
-
-    def configure_optimizers(self):
-        return self.optimizer
 
     def forward(self, x):
         return self.model(x)

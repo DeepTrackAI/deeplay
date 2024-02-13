@@ -13,7 +13,7 @@ class TestComponentCNN(unittest.TestCase):
         cnn = ConvolutionalNeuralNetwork(3, [4], 1)
         cnn.build()
         cnn.create()
-        
+
         self.assertEqual(len(cnn.blocks), 2)
 
         self.assertEqual(cnn.blocks[0].layer.in_channels, 3)
@@ -39,7 +39,7 @@ class TestComponentCNN(unittest.TestCase):
         # test on a batch of 2
         x = torch.randn(2, 3, 5, 5)
         y = cnn(x)
-        self.assertEqual(y.shape, (2, 1, 5, 5)) 
+        self.assertEqual(y.shape, (2, 1, 5, 5))
 
     def test_cnn_change_depth(self):
         cnn = ConvolutionalNeuralNetwork(2, [4], 3)
@@ -88,8 +88,8 @@ class TestComponentCNN(unittest.TestCase):
         self.assertEqual(cnn.blocks[0].layer.in_channels, 3)
         self.assertEqual(cnn.blocks[0].layer.out_channels, 1)
 
-        self.assertIs(cnn.blocks[0], cnn.input)
         self.assertIs(cnn.blocks[0], cnn.output)
+        self.assertIs(cnn.blocks[0], cnn.input)
 
     def test_zero_out_channels(self):
         with self.assertRaises(ValueError):
@@ -120,3 +120,11 @@ class TestComponentCNN(unittest.TestCase):
 
         for a, b in itertools.combinations(cnn_with_pool_layer.blocks, 2):
             self.assertIsNot(a.pool, b.pool)
+
+    def test_cnn_configure(self):
+        cnn_with_pool_module = ConvolutionalNeuralNetwork(3, [4, 4, 4], 1)
+        cnn_with_pool_module.configure(pool=nn.MaxPool2d(2))
+        cnn_with_pool_module.build()
+
+        for block in cnn_with_pool_module.blocks[1:]:
+            self.assertIsInstance(block.pool, nn.MaxPool2d)
