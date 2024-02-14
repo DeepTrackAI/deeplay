@@ -182,6 +182,8 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     _setattr_recording: Set[str]
     _tag: Tuple[str, ...]
 
+    logs: Dict[str, Any]
+
     @property
     def tags(self) -> List[Tuple[str, ...]]:
         tags = [
@@ -353,13 +355,14 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         self._has_built = False
         self._setattr_recording = set()
 
+        self.logs = {}
+
     def __init__(self, *args, **kwargs):  # type: ignore
         # We don't want to call the super().__init__ here because it is called
         # in the __pre_init__ method.
         ...
 
-    def __post_init__(self):
-        ...
+    def __post_init__(self): ...
 
     @after_init
     def set_input_map(self, *args: str, **kwargs: str):
@@ -599,6 +602,24 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
     def new(self):
         return copy.deepcopy(self)
+
+    @after_build
+    def log_output(self, name: str):
+        root = self._root_module[0]
+
+        def forward_hook(module, input, output):
+            root.logs[name] = output
+
+        self.register_forward_hook(forward_hook)
+
+    @after_build
+    def log_input(self, name: str):
+        root = self._root_module[0]
+
+        def forward_hook(module, input):
+            root.logs[name] = input
+
+        self.register_forward_pre_hook(forward_hook)
 
     def register_before_build_hook(self, func):
         """
@@ -945,11 +966,11 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 class Selection(DeeplayModule):
     def __init__(self, model, selections):
         super().__init__()
-        self.model = model
+        self.model = (model,)
         self.selections = selections
 
     def __getitem__(self, selector):
-        return self.model.getitem_with_selections(selector, self.selections.copy())
+        return self.model[0].getitem_with_selections(selector, self.selections.copy())
 
     def __repr__(self):
         s = ""
@@ -968,6 +989,22 @@ class Selection(DeeplayModule):
     def configure(self, *args, **kwargs):
         for selection in self.selections:
             for item in selection:
-                for name, module in self.model.named_modules():
+                for name, module in self.model[0].named_modules():
                     if name == ".".join(item):
                         module.configure(*args, **kwargs)
+
+    def log_output(self, key):
+        for selection in self.selections:
+            for item in selection:
+                for name, module in self.model[0].named_modules():
+                    if name == ".".join(item):
+                        module.log_output(key)
+                        return
+
+    def log_input(self, key):
+        for selection in self.selections:
+            for item in selection:
+                for name, module in self.model[0].named_modules():
+                    if name == ".".join(item):
+                        module.log_input(key)
+                        return
