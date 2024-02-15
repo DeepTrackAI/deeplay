@@ -322,6 +322,10 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
         return self.root_module._user_config
 
+    @property
+    def device(self) -> torch.device:
+        return next(self.parameters()).device
+
     def __pre_init__(self, *args, _args=(), **kwargs):
         super().__init__()
         self._root_module = (self,)
