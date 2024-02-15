@@ -1,9 +1,11 @@
 import inspect
 from typing import Any, Dict, Tuple, List, Set, Literal, Optional
 
+import torch
 import torch.nn as nn
 import copy
 import inspect
+import numpy as np
 
 from .meta import ExtendedConstructorMeta, not_top_level
 from .decorators import after_init, after_build
@@ -358,8 +360,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         # in the __pre_init__ method.
         ...
 
-    def __post_init__(self):
-        ...
+    def __post_init__(self): ...
 
     @after_init
     def set_input_map(self, *args: str, **kwargs: str):
@@ -599,6 +600,87 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
     def new(self):
         return copy.deepcopy(self)
+
+    def predict(self, x, *args, batch_size=32, device=None, output_device=None):
+        """
+        Predicts the output of the module for the given input.
+
+        This method is a wrapper around the `forward` method, which is used to predict the output of the module
+        for the given input. It is particularly useful for making predictions on large datasets, as it allows
+        for the specification of a batch size for processing the input data.
+
+        Parameters
+        ----------
+        x : array-like
+            The input data for which to predict the output. Should be an array-like object with the same length
+            as the input data.
+        *args : Any
+            Positional arguments for the input data. Should have the same length as the input data.
+        batch_size : int, optional
+            The batch size for processing the input data. Defaults to 32.
+        device : str, Device, optional
+            The device on which to perform the prediction. If None, the model's device is used.
+            Defaults to None.
+        output_device : str, Device, optional
+            The device on which to store the output. If None, the model's device is used.
+            Defaults to None.
+
+        Returns
+        -------
+        Any
+            The output of the module for the given input data.
+
+        Example Usage
+        -------------
+        To predict the output of a module for the given input data:
+        ```
+        module = ExampleModule()
+        output = module.predict(input_data, batch_size=64)
+        ```
+        """
+        if args:
+            for arg in args:
+                assert len(arg) == len(x), "All inputs must have the same length."
+        if len(x) < batch_size:
+            return self.forward(x, *args)
+
+        if device is None:
+            device = self.device
+        if output_device is None:
+            output_device = device
+
+        output_containers = []
+        with torch.no_grad():
+            for idx_0 in range(0, len(x), batch_size):
+                idx_1 = min(idx_0 + batch_size, len(x))
+                batch = [item[idx_0:idx_1] for item in [x, *args]]
+                for i, item in enumerate(batch):
+                    if not isinstance(item, torch.Tensor):
+                        if isinstance(item, np.ndarray):
+                            batch[i] = torch.from_numpy(item).to(device)
+                        else:
+                            batch[i] = torch.tensor(item, device=device)
+                    else:
+                        batch[i] = item.to(device)
+
+                # ensure that all inputs are tuples
+                res = self.forward(*batch)
+                if not isinstance(res, tuple):
+                    res = (res,)
+                for i, item in enumerate(res):
+                    output_container = (
+                        output_containers[i] if i < len(output_containers) else None
+                    )
+                    if output_container is None:
+                        output_container = torch.empty(
+                            (len(x), *item.shape[1:]), device=output_device
+                        )
+                        output_containers.append(output_container)
+                    output_container[idx_0:idx_1] = item.to(output_device)
+
+        if len(output_containers) == 1:
+            return output_containers[0]
+        return tuple(output_containers)
 
     def register_before_build_hook(self, func):
         """
