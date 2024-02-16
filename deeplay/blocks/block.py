@@ -19,7 +19,7 @@ T = TypeVar("T")
 class Block(DeeplayModule):
     @property
     def configurables(self):
-        return super().configurables.union(self.kwargs.keys())
+        return super().configurables.union(self.kwargs.keys()).union(self.kwargs.get("order", []))
 
     def __init__(self, **kwargs: DeeplayModule):
         super().__init__()

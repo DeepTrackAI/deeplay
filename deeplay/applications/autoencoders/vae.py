@@ -10,9 +10,13 @@ import torch.nn as nn
 
 
 class VariationalAutoEncoder(Application):
+    input_size: tuple
+    channels: list
+    latent_dim: int
     encoder: torch.nn.Module
     decoder: torch.nn.Module
-    loss: torch.nn.Module
+    beta: float
+    reconstruction_loss: torch.nn.Module
     metrics: list
     optimizer: Optimizer
 
@@ -24,6 +28,7 @@ class VariationalAutoEncoder(Application):
         decoder: Optional[nn.Module] = None,
         reconstruction_loss: Optional[Callable] = nn.BCELoss(reduction="sum"),
         latent_dim=int,
+        beta=1,
         optimizer=None,
         **kwargs,
     ):
@@ -44,6 +49,7 @@ class VariationalAutoEncoder(Application):
         self.decoder = decoder or self._get_default_decoder(channels[::-1], red_size)
         self.reconstruction_loss = reconstruction_loss or nn.BCELoss(reduction="sum")
         self.latent_dim = latent_dim
+        self.beta = beta
 
         super().__init__(**kwargs)
 
@@ -96,7 +102,8 @@ class VariationalAutoEncoder(Application):
         x, y = self.train_preprocess(batch)
         y_hat, mu, log_var = self(x)
         rec_loss, KLD = self.compute_loss(y_hat, y, mu, log_var)
-        loss = {"rec_loss": rec_loss, "KL": KLD}
+        tot_loss = rec_loss + self.beta * KLD
+        loss = {"rec_loss": rec_loss, "KL": KLD, "total_loss": tot_loss}
         for name, v in loss.items():
             self.log(
                 f"train_{name}",
@@ -106,7 +113,7 @@ class VariationalAutoEncoder(Application):
                 prog_bar=True,
                 logger=True,
             )
-        return sum(loss.values())
+        return tot_loss
 
     def compute_loss(self, y_hat, y, mu, log_var):
         rec_loss = self.reconstruction_loss(y_hat, y)

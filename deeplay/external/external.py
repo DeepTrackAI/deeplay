@@ -101,8 +101,10 @@ class External(DeeplayModule):
                 kwargs.pop(key)
 
         obj = self.classtype(*args, **kwargs)
-        self._execute_mapping_if_valid(obj)
 
+        if not isinstance(obj, DeeplayModule):
+            obj._root_module = self._root_module
+        self._execute_mapping_if_valid(obj)
         self._run_hooks("after_build", obj)
         return obj
 
@@ -149,12 +151,10 @@ class External(DeeplayModule):
         return kwargs
 
     @overload
-    def configure(self, classtype, **kwargs) -> None:
-        ...
+    def configure(self, classtype, **kwargs) -> None: ...
 
     @overload
-    def configure(self, **kwargs: Any) -> None:
-        ...
+    def configure(self, **kwargs: Any) -> None: ...
 
     def configure(self, classtype: Optional[type] = None, **kwargs):
         if classtype is not None:
