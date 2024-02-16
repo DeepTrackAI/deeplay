@@ -1,147 +1,132 @@
-import torch
+from typing import List, Optional, Literal, Any, Sequence, Type, overload, Union
+
+from .. import DeeplayModule, Layer, LayerList, RecurrentBlock
+
 import torch.nn as nn
-from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
-from ..core.templates import Layer
-from ..core.core import DeeplayModule
-from ..core.config import Config, Ref
 
-class BaseRNN(DeeplayModule):
-    """Base RNN module.
+class RecurrentDropout(nn.Module):
+    def __init__(self, p=0.0):
+        super(RecurrentDropout, self).__init__()
+        self.p = p
+        self.dropout = nn.Dropout(p=self.p)
 
-    This module serves as a base for various RNN architectures.
+    def forward(self, x):
+        if isinstance(x[0],nn.utils.rnn.PackedSequence):
+            return nn.utils.rnn.PackedSequence(self.dropout(x[0].data),x[0].batch_sizes),x[1]
+        return self.dropout(x[0]),x[1]
 
-    Configurables
-    -------------
-    - input_size (int): The number of expected features in the input `x`
-    - hidden_size (int): The number of features in the hidden state `h`
-    - num_layers (int): Number of recurrent layers (Default: 1)
-    - dropout (float): If non-zero, introduces a `Dropout` layer on the outputs of each RNN layer except the last layer (Default: 0)
-    - rnn_type (str): Type of RNN to use ('LSTM', 'GRU') (Default: 'LSTM')
 
-    Constraints
-    -----------
-    - input shape: (batch_size, seq_len, input_size)
-    - output shape: (batch_size, seq_len, hidden_size * num_directions)
+class RecurrentNeuralNetwork(DeeplayModule):
+    in_features: Optional[int]
+    hidden_features: Sequence[Optional[int]]
+    out_features: int
+    blocks: LayerList[RecurrentBlock]
 
-    Evaluation
-    ----------
-    >>> output, hidden = self.rnn(x)
-    >>> return output, hidden
+    @property
+    def input(self):
+        """Return the input layer of the network. Equivalent to `.blocks[0]`."""
+        return self.blocks[0]
 
-    Examples
-    --------
-    >>> # With default configuration
-    >>> rnn = BaseRNN(Config().update(input_size=my_input_size, hidden_size=my_hidden_size))
-    >>> # With custom number of layers and dropout
-    >>> rnn = BaseRNN(Config().update(input_size=my_input_size, hidden_size=my_hidden_size, num_layers=2, dropout=0.1, rnn_type='GRU'))
+    @property
+    def hidden(self):
+        """Return the hidden layers of the network. Equivalent to `.blocks[:-1]`"""
+        return self.blocks[:-1]
 
-    Return Values
-    -------------
-    The forward method returns a tuple of two elements:
-    - outputs: the output features `h` from the last layer of the RNN, for each timestep
-    - hidden: the hidden state for the last timestep for each layer, `h_n`
+    @property
+    def output(self):
+        """Return the last layer of the network. Equivalent to `.blocks[-1]`."""
+        return self.blocks[-1]
 
-    Additional Notes
-    ----------------
-    The `Config` class is used for configuring the RNN. For more details refer to [Config Documentation](#).
-    """
+    @property
+    def layer(self) -> LayerList[Layer]:
+        """Return the layers of the network. Equivalent to `.blocks.layer`."""
+        return self.blocks.layer
 
-    @staticmethod
-    def defaults():
-        return (
-            Config()
-            .input_size(None)  # Expected to be set by user
-            .hidden_size(256)
-            .num_layers(1)
-            .dropout(0.1)
-            .rnn_type('LSTM')  # Can be 'LSTM' or 'GRU'
-        )
+    @property
+    def activation(self) -> LayerList[Layer]:
+        """Return the activations of the network. Equivalent to `.blocks.activation`."""
+        return self.blocks.activation
 
-    def __init__(self, config):
-        super().__init__()
-        self.config = config
-        self.input_size = config.get('input_size')
-        self.hidden_size = config.get('hidden_size', 256)
-        self.num_layers = config.get('num_layers', 1)
-        self.dropout = config.get('dropout', 0)
-        self.rnn_type = config.get('rnn_type', 'LSTM')
-
-        rnn_class = nn.LSTM if self.rnn_type == 'LSTM' else nn.GRU
-        self.rnn = rnn_class(
-            self.input_size,
-            self.hidden_size,
-            self.num_layers,
-            dropout=self.dropout,
-        )
-
-    def forward(self, x, lengths=None):
-        if lengths is not None:
-            x = pack_padded_sequence(x, lengths)
-        outputs, hidden = self.rnn(x)
-        if lengths is not None:
-            outputs, _ = pad_packed_sequence(outputs)
-        return outputs, hidden
-
-class EncoderRNN(BaseRNN):
-    """Encoder RNN module.
-
-    This module extends the BaseRNN module to create an RNN encoder with GRU units.
-
-    Configurables
-    -------------
-    Inherits all configurables from BaseRNN, with the addition of:
-    - bidirectional (bool): If `True`, becomes a bidirectional RNN (Default: True)
-    - Embedding (nn.Embedding): Embedding layer for the input (Default: None)
+    @property
+    def normalization(self) -> LayerList[Layer]:
+        """Return the normalizations of the network. Equivalent to `.blocks.normalization`."""
+        return self.blocks.normalization
     
-    Constraints
-    -----------
-    Inherits constraints from BaseRNN, with the output shape adjusted for bidirectionality if enabled.
+    @property
+    def dropout(self) -> LayerList[Layer]:
+        """Return the dropout of the network. Equivalent to `.blocks.dropout`."""
+        return self.blocks.dropout
 
-    Evaluation
-    ----------
-    Inherits the evaluation process from BaseRNN, with the addition of summing the outputs from both directions if bidirectional.
+    def __init__(
+        self,
+        in_features: Optional[int],
+        hidden_features: Sequence[Optional[int]],
+        out_features: int,
+    ):
+        super().__init__()
 
-    Examples
-    --------
-    >>> # With default configuration
-    >>> encoder = EncoderRNN(Config().update(input_size=my_input_size, hidden_size=my_hidden_size, embedding=my_embedding))
-    >>> # With custom number of layers, dropout, and bidirectionality
-    >>> encoder = EncoderRNN(Config().update(input_size=my_input_size, hidden_size=my_hidden_size, num_layers=2, dropout=0.1, rnn_type='GRU', bidirectional=True))
+        self.in_features = in_features
+        self.hidden_features = hidden_features
+        self.out_features = out_features
 
-    Additional Notes
-    ----------------
-    Inherits additional notes from BaseRNN, with the note that the `embedding` layer should be provided and initialized by the user.
-    """
+        if in_features is None:
+            raise ValueError("in_features must be specified, got None")
+        elif in_features <= 0:
+            raise ValueError(f"in_channels must be positive, got {in_features}")
 
-    @staticmethod
-    def defaults():
-        return (
-            BaseRNN.defaults()
-            .bidirectional(True)
-            .embedding(None)  # Expected to be set by user
-        )
-
-    def __init__(self, config):
-        super().__init__(config)
-        self.bidirectional = config.get('bidirectional', True)
-        self.embedding = config.get('embedding')
-        if self.embedding is None:
-            raise ValueError("An embedding layer must be provided to EncoderRNN.")
-        # Adjust the RNN construction for bidirectionality
-        self.rnn = nn.GRU(
-            self.input_size,
-            self.hidden_size,
-            self.num_layers,
-            dropout=(0 if self.num_layers == 1 else self.dropout),
-            bidirectional=self.bidirectional
+        if out_features <= 0:
+            raise ValueError(
+                f"Number of output features must be positive, got {out_features}"
             )
 
-    def forward(self, input_seq, input_lengths, hidden=None):
-        embedded = self.embedding(input_seq)
-        packed = pack_padded_sequence(embedded, input_lengths)
-        outputs, hidden = self.rnn(packed, hidden)
-        outputs, _ = pad_packed_sequence(outputs)
-        if self.bidirectional:
-            # Sum bidirectional RNN outputs
-            outputs = outputs[:, :, :self.hidden_size] + outputs[:, :, self.hidden_size:]
-        return outputs, hidden
+        if any(h <= 0 for h in hidden_features):
+            raise ValueError(
+                f"all hidden_channels must be positive, got {hidden_features}"
+            )
+
+        f_out = in_features
+
+        self.blocks = LayerList()
+        for c_in, c_out in zip(
+            [in_features, *hidden_features], [*hidden_features, out_features]
+        ):
+            """Torch automatically overwrites dropout==0 for RNN with num_layers=1. To allow for hidden layers of different size, we include dropout layers separately. """
+            self.blocks.append(
+                RecurrentBlock(
+                    Layer(nn.RNN, c_in, c_out), 
+                    Layer(nn.Identity, num_features=f_out),
+                    Layer(nn.Identity, num_features=f_out),
+                    Layer(RecurrentDropout,0.0)
+                )
+            )
+
+    def forward(self, x):
+        for block in self.blocks:
+            x, _ = block(x)
+        return x
+
+    @overload
+    def configure(
+        self,
+        /,
+        in_features: Optional[int] = None,
+        hidden_features: Optional[List[int]] = None,
+        out_features: Optional[int] = None,
+        out_activation: Union[Type[nn.Module], nn.Module, None] = None,
+    ) -> None:
+        ...
+
+    @overload
+    def configure(
+        self,
+        name: Literal["blocks"],
+        index: Union[int, slice, List[Union[int, slice]], None] = None,
+        order: Optional[Sequence[str]] = None,
+        layer: Optional[Type[nn.Module]] = None,
+        activation: Optional[Type[nn.Module]] = None,
+        normalization: Optional[Type[nn.Module]] = None,
+        **kwargs: Any,
+    ) -> None:
+        ...
+
+    configure = DeeplayModule.configure
