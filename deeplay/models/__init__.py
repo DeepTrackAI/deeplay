@@ -1,1 +1,1 @@
-from .RecurrentModel import RecurrentModel
+from .recurrentmodel import RecurrentModel
