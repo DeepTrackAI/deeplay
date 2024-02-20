@@ -609,8 +609,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     def new(self):
         return copy.deepcopy(self)
 
-
-    def predict(self, x, *args, batch_size=32, device=None, output_device=None):
+    def predict(self, x, *args, batch_size=32, device=None, output_device=None) -> torch.Tensor:
         """
         Predicts the output of the module for the given input.
 
@@ -668,7 +667,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
                         if isinstance(item, np.ndarray):
                             batch[i] = torch.from_numpy(item).to(device)
                         else:
-                            batch[i] = torch.tensor(item, device=device)
+                            batch[i] = torch.stack(item).to(device)
                     else:
                         batch[i] = item.to(device)
 
@@ -690,7 +689,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         if len(output_containers) == 1:
             return output_containers[0]
         return tuple(output_containers)
-      
+
     @after_build
     def log_output(self, name: str):
         root = self._root_module[0]
@@ -708,7 +707,6 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
             root.logs[name] = input
 
         self.register_forward_pre_hook(forward_hook)
-
 
     def register_before_build_hook(self, func):
         """

@@ -208,13 +208,11 @@ class Application(DeeplayModule, L.LightningModule):
 
     def _provide_paramaters_if_has_none(self, optimizer):
         if isinstance(optimizer, Optimizer):
-            if "params" in optimizer.kwargs:
-                return
-            else:
+            print("optimizer is an instance of Optimizer")
 
-                @optimizer.params
-                def f(self):
-                    return self.parameters()
+            @optimizer.params
+            def f(self):
+                return self.parameters()
 
     def named_children(self) -> Iterator[Tuple[str, Module]]:
         name_child_iterator = list(super().named_children())
@@ -231,3 +229,10 @@ class Application(DeeplayModule, L.LightningModule):
         ]
 
         yield from (not_optimizers + optimizers)
+
+    def create_optimizer_with_params(self, optimizer, params):
+        if isinstance(optimizer, Optimizer):
+            optimizer.configure(params=params)
+            return optimizer.build()
+        else:
+            return optimizer
