@@ -67,6 +67,7 @@ class Application(DeeplayModule, L.LightningModule):
 
     def configure_optimizers(self):
         try:
+
             return self.optimizer.create()
 
         except AttributeError as e:
@@ -208,7 +209,6 @@ class Application(DeeplayModule, L.LightningModule):
 
     def _provide_paramaters_if_has_none(self, optimizer):
         if isinstance(optimizer, Optimizer):
-            print("optimizer is an instance of Optimizer")
 
             @optimizer.params
             def f(self):
@@ -233,6 +233,6 @@ class Application(DeeplayModule, L.LightningModule):
     def create_optimizer_with_params(self, optimizer, params):
         if isinstance(optimizer, Optimizer):
             optimizer.configure(params=params)
-            return optimizer.build()
+            return optimizer.create()
         else:
             return optimizer
