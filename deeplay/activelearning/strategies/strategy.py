@@ -35,6 +35,7 @@ class ActiveLearningStrategy(Application):
         # such that we can reset the model to its initial state
         # if needed.
         self.initial_model_state = self.state_dict()
+
         return super().on_train_start()
 
     def reset_model(self):
@@ -44,6 +45,7 @@ class ActiveLearningStrategy(Application):
         after querying new samples."""
         assert self.initial_model_state is not None
         self.load_state_dict(self.initial_model_state)
+        # self.trainer.strategy.setup_optimizers(self.trainer)
 
     def query(self, n):
         """Query the strategy for n samples to annotate."""
@@ -72,7 +74,7 @@ class ActiveLearningStrategy(Application):
     def query_and_update(self, n):
         """Query the strategy for n samples and update the dataset."""
         self.to(self.trainer.strategy.root_device)
-        
+
         indices = self.query(n)
         if isinstance(indices, tuple):
             train_indices, val_indices = indices
