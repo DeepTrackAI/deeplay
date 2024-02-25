@@ -48,7 +48,10 @@ class ActiveLearningDataset(torch.utils.data.Dataset):
     def get_unannotated_labels(self):
         data = self.get_unannotated_data()
         Y = [y for _, y in data]
-        return torch.stack(Y)
+        try:
+            return torch.stack(Y)
+        except TypeError:
+            return torch.LongTensor(Y)
 
     def get_unannotated_data(self):
         return torch.utils.data.Subset(self.dataset, np.where(~self.annotated)[0])
