@@ -20,9 +20,9 @@ class AdversarialActiveLearning(ActiveLearningStrategy):
         val_pool: ActiveLearningDataset = None,
         test: torch.utils.data.Dataset = None,
         criteria: ActiveLearningCriteria = Margin(),
-        uncertainty_weight: float = 1.0,
-        discriminator_weight: float = 0.5,
-        gradient_penalty_weight: float = 1.0,
+        uncertainty_weight: float = 0.8,
+        discriminator_weight: float = 0.2,
+        gradient_penalty_weight: float = 0.1,
         batch_size: int = 32,
         val_batch_size: int = None,
         test_batch_size: int = None,
@@ -105,7 +105,7 @@ class AdversarialActiveLearning(ActiveLearningStrategy):
         unlab_disc = self.discriminator_head(unlb_z.detach()).pow(2).mean()
         lab_disc = (self.discriminator_head(lb_z.detach()) - 1).pow(2).mean()
         dis_loss = (
-            unlab_disc + lab_disc - gradient_penalty * self.gradient_penalty_weight
+            unlab_disc + lab_disc + gradient_penalty * self.gradient_penalty_weight
         )
         opt_dis.zero_grad()
         dis_loss.backward()
