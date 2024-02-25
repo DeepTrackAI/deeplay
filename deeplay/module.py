@@ -245,9 +245,10 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
                 # warn if two hooks have the same timestamp
                 if len(all_hooks[key]) > 1:
                     for i in range(len(all_hooks[key]) - 1):
-                        if (
-                            all_hooks[key][i].timestamp
-                            == all_hooks[key][i + 1].timestamp
+                        if all_hooks[key][i].timestamp == all_hooks[key][
+                            i + 1
+                        ].timestamp and (
+                            all_hooks[key][i] is not all_hooks[key][i + 1]
                         ):
                             import warnings
 
@@ -719,15 +720,14 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
     def initialize(self, initializer):
         for module in self.modules():
-            if isinstance(module, nn.Module):
-                self._initialize_after_build(module, initializer)
+            if isinstance(module, DeeplayModule):
+                module._initialize_after_build(initializer)
+            else:
+                initializer.initialize(module)
 
     @after_build
-    def _initialize_after_build(self, module, initializer):
-        if hasattr(module, "weight") and module.weight is not None:
-            initializer(module.weight)
-        if hasattr(module, "bias") and module.bias is not None:
-            initializer(module.bias)
+    def _initialize_after_build(self, initializer):
+        initializer.initialize(self)
 
     @after_build
     def _validate_after_build(self):
@@ -1023,7 +1023,10 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     def _run_hooks(self, hook_name, instance=None):
         if instance is None:
             instance = self
-        for hook in self.__hooks__[hook_name]:
+        hooks = self.__hooks__[hook_name]
+        # remove duplicates based on id
+        hooks = list({id(hook): hook for hook in hooks}.values())
+        for hook in hooks:
             hook(instance)
 
     def __construct__(self):
