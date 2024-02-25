@@ -22,14 +22,13 @@ class AdversarialActiveLearning(ActiveLearningStrategy):
         criteria: ActiveLearningCriteria = Margin(),
         uncertainty_weight: float = 1.0,
         discriminator_weight: float = 0.5,
-        gradient_penalty_weight: float = 0.1,
+        gradient_penalty_weight: float = 1.0,
         batch_size: int = 32,
         val_batch_size: int = None,
         test_batch_size: int = None,
         backbone_optimizer: torch.optim.Optimizer = None,
         classification_head_optimizer: torch.optim.Optimizer = None,
         discriminator_head_optimizer: torch.optim.Optimizer = None,
-        
         **kwargs
     ):
         super().__init__(
@@ -41,7 +40,7 @@ class AdversarialActiveLearning(ActiveLearningStrategy):
             test_batch_size,
             **kwargs
         )
-        
+
         self.backbone = backbone
         self.classification_head = classification_head
         self.discriminator_head = discriminator_head
@@ -53,9 +52,12 @@ class AdversarialActiveLearning(ActiveLearningStrategy):
         self.automatic_optimization = False
 
         self.backbone_optimizer = backbone_optimizer or Adam(lr=1e-3)
-        self.classification_head_optimizer = classification_head_optimizer or Adam(lr=1e-3)
-        self.discriminator_head_optimizer = discriminator_head_optimizer or Adam(lr=1e-3)
-
+        self.classification_head_optimizer = classification_head_optimizer or Adam(
+            lr=1e-3
+        )
+        self.discriminator_head_optimizer = discriminator_head_optimizer or Adam(
+            lr=1e-3
+        )
 
     def query_strategy(self, pool, n):
         """Implement the query strategy here."""
@@ -67,7 +69,10 @@ class AdversarialActiveLearning(ActiveLearningStrategy):
         dis_score = self.discriminator_head.predict(latents).flatten()
 
         uncertainly_score = self.uncertainty_criteria.score(probs)
-        total_score = self.uncertainty_weight * uncertainly_score + self.discriminator_weight * dis_score
+        total_score = (
+            self.uncertainty_weight * uncertainly_score
+            + self.discriminator_weight * dis_score
+        )
 
         return total_score.sort()[1][:n]
 
@@ -99,7 +104,9 @@ class AdversarialActiveLearning(ActiveLearningStrategy):
 
         unlab_disc = self.discriminator_head(unlb_z.detach()).pow(2).mean()
         lab_disc = (self.discriminator_head(lb_z.detach()) - 1).pow(2).mean()
-        dis_loss = unlab_disc + lab_disc - gradient_penalty * self.gradient_penalty_weight
+        dis_loss = (
+            unlab_disc + lab_disc - gradient_penalty * self.gradient_penalty_weight
+        )
         opt_dis.zero_grad()
         dis_loss.backward()
         opt_dis.step()
@@ -123,7 +130,14 @@ class AdversarialActiveLearning(ActiveLearningStrategy):
             prog_bar=True,
             logger=True,
         )
-        self.log("gradient_penalty", gradient_penalty, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        self.log(
+            "gradient_penalty",
+            gradient_penalty,
+            on_step=True,
+            on_epoch=True,
+            prog_bar=True,
+            logger=True,
+        )
 
         return wae_loss
 
@@ -139,23 +153,21 @@ class AdversarialActiveLearning(ActiveLearningStrategy):
 
     def configure_optimizers(self):
         import torch.optim as optim
+
         backbone_optimizer = self.create_optimizer_with_params(
-            self.backbone_optimizer, 
-            self.backbone.parameters()
+            self.backbone_optimizer, self.backbone.parameters()
         )
         classification_head_optimizer = self.create_optimizer_with_params(
-            self.classification_head_optimizer, 
-            self.classification_head.parameters()
+            self.classification_head_optimizer, self.classification_head.parameters()
         )
         discriminator_head_optimizer = self.create_optimizer_with_params(
-            self.discriminator_head_optimizer, 
-            self.discriminator_head.parameters()
+            self.discriminator_head_optimizer, self.discriminator_head.parameters()
         )
 
         return [
             backbone_optimizer,
             classification_head_optimizer,
-            discriminator_head_optimizer
+            discriminator_head_optimizer,
         ]
 
     def L2_upper(self, probas):
