@@ -22,7 +22,7 @@ class AdversarialActiveLearning(ActiveLearningStrategy):
         criteria: ActiveLearningCriteria = Margin(),
         uncertainty_weight: float = 0.8,
         discriminator_weight: float = 0.2,
-        gradient_penalty_weight: float = 0.1,
+        gradient_penalty_weight: float = 0.02,
         batch_size: int = 32,
         val_batch_size: int = None,
         test_batch_size: int = None,
