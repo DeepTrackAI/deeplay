@@ -1,1 +1,1 @@
-from .adversarial import AdversarialActiveLearning
+from .adversarial import AdversarialStrategy

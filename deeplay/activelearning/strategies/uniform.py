@@ -1,6 +1,5 @@
-from deeplay.activelearning.strategies.strategy import ActiveLearningStrategy
-from deeplay.activelearning.data import ActiveLearningDataset, JointDataset
-from deeplay.activelearning.criterion import ActiveLearningCriteria
+from deeplay.activelearning.strategies.strategy import Strategy
+from deeplay.activelearning.data import ActiveLearningDataset
 from deeplay.module import DeeplayModule
 
 import numpy as np
@@ -8,7 +7,7 @@ import torch
 import torch.nn.functional as F
 
 
-class UniformActiveLearning(ActiveLearningStrategy):
+class UniformStrategy(Strategy):
 
     def __init__(
         self,

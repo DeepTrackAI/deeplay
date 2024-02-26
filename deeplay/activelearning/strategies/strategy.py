@@ -5,7 +5,7 @@ from deeplay.activelearning.data import ActiveLearningDataset
 import torch
 
 
-class ActiveLearningStrategy(Application):
+class Strategy(Application):
 
     def __init__(
         self,

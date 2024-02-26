@@ -1,7 +1,7 @@
 from .data import ActiveLearningDataset, JointDataset
 from .strategies import *
 from .criterion import (
-    ActiveLearningCriteria,
+    ActiveLearningCriterion,
     LeastConfidence,
     Margin,
     Entropy,

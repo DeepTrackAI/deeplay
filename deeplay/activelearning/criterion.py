@@ -1,13 +1,13 @@
 import torch
 
 
-class ActiveLearningCriteria:
+class ActiveLearningCriterion:
 
     def score(self, probabilities):
         raise NotImplementedError
 
     def __add__(self, other):
-        if isinstance(other, ActiveLearningCriteria):
+        if isinstance(other, ActiveLearningCriterion):
             return SumCriterion(self, other)
         elif isinstance(other, (float, int, bool)):
             return SumCriterion(self, Constant(other))
@@ -18,7 +18,7 @@ class ActiveLearningCriteria:
         return self.__add__(other)
 
     def __mul__(self, other):
-        if isinstance(other, ActiveLearningCriteria):
+        if isinstance(other, ActiveLearningCriterion):
             return ProductCriterion(self, other)
         elif isinstance(other, (float, int, bool)):
             return ProductCriterion(self, Constant(other))
@@ -29,7 +29,7 @@ class ActiveLearningCriteria:
         return self.__mul__(other)
 
     def __sub__(self, other):
-        if isinstance(other, ActiveLearningCriteria):
+        if isinstance(other, ActiveLearningCriterion):
             return SumCriterion(self, other * -1)
         elif isinstance(other, (float, int, bool)):
             return SumCriterion(self, Constant(-other))
@@ -37,7 +37,7 @@ class ActiveLearningCriteria:
             raise NotImplementedError
 
     def __div__(self, other):
-        if isinstance(other, ActiveLearningCriteria):
+        if isinstance(other, ActiveLearningCriterion):
             return FractionCriterion(self, other)
         elif isinstance(other, (float, int, bool)):
             return FractionCriterion(self, other)
@@ -45,7 +45,7 @@ class ActiveLearningCriteria:
             raise NotImplementedError
 
     def __rdiv__(self, other):
-        if isinstance(other, ActiveLearningCriteria):
+        if isinstance(other, ActiveLearningCriterion):
             return FractionCriterion(other, self)
         elif isinstance(other, (float, int, bool)):
             return FractionCriterion(Constant(other), self)
@@ -53,41 +53,43 @@ class ActiveLearningCriteria:
             raise NotImplementedError
 
 
-class Constant(ActiveLearningCriteria):
+class Constant(ActiveLearningCriterion):
     def __init__(self, value):
         self.value = value
 
     def score(self, probabilities):
-        return torch.full((probabilities.shape[0],), self.value).to(probabilities.device)
+        return torch.full((probabilities.shape[0],), self.value).to(
+            probabilities.device
+        )
 
 
-class LeastConfidence(ActiveLearningCriteria):
+class LeastConfidence(ActiveLearningCriterion):
     def score(self, probabilities):
         return torch.max(probabilities, dim=1).values
 
 
-class Margin(ActiveLearningCriteria):
+class Margin(ActiveLearningCriterion):
     def score(self, probabilities):
         sorted_probs, _ = torch.sort(probabilities, dim=1, descending=True)
         return sorted_probs[:, 0] - sorted_probs[:, 1]
 
 
-class Entropy(ActiveLearningCriteria):
+class Entropy(ActiveLearningCriterion):
     def score(self, probabilities):
         return -torch.sum(probabilities * torch.log(probabilities), dim=1)
 
 
-class L1Upper(ActiveLearningCriteria):
+class L1Upper(ActiveLearningCriterion):
     def score(self, probabilities):
         return torch.log(probabilities).sum(dim=1) * -1
 
 
-class L2Upper(ActiveLearningCriteria):
+class L2Upper(ActiveLearningCriterion):
     def score(self, probabilities):
         return torch.norm(torch.log(probabilities), dim=1)
 
 
-class SumCriterion(ActiveLearningCriteria):
+class SumCriterion(ActiveLearningCriterion):
     def __init__(self, *criterion):
         self.criterion = criterion
 
@@ -98,7 +100,7 @@ class SumCriterion(ActiveLearningCriteria):
         return p
 
 
-class ProductCriterion(ActiveLearningCriteria):
+class ProductCriterion(ActiveLearningCriterion):
     def __init__(self, *criterion):
         self.criterion = criterion
 
@@ -109,12 +111,12 @@ class ProductCriterion(ActiveLearningCriteria):
         return p
 
 
-class FractionCriterion(ActiveLearningCriteria):
+class FractionCriterion(ActiveLearningCriterion):
     def __init__(self, *criterion):
-        self.criteria_1 = criterion[0]
-        self.criteria_2 = criterion[1]
+        self.criterion_1 = criterion[0]
+        self.criterion_2 = criterion[1]
 
     def score(self, probabilities):
-        return self.criteria_1.score(probabilities) / self.criteria_2.score(
+        return self.criterion_1.score(probabilities) / self.criterion_2.score(
             probabilities
         )

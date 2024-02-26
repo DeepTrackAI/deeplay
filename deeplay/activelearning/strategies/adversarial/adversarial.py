@@ -1,8 +1,8 @@
 from typing import Optional
 
-from deeplay.activelearning.strategies.strategy import ActiveLearningStrategy
+from deeplay.activelearning.strategies.strategy import Strategy
 from deeplay.activelearning.data import ActiveLearningDataset, JointDataset
-from deeplay.activelearning.criterion import ActiveLearningCriteria, Margin
+from deeplay.activelearning.criterion import ActiveLearningCriterion, Margin
 from deeplay.module import DeeplayModule
 from deeplay.external.optimizers import Adam
 
@@ -11,7 +11,7 @@ import torch
 import torch.nn.functional as F
 
 
-class AdversarialActiveLearning(ActiveLearningStrategy):
+class AdversarialStrategy(Strategy):
 
     def __init__(
         self,
@@ -21,7 +21,7 @@ class AdversarialActiveLearning(ActiveLearningStrategy):
         train_pool: ActiveLearningDataset,
         val_pool: Optional[ActiveLearningDataset] = None,
         test: Optional[torch.utils.data.Dataset] = None,
-        criteria: ActiveLearningCriteria = Margin(),
+        criterion: ActiveLearningCriterion = Margin(),
         uncertainty_weight: float = 0.8,
         discriminator_weight: float = 0.2,
         gradient_penalty_weight: float = 0.02,
@@ -46,7 +46,7 @@ class AdversarialActiveLearning(ActiveLearningStrategy):
         self.backbone = backbone
         self.classification_head = classification_head
         self.discriminator_head = discriminator_head
-        self.uncertainty_criteria = criteria
+        self.uncertainty_criterion = criterion
         # assert 0 <= uncertainty_weight <= 1, f"uncertainty_weight must be in [0, 1], got {uncertainty_weight}"
         self.uncertainty_weight = uncertainty_weight
         self.discriminator_weight = discriminator_weight
@@ -70,7 +70,7 @@ class AdversarialActiveLearning(ActiveLearningStrategy):
         probs = self.classification_head.predict(latents).softmax(dim=1)
         dis_score = self.discriminator_head.predict(latents).flatten()
 
-        uncertainly_score = self.uncertainty_criteria.score(probs)
+        uncertainly_score = self.uncertainty_criterion.score(probs)
         total_score = (
             self.uncertainty_weight * uncertainly_score
             + self.discriminator_weight * dis_score

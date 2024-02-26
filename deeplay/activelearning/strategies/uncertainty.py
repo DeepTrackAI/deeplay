@@ -1,19 +1,18 @@
-from deeplay.activelearning.strategies.strategy import ActiveLearningStrategy
-from deeplay.activelearning.data import ActiveLearningDataset, JointDataset
-from deeplay.activelearning.criterion import ActiveLearningCriteria
+from deeplay.activelearning.strategies.strategy import Strategy
+from deeplay.activelearning.data import ActiveLearningDataset
+from deeplay.activelearning.criterion import ActiveLearningCriterion
 from deeplay.module import DeeplayModule
-
 
 import torch
 import torch.nn.functional as F
 
 
-class UncertaintyActiveLearning(ActiveLearningStrategy):
+class UncertaintyStrategy(Strategy):
 
     def __init__(
         self,
         classifier: DeeplayModule,
-        criteria: ActiveLearningCriteria,
+        criterion: ActiveLearningCriterion,
         train_pool: ActiveLearningDataset,
         val_pool: ActiveLearningDataset = None,
         test: torch.utils.data.Dataset = None,
@@ -32,8 +31,7 @@ class UncertaintyActiveLearning(ActiveLearningStrategy):
             **kwargs
         )
         self.classifier = classifier
-        self.criteria = criteria
-
+        self.criterion = criterion
 
     def query_strategy(self, pool, n):
         """Implement the query strategy here."""
@@ -41,9 +39,9 @@ class UncertaintyActiveLearning(ActiveLearningStrategy):
         X = pool.get_unannotated_samples()
 
         latents = self.classifier.predict(X, batch_size=self.test_batch_size)
-        probs = F.softmax(latents, dim=1)   
+        probs = F.softmax(latents, dim=1)
 
-        return self.criteria.score(probs).sort()[1][:n]
+        return self.criterion.score(probs).sort()[1][:n]
 
     def training_step(self, batch, batch_idx):
         self.train()
