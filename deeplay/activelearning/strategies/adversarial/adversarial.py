@@ -1,3 +1,5 @@
+from typing import Optional
+
 from deeplay.activelearning.strategies.strategy import ActiveLearningStrategy
 from deeplay.activelearning.data import ActiveLearningDataset, JointDataset
 from deeplay.activelearning.criterion import ActiveLearningCriteria, Margin
@@ -17,18 +19,18 @@ class AdversarialActiveLearning(ActiveLearningStrategy):
         classification_head: DeeplayModule,
         discriminator_head: DeeplayModule,
         train_pool: ActiveLearningDataset,
-        val_pool: ActiveLearningDataset = None,
-        test: torch.utils.data.Dataset = None,
+        val_pool: Optional[ActiveLearningDataset] = None,
+        test: Optional[torch.utils.data.Dataset] = None,
         criteria: ActiveLearningCriteria = Margin(),
         uncertainty_weight: float = 0.8,
         discriminator_weight: float = 0.2,
         gradient_penalty_weight: float = 0.02,
         batch_size: int = 32,
-        val_batch_size: int = None,
-        test_batch_size: int = None,
-        backbone_optimizer: torch.optim.Optimizer = None,
-        classification_head_optimizer: torch.optim.Optimizer = None,
-        discriminator_head_optimizer: torch.optim.Optimizer = None,
+        val_batch_size: Optional[int] = None,
+        test_batch_size: Optional[int] = None,
+        backbone_optimizer: Optional[torch.optim.Optimizer] = None,
+        classification_head_optimizer: Optional[torch.optim.Optimizer] = None,
+        discriminator_head_optimizer: Optional[torch.optim.Optimizer] = None,
         **kwargs
     ):
         super().__init__(
@@ -152,7 +154,6 @@ class AdversarialActiveLearning(ActiveLearningStrategy):
         )
 
     def configure_optimizers(self):
-        import torch.optim as optim
 
         backbone_optimizer = self.create_optimizer_with_params(
             self.backbone_optimizer, self.backbone.parameters()
@@ -169,14 +170,6 @@ class AdversarialActiveLearning(ActiveLearningStrategy):
             classification_head_optimizer,
             discriminator_head_optimizer,
         ]
-
-    def L2_upper(self, probas):
-        value = torch.norm(torch.log(probas), dim=1)
-        return value
-
-    def L1_upper(self, probas):
-        value = torch.sum(-1 * torch.log(probas), dim=1)
-        return value
 
     def forward(self, x):
         return self.classification_head(self.backbone(x))
