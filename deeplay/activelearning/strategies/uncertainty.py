@@ -2,6 +2,7 @@ from deeplay.activelearning.strategies.strategy import Strategy
 from deeplay.activelearning.data import ActiveLearningDataset
 from deeplay.activelearning.criterion import ActiveLearningCriterion
 from deeplay.module import DeeplayModule
+from deeplay.external.optimizers import Adam
 
 import torch
 import torch.nn.functional as F
@@ -19,6 +20,8 @@ class UncertaintyStrategy(Strategy):
         batch_size: int = 32,
         val_batch_size: int = None,
         test_batch_size: int = None,
+        loss=torch.nn.CrossEntropyLoss(),
+        optimizer=Adam(lr=1e-3),
         **kwargs
     ):
         super().__init__(
@@ -28,6 +31,8 @@ class UncertaintyStrategy(Strategy):
             batch_size,
             val_batch_size,
             test_batch_size,
+            loss=loss,
+            optimizer=optimizer,
             **kwargs
         )
         self.classifier = classifier

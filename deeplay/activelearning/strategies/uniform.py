@@ -1,6 +1,7 @@
 from deeplay.activelearning.strategies.strategy import Strategy
 from deeplay.activelearning.data import ActiveLearningDataset
 from deeplay.module import DeeplayModule
+from deeplay.external import Adam
 
 import numpy as np
 import torch
@@ -18,6 +19,8 @@ class UniformStrategy(Strategy):
         batch_size: int = 32,
         val_batch_size: int = None,
         test_batch_size: int = None,
+        loss=torch.nn.CrossEntropyLoss(),
+        optimizer=Adam(lr=1e-3),
         **kwargs
     ):
         super().__init__(
@@ -27,6 +30,8 @@ class UniformStrategy(Strategy):
             batch_size,
             val_batch_size,
             test_batch_size,
+            loss=loss,
+            optimizer=optimizer,
             **kwargs
         )
         self.classifier = classifier
