@@ -71,8 +71,8 @@ class BackboneResnet18(dl.DeeplayModule):
 
         self.blocks = dl.Sequential(*blocks)
 
-        self.initialize(dl.initializers.InitializerKaiming(targets=(nn.Conv2d,)))
-        self.initialize(dl.initializers.InitializerConstant(targets=(nn.BatchNorm2d,)))
+        self.initialize(dl.initializers.Kaiming(targets=(nn.Conv2d,)))
+        self.initialize(dl.initializers.Constant(targets=(nn.BatchNorm2d,)))
 
     def forward(self, x):
         x = self.blocks(x)
