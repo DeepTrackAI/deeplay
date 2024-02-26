@@ -16,7 +16,7 @@ class Optimizer(External):
 
         return kwargs
 
-    def __init__(self, classtype: Type[torch.optim.Optimizer]=None, **optimzer_kwargs):
+    def __init__(self, classtype: Type[torch.optim.Optimizer], **optimzer_kwargs):
         super().__init__(classtype=classtype, **optimzer_kwargs)
 
     @before_build
