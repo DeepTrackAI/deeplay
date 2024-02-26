@@ -14,7 +14,7 @@ _normal_default_targets = (
 )
 
 
-class InitializerNormal(Initializer):
+class Normal(Initializer):
     def __init__(
         self,
         targets: Tuple[Type[nn.Module], ...] = _normal_default_targets,

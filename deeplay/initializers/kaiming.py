@@ -15,7 +15,7 @@ _kaiming_default_targets = (
 )
 
 
-class InitializerKaiming(Initializer):
+class Kaiming(Initializer):
     def __init__(
         self,
         targets: Tuple[Type[nn.Module], ...] = _kaiming_default_targets,

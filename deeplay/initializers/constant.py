@@ -10,7 +10,7 @@ _constant_default_targets = (
 )
 
 
-class InitializerConstant(Initializer):
+class Constant(Initializer):
     def __init__(
         self,
         targets: Tuple[Type[nn.Module], ...] = _constant_default_targets,
