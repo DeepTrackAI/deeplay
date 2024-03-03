@@ -5,9 +5,7 @@ from ... import (
     Layer,
     LayerList,
     Sequential,
-    LayerActivation,
     LayerActivationNormalization,
-    PoolLayerActivationNormalization,
 )
 
 import torch
@@ -52,7 +50,7 @@ class DoubleConvBlock(DeeplayModule):
 
 class AttentionBlock(DeeplayModule):
     """
-    Applies attention mechanism to the input tensor. Depending on the input, it can handle both self-attention and cross-attention.
+    Applies attention mechanism to the input tensor. Based on the input, it can handle both self-attention and cross-attention mechanisms. If context_embedding_dim is provided, it will apply cross-attention else it will apply self-attention.
     """
 
     def __init__(self, channels, context_embedding_dim):
@@ -112,7 +110,7 @@ class AttentionBlock(DeeplayModule):
 
 class FeatureIntegrationModule(DeeplayModule):
     """
-    Integrates the features with context information (such as time, text, etc.) using positional encoding and self-attention.
+    Integrates the features with context information (such as time, context) using positional encoding and self-attention.
     """
 
     def __init__(
@@ -135,22 +133,11 @@ class FeatureIntegrationModule(DeeplayModule):
         self.feed_forward_positional_embedding = Layer(
             nn.Linear, embedding_dim, out_channels
         )
-        # self.attention_layer = (
-        #     AttentionBlock(
-        #         channels=out_channels, context_embedding_dim=context_embedding_dim
-        #     )
-        #     if enable_attention
-        #     else Layer(nn.Identity)
-        # )
         self.enable_attention = enable_attention
         if self.enable_attention:
             self.attention_layer = AttentionBlock(
                 channels=out_channels, context_embedding_dim=context_embedding_dim
             )
-            # self.use_attention = True
-        # else:
-        #     self.attention_layer = Layer(nn.Identity)
-        #     self.use_attention = False
 
     def forward(self, x, t, context):
         x = self.conv_block(x)
@@ -173,7 +160,7 @@ class UNetEncoder(DeeplayModule):
     """
     UNet encoder.
 
-    The time step information is not integrated in the first block. It is still included in channel_attention just for the sake of consistency.
+    Combines the double convolution blocks and the feature integration modules to create the encoder part of the UNet.
     """
 
     def __init__(
@@ -217,6 +204,8 @@ class UNetEncoder(DeeplayModule):
 class UNetDecoder(DeeplayModule):
     """
     UNet decoder.
+
+    Combines the convolutional transpose layers and the feature integration modules to create the decoder part of the UNet.
     """
 
     def __init__(
@@ -264,10 +253,34 @@ class AttentionUNet(DeeplayModule):
     """
     Attention UNet.
 
-    The first attention flag will be ignored as the time information is not integrated at this step. It is still included in the channel_attention just for the sake of consistency.
-
-    If num_classes are provided, the class embedding will be added to the positional encoding. (This does not mean that the model will be ready for class conditional ddpm. You still have to classifier free guidance.)
+    Parameters
+    ----------
+    in_channels : int
+        Number of input channels.
+    channels : List[int]
+        Number of channels in the encoder and decoder blocks.
+    channel_attention : List[bool]
+        Attention flags for the encoder and decoder blocks. If True, attention will be applied to the corresponding block. The first attention flag will be ignored as the time information is not integrated at this step. It is still included in the channel_attention just for the sake of consistency.
+    base_channels : List[int]
+        Number of channels in the base blocks.
+    out_channels : int
+        Number of output channels.
+    position_embedding_dim : int
+        Dimension of the positional encoding. Positional encoding is defined outside the model and passed as an input to the model. The dimension of the positional encoding should match the dimension given to the model.
+    num_classes : Optional[int]
+        Number of classes. If num_classes are provided, the class embedding will be added to the positional encoding. This is used for the class conditioned models.
+    context_embedding_dim : Optional[int]
+        Dimension of the context embedding. Context embedding is defined outside the model and passed as an input to the model. The dimension of the context embedding should match the dimension given to the model. When enabled, the context embedding will be used to apply cross-attention to the feature maps.
     """
+
+    in_channels: int
+    channels: List[int]
+    channel_attention: List[bool]
+    base_channels: List[int]
+    out_channels: int
+    position_embedding_dim: int
+    num_classes: Optional[int]
+    context_embedding_dim: Optional[int]
 
     def __init__(
         self,
@@ -336,6 +349,12 @@ class AttentionUNet(DeeplayModule):
                 + "Please make sure that the embedding dimensions given to the model and the positional encoding function match."
             )
 
+        if self.context_embedding_dim is not None:
+            if context is None:
+                raise ValueError(
+                    "Context embedding is enabled. Please provide the context embedding."
+                )
+
         if context is not None:
             if context.shape[-1] != self.context_embedding_dim:
                 raise ValueError(
@@ -356,3 +375,19 @@ class AttentionUNet(DeeplayModule):
         x = self.decoder(feature_maps[-1], feature_maps[:-1], t, context)
         x = self.output(x)
         return x
+
+    @overload
+    def configure(
+        self,
+        /,
+        in_channels: int = 1,
+        channels: List[int] = [32, 64, 128],
+        channel_attention: List[bool] = [True, True, True],
+        base_channels: List[int] = [256, 256],
+        out_channels: int = 1,
+        position_embedding_dim: int = 256,
+        num_classes: Optional[int] = None,
+        context_embedding_dim: Optional[int] = None,
+    ) -> None: ...
+
+    configure = DeeplayModule.configure
