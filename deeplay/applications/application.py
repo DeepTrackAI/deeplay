@@ -242,11 +242,37 @@ class Application(DeeplayModule, L.LightningModule):
 
     def _configure_batch(self, batch: Any) -> Any:
         if isinstance(batch, (dict, Data)):
-            assert (
-                "y" in batch
-            ), "The batch should contain a 'y' key corresponding to the labels. Found {}".format(
-                [key for key, _ in batch.items()]
+            assert "y" in batch, (
+                "The batch should contain a 'y' key corresponding to the labels."
+                "Found {}".format([key for key, _ in batch.items()])
             )
+            self._infer_batch_size_from_batch_indices(batch)
             y = batch.pop("y")
             return batch, y
+
         return batch
+
+    def _infer_batch_size_from_batch_indices(self, batch):
+        if not hasattr(self, "_batch_indices_key"):
+            alias = ["batch", "batch_index", "batch_indices"]
+            key = next((key for key in alias if key in batch), None)
+            if key:
+                self._batch_indices_key = key
+            else:
+                raise ValueError(
+                    "The batch should contain a key with the batch indices",
+                    "Supported key names are {}".format(alias),
+                )
+
+        self._current_batch_size = (
+            torch.max(
+                batch[self._batch_indices_key],
+            ).item()
+            + 1
+        )
+
+    def log(self, name, value, **kwargs):
+        if (not "batch_size" in kwargs) and hasattr(self, "_current_batch_size"):
+            kwargs.update({"batch_size": self._current_batch_size})
+
+        super().log(name, value, **kwargs)
