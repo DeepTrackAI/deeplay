@@ -77,8 +77,7 @@ class Application(DeeplayModule, L.LightningModule):
             ) from e
 
     def training_step(self, batch, batch_idx):
-        x, y = batch
-        x = self.train_preprocess(x)
+        x, y = self.train_preprocess(batch)
         y_hat = self(x)
         loss = self.compute_loss(y_hat, y)
         if not isinstance(loss, dict):
@@ -101,8 +100,7 @@ class Application(DeeplayModule, L.LightningModule):
         return sum(loss.values())
 
     def validation_step(self, batch, batch_idx):
-        x, y = batch
-        x = self.val_preprocess(x)
+        x, y = self.val_preprocess(batch)
         y_hat = self(x)
         loss = self.compute_loss(y_hat, y)
         if not isinstance(loss, dict):
@@ -129,8 +127,7 @@ class Application(DeeplayModule, L.LightningModule):
         return sum(loss.values())
 
     def test_step(self, batch, batch_idx):
-        x, y = batch
-        x = self.test_preprocess(x)
+        x, y = self.test_preprocess(batch)
         y_hat = self(x)
         loss = self.compute_loss(y_hat, y)
         if not isinstance(loss, dict):
