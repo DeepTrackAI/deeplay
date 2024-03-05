@@ -1,7 +1,7 @@
 import unittest
 import torch
 import torch.nn as nn
-from deeplay import TransformerEncoderLayer, Layer
+from deeplay import TransformerEncoderLayer, LayerDropoutSkipNormalization, Add
 
 
 class TestComponentTransformerEncoder(unittest.TestCase):
@@ -66,10 +66,9 @@ class TestComponentTransformerEncoder(unittest.TestCase):
         batch_index = torch.zeros(10, dtype=torch.long)
         batch_index[-1] = 1
 
-        y, attn, x = multihead(x, batch_index=batch_index)
+        y, attn = multihead(x, batch_index=batch_index)
         self.assertEqual(y.shape, (10, 4))
         self.assertEqual(attn.shape, (10, 10))
-        self.assertEqual(x.shape, (10, 4))
 
         self.assertEqual(attn.sum(dim=-1).sum(), 10)
         self.assertEqual(attn[-1, -1], 1.0)
@@ -81,3 +80,32 @@ class TestComponentTransformerEncoder(unittest.TestCase):
         self.assertEqual(y1.shape, (10, 4))
         self.assertEqual(y2.shape, (10, 4))
         self.assertEqual((y1 - y2).sum(), 0.0)
+
+    def test_tel_skip_position(self):
+        class test_module(nn.Module):
+            def forward(self, x):
+                return x * 2
+
+        tel = LayerDropoutSkipNormalization(
+            layer=test_module(),
+            dropout=nn.Identity(),
+            skip=Add(),
+            normalization=nn.Identity(),
+            order=["layer", "skip", "dropout", "normalization"],
+        )
+
+        x = torch.Tensor([2.0])
+        y = tel(x)
+
+        self.assertEqual(y, 6.0)
+
+        tel = LayerDropoutSkipNormalization(
+            layer=test_module(),
+            dropout=nn.Identity(),
+            skip=Add(),
+            normalization=nn.Identity(),
+            order=["skip", "layer", "dropout", "normalization"],
+        )
+
+        y = tel(x)
+        self.assertEqual(y, 8.0)
