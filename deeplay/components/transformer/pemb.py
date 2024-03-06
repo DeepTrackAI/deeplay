@@ -78,16 +78,24 @@ class IndexedPositionalEmbedding(PositionalEmbeddingBaseClass):
         fetch_embeddings(batch_index) -> [0, 1, 0, 1, 2, 0, 1]
         """
         diff = torch.cat(
-            (torch.ones(1, dtype=torch.int64), batch_index[1:] - batch_index[:-1])
+            (
+                torch.ones(1, dtype=torch.int64, device=batch_index.device),
+                batch_index[1:] - batch_index[:-1],
+            )
         )
         change_points = diff.nonzero().squeeze()
 
         sizes = torch.diff(
             torch.cat(
-                (change_points, torch.tensor([len(batch_index)], dtype=torch.int64))
+                (
+                    change_points,
+                    torch.tensor(
+                        [len(batch_index)], dtype=torch.int64, device=batch_index.device
+                    ),
+                )
             )
         )
-        indices = torch.arange(len(batch_index))
+        indices = torch.arange(len(batch_index), device=batch_index.device)
         relative_indices = indices - torch.repeat_interleave(change_points, sizes)
 
         return self.embs[relative_indices]
