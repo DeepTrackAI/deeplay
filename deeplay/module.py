@@ -650,8 +650,6 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         if args:
             for arg in args:
                 assert len(arg) == len(x), "All inputs must have the same length."
-        if len(x) < batch_size:
-            return self.forward(x, *args)
 
         if device is None:
             device = self.device
