@@ -5,3 +5,4 @@ from .plan import PoolLayerActivationNormalization
 from .land import LayerActivationNormalizationDropout
 from .recurrentblock import RecurrentBlock
 from .lanu import LayerActivationNormalizationUpsample
+from .residual import BaseResidual, Conv2dResidual

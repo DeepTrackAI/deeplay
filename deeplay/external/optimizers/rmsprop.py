@@ -13,3 +13,13 @@ class RMSprop(Optimizer):
         optimzer_kwargs.pop("classtype", None)
         super().__pre_init__(torch.optim.RMSprop, **optimzer_kwargs)
 
+    def __init__(
+        self,
+        lr: float = 1e-2,
+        alpha: float = 0.99,
+        eps: float = 1e-8,
+        weight_decay: float = 0,
+        momentum: float = 0,
+        centered: bool = False,
+        **kwargs
+    ): ...
