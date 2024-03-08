@@ -2,6 +2,7 @@ matplotlib
 lightning
 torchmetrics
 torchvision
+torch-geometric
 kornia
 scipy
 scikit-image
