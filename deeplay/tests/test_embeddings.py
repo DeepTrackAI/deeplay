@@ -69,3 +69,29 @@ class TestPos(unittest.TestCase):
         y = layer(x, batch_indices)
 
         self.assertEqual(y.shape, (10, 96))
+
+    def test_indexed_positional_embedding_fetch_with_batch_size_1(self):
+        layer = IndexedPositionalEmbedding(96)
+        layer.build()
+
+        batch_indices = torch.tensor([0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+        pembs = layer.fetch_embeddings(batch_indices)
+
+        # i.e., [num_indices, features]
+        self.assertEqual(pembs.shape, (10, 96))
+
+        self.assertTrue(torch.all(pembs[0] == layer.embs[0]))
+        self.assertTrue(torch.all(pembs[1] == layer.embs[1]))
+        self.assertTrue(torch.all(pembs[2] == layer.embs[2]))
+        self.assertTrue(torch.all(pembs[3] == layer.embs[3]))
+        self.assertTrue(torch.all(pembs[4] == layer.embs[4]))
+        self.assertTrue(torch.all(pembs[5] == layer.embs[5]))
+        self.assertTrue(torch.all(pembs[6] == layer.embs[6]))
+        self.assertTrue(torch.all(pembs[7] == layer.embs[7]))
+        self.assertTrue(torch.all(pembs[8] == layer.embs[8]))
+        self.assertTrue(torch.all(pembs[9] == layer.embs[9]))
+
+        x = torch.randn(10, 96)
+        y = layer(x, batch_indices)
+
+        self.assertEqual(y.shape, (10, 96))
