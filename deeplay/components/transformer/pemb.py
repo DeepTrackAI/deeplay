@@ -83,7 +83,7 @@ class IndexedPositionalEmbedding(PositionalEmbeddingBaseClass):
                 batch_index[1:] - batch_index[:-1],
             )
         )
-        change_points = diff.nonzero().squeeze()
+        change_points = diff.nonzero().squeeze().flatten()
 
         sizes = torch.diff(
             torch.cat(
