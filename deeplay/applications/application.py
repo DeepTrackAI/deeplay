@@ -359,6 +359,7 @@ class Application(DeeplayModule, L.LightningModule):
 
     def configure_optimizers(self):
         try:
+
             return self.optimizer.create()
 
         except AttributeError as e:
@@ -501,13 +502,10 @@ class Application(DeeplayModule, L.LightningModule):
 
     def _provide_paramaters_if_has_none(self, optimizer):
         if isinstance(optimizer, Optimizer):
-            if "params" in optimizer.kwargs:
-                return
-            else:
 
-                @optimizer.params
-                def f(self):
-                    return self.parameters()
+            @optimizer.params
+            def f(self):
+                return self.parameters()
 
     def named_children(self) -> Iterator[Tuple[str, Module]]:
         name_child_iterator = list(super().named_children())
@@ -570,6 +568,14 @@ class Application(DeeplayModule, L.LightningModule):
 
         return np.moveaxis(x, -1, 1)
 
+    def create_optimizer_with_params(self, optimizer, params):
+        if isinstance(optimizer, Optimizer):
+            optimizer.configure(params=params)
+            return optimizer.create()
+        else:
+            return optimizer
+
+
     def _apply_batch_transfer_handler(
         self, batch: Any, device: Optional[torch.device] = None, dataloader_idx: int = 0
     ) -> Any:
@@ -612,3 +618,4 @@ class Application(DeeplayModule, L.LightningModule):
             kwargs.update({"batch_size": self._current_batch_size})
 
         super().log(name, value, **kwargs)
+

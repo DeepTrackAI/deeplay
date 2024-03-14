@@ -234,26 +234,33 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     ) -> Dict[Literal["before_build", "after_build", "after_init"], list]:
         """A dictionary of all hooks.
         Ordered __constructor_hooks__ > __parent_hooks__ > __user_hooks__"""
-        all_hooks = {
-            k: v + self.__parent_hooks__[k] + self.__user_hooks__[k]
-            for k, v in self.__constructor_hooks__.items()
-        }
+        try:
+            all_hooks = {
+                k: v + self.__parent_hooks__[k] + self.__user_hooks__[k]
+                for k, v in self.__constructor_hooks__.items()
+            }
 
-        for key, value in all_hooks.items():
-            all_hooks[key] = sorted(value, key=lambda x: x.timestamp)
-            # warn if two hooks have the same timestamp
-            if len(all_hooks[key]) > 1:
-                for i in range(len(all_hooks[key]) - 1):
-                    if all_hooks[key][i].timestamp == all_hooks[key][i + 1].timestamp:
-                        import warnings
+            for key, value in all_hooks.items():
+                all_hooks[key] = sorted(value, key=lambda x: x.timestamp)
+                # warn if two hooks have the same timestamp
+                if len(all_hooks[key]) > 1:
+                    for i in range(len(all_hooks[key]) - 1):
+                        if all_hooks[key][i].timestamp == all_hooks[key][
+                            i + 1
+                        ].timestamp and (
+                            all_hooks[key][i] is not all_hooks[key][i + 1]
+                        ):
+                            import warnings
 
-                        warnings.warn(
-                            f"Two hooks have the same timestamp: {all_hooks[key][i].func} and {all_hooks[key][i+1].func}.\n "
-                            "This may cause unexpected behavior.\n "
-                            "Please report this issue to the github repository: "
-                            "https://github.com/DeepTrackAI/deeplay"
-                        )
-        return all_hooks
+                            warnings.warn(
+                                f"Two hooks have the same timestamp: {all_hooks[key][i].func} and {all_hooks[key][i+1].func}.\n "
+                                "This may cause unexpected behavior.\n "
+                                "Please report this issue to the github repository: "
+                                "https://github.com/DeepTrackAI/deeplay"
+                            )
+            return all_hooks
+        except AttributeError as e:
+            raise RuntimeError("Module has not been initialized properly") from e
 
     @property
     def __user_hooks__(
@@ -330,6 +337,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
     def __pre_init__(self, *args, _args=(), **kwargs):
         super().__init__()
+        # Stored as tuple to avoid it being included in modules
         self._root_module = (self,)
 
         self._actual_init_args = {
@@ -362,6 +370,8 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         self._setattr_recording = set()
 
         self.logs = {}
+
+        self._validate_after_build()
 
     def __init__(self, *args, **kwargs):  # type: ignore
         # We don't want to call the super().__init__ here because it is called
@@ -500,7 +510,6 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
         if len(args) == 0:
             self._configure_kwargs(kwargs)
-
         else:
             self._assert_valid_configurable(args[0])
 
@@ -514,6 +523,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
                     f"Unknown configurable {args[0]} for {self.__class__.__name__}. "
                     "Available configurables are {self.configurables}."
                 )
+        return self
 
     def create(self):
         """
@@ -609,8 +619,9 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     def new(self):
         return copy.deepcopy(self)
 
-
-    def predict(self, x, *args, batch_size=32, device=None, output_device=None):
+    def predict(
+        self, x, *args, batch_size=32, device=None, output_device=None
+    ) -> torch.Tensor:
         """
         Predicts the output of the module for the given input.
 
@@ -666,7 +677,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
                         if isinstance(item, np.ndarray):
                             batch[i] = torch.from_numpy(item).to(device)
                         else:
-                            batch[i] = torch.tensor(item, device=device)
+                            batch[i] = torch.stack(item).to(device)
                     else:
                         batch[i] = item.to(device)
 
@@ -688,7 +699,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         if len(output_containers) == 1:
             return output_containers[0]
         return tuple(output_containers)
-      
+
     @after_build
     def log_output(self, name: str):
         root = self._root_module[0]
@@ -707,6 +718,24 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
         self.register_forward_pre_hook(forward_hook)
 
+    def initialize(self, initializer):
+        for module in self.modules():
+            if isinstance(module, DeeplayModule):
+                module._initialize_after_build(initializer)
+            else:
+                initializer.initialize(module)
+
+    @after_build
+    def _initialize_after_build(self, initializer):
+        initializer.initialize(self)
+
+    @after_build
+    def _validate_after_build(self):
+        if hasattr(self, "validate_after_build"):
+            return self.validate_after_build()
+
+    def validate_after_build(self):
+        pass
 
     def register_before_build_hook(self, func):
         """
@@ -994,7 +1023,10 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     def _run_hooks(self, hook_name, instance=None):
         if instance is None:
             instance = self
-        for hook in self.__hooks__[hook_name]:
+        hooks = self.__hooks__[hook_name]
+        # remove duplicates based on id
+        hooks = list({id(hook): hook for hook in hooks}.values())
+        for hook in hooks:
             hook(instance)
 
     def __construct__(self):
@@ -1079,6 +1111,7 @@ class Selection(DeeplayModule):
                 for name, module in self.model[0].named_modules():
                     if name == ".".join(item):
                         module.configure(*args, **kwargs)
+        return self
 
     def log_output(self, key):
         for selection in self.selections:
