@@ -4,67 +4,69 @@ import math
 
 import torch
 import torch.nn as nn
-import torch.nn.utils.parametrize as P
+
+from typing import Callable
 
 
-class PositionalEmbeddingBaseClass(DeeplayModule):
-    def __init__(self, features, dropout_p=0.0, max_length=5000):
-        super().__init__()
-        self.features = features
-        self.dropout_p = dropout_p
-        self.max_length = max_length
+def sinusoidal_init_(tensor: torch.Tensor):
+    """
+    Initialize tensor with sinusoidal positional embeddings.
+    """
+    lenght, features = tensor.shape
 
-        self.compute_and_register_embeddings(features, max_length)
-        self.dropout = Layer(nn.Dropout, dropout_p)
+    inv_freq = 1 / (10000 ** (torch.arange(0, features, 2).float() / features))
+    positions = torch.arange(0, lenght).unsqueeze(1).float()
+    sinusoid_inp = positions * inv_freq.unsqueeze(0)
 
-    def compute_and_register_embeddings(
-        self,
-        features,
-        max_lenght,
-    ):
-        inv_freq = 1 / (10000 ** (torch.arange(0, features, 2).float() / features))
-        positions = torch.arange(0, max_lenght).unsqueeze(1).float()
-        sinusoid_inp = positions * inv_freq.unsqueeze(0)
-        pos_emb = torch.zeros(max_lenght, features)
-        pos_emb[:, 0::2] = torch.sin(sinusoid_inp)
-        pos_emb[:, 1::2] = torch.cos(sinusoid_inp)
+    with torch.no_grad():
+        tensor[:, 0::2] = torch.sin(sinusoid_inp)
+        tensor[:, 1::2] = torch.cos(sinusoid_inp)
 
-        self.embs = nn.Parameter(pos_emb, requires_grad=False)
-
-    def forward(self, *args, **kwargs):
-        raise NotImplementedError(
-            "forward method not implemented for {}".format(self.__class__.__name__)
-        )
+        return tensor
 
 
-class BatchedPositionalEmbedding(PositionalEmbeddingBaseClass):
+class PositionalEmbedding(DeeplayModule):
     def __init__(
         self,
-        features,
-        dropout_p=0.0,
-        max_length=5000,
-        batch_first=True,
+        features: int,
+        max_length: int = 5000,
+        dropout_p: float = 0.0,
+        initializer: Callable = sinusoidal_init_,
+        learnable: bool = False,
+        batch_first: bool = True,
     ):
-        super().__init__(features, dropout_p, max_length)
+        super().__init__()
 
+        self.features = features
+        self.max_length = max_length
+        self.dropout_p = dropout_p
+        self.learnable = learnable
         self.batch_first = batch_first
-        self.embs = nn.Parameter(
-            self.embs.unsqueeze(0 if batch_first else 1), requires_grad=False
+
+        self.batched_dim = 0 if batch_first else 1
+        init_embs = initializer(torch.empty(max_length, features)).unsqueeze(
+            self.batched_dim
         )
+        self.embs = nn.Parameter(init_embs, requires_grad=learnable)
+
+        self.dropout = Layer(nn.Dropout, dropout_p)
 
     def forward(self, x):
-        x = x + self.embs[: x.size(0)]
+        seq_dim = 1 - self.batched_dim
+        x = x + torch.narrow(self.embs, dim=seq_dim, start=0, length=x.size(seq_dim))
         return self.dropout(x)
 
 
-class IndexedPositionalEmbedding(PositionalEmbeddingBaseClass):
+class IndexedPositionalEmbedding(PositionalEmbedding):
     def __init__(
         self,
         features,
-        dropout_p=0.0,
         max_length=5000,
+        dropout_p=0.0,
+        initializer: Callable = sinusoidal_init_,
+        learnable: bool = False,
     ):
-        super().__init__(features, dropout_p, max_length)
+        super().__init__(features, max_length, dropout_p, initializer, learnable)
 
     def fetch_embeddings(self, batch_index):
         """
@@ -98,7 +100,7 @@ class IndexedPositionalEmbedding(PositionalEmbeddingBaseClass):
         indices = torch.arange(len(batch_index), device=batch_index.device)
         relative_indices = indices - torch.repeat_interleave(change_points, sizes)
 
-        return self.embs[relative_indices]
+        return self.embs[0, relative_indices]
 
     def forward(self, x, batch_index):
         x = x + self.fetch_embeddings(batch_index)
