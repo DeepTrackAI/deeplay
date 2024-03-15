@@ -9,6 +9,7 @@ from typing import (
     TypeVar,
     Sequence,
     Union,
+    Any,
 )
 
 import lightning as L
@@ -16,6 +17,7 @@ import torch
 import torch.nn as nn
 import torchmetrics as tm
 from torch.nn.modules.module import Module
+from torch_geometric.data import Data
 
 from deeplay import DeeplayModule, Optimizer
 
@@ -67,6 +69,7 @@ class Application(DeeplayModule, L.LightningModule):
 
     def configure_optimizers(self):
         try:
+
             return self.optimizer.create()
 
         except AttributeError as e:
@@ -208,13 +211,10 @@ class Application(DeeplayModule, L.LightningModule):
 
     def _provide_paramaters_if_has_none(self, optimizer):
         if isinstance(optimizer, Optimizer):
-            if "params" in optimizer.kwargs:
-                return
-            else:
 
-                @optimizer.params
-                def f(self):
-                    return self.parameters()
+            @optimizer.params
+            def f(self):
+                return self.parameters()
 
     def named_children(self) -> Iterator[Tuple[str, Module]]:
         name_child_iterator = list(super().named_children())
@@ -231,3 +231,54 @@ class Application(DeeplayModule, L.LightningModule):
         ]
 
         yield from (not_optimizers + optimizers)
+
+    def create_optimizer_with_params(self, optimizer, params):
+        if isinstance(optimizer, Optimizer):
+            optimizer.configure(params=params)
+            return optimizer.create()
+        else:
+            return optimizer
+
+    def _apply_batch_transfer_handler(
+        self, batch: Any, device: Optional[torch.device] = None, dataloader_idx: int = 0
+    ) -> Any:
+        batch = super()._apply_batch_transfer_handler(batch, device, dataloader_idx)
+        return self._configure_batch(batch)
+
+    def _configure_batch(self, batch: Any) -> Any:
+        if isinstance(batch, (dict, Data)):
+            assert "y" in batch, (
+                "The batch should contain a 'y' key corresponding to the labels."
+                "Found {}".format([key for key, _ in batch.items()])
+            )
+            self._infer_batch_size_from_batch_indices(batch)
+            y = batch.pop("y")
+            return batch, y
+
+        return batch
+
+    def _infer_batch_size_from_batch_indices(self, batch):
+        if not hasattr(self, "_batch_indices_key"):
+            alias = ["batch", "batch_index", "batch_indices"]
+            key = next((key for key in alias if key in batch), None)
+            if key:
+                self._batch_indices_key = key
+            else:
+                raise ValueError(
+                    "The batch should contain a key with the batch indices",
+                    "Supported key names are {}".format(alias),
+                )
+
+        self._current_batch_size = (
+            torch.max(
+                batch[self._batch_indices_key],
+            ).item()
+            + 1
+        )
+
+    def log(self, name, value, **kwargs):
+        if (not "batch_size" in kwargs) and hasattr(self, "_current_batch_size"):
+            kwargs.update({"batch_size": self._current_batch_size})
+
+        super().log(name, value, **kwargs)
+
