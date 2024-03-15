@@ -1,3 +1,3 @@
 from .satt import MultiheadSelfAttention
-from .ldsn import LayerSkipNormalization
+from .ldsn import LayerDropoutSkipNormalization
 from .enc import Add, TransformerEncoderLayer

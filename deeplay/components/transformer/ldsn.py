@@ -1,54 +1,72 @@
 from typing import List, overload, Optional, Literal, Any, Union, Type, Sequence
 
+from torch import Tensor
 import torch.nn as nn
 
 from deeplay import DeeplayModule
+from deeplay.blocks.sequential import SequentialBlock
 
 
-class LayerSkipNormalization(DeeplayModule):
-    layer: nn.Module
-    skip: nn.Module
-    normalization: nn.Module
+class LayerDropoutSkipNormalization(SequentialBlock):
+    layer: DeeplayModule
+    dropout: DeeplayModule
+    skip: DeeplayModule
+    normalization: DeeplayModule
 
     def __init__(
         self,
-        layer: nn.Module,
-        skip: nn.Module,
-        normalization: nn.Module,
+        layer: DeeplayModule,
+        dropout: DeeplayModule,
+        skip: DeeplayModule,
+        normalization: DeeplayModule,
+        order: List[str] = ["layer", "dropout", "skip", "normalization"],
+        **kwargs: DeeplayModule,
     ):
-        super().__init__()
-
-        self.layer = layer
-        self.skip = skip
-        self.normalization = normalization
+        super().__init__(
+            layer=layer,
+            dropout=dropout,
+            skip=skip,
+            normalization=normalization,
+            order=order,
+            **kwargs,
+        )
 
     def forward(self, x):
-        x = self.layer(x)
-        x = self.skip(x)
-        x = self.normalization(x)
-        return x
+        y = x
+        for name in self.order:
+            if name == "skip" and isinstance(y, Tensor):
+                y = (x, y)
+            y = getattr(self, name)(y)
+        return y
+
+    @overload
+    def configure(self, **kwargs: nn.Module) -> None: ...
 
     @overload
     def configure(
         self,
-        /,
-        layer: Union[Type[nn.Module], nn.Module],
-        skip: Union[Type[nn.Module], nn.Module],
-        normalization: Union[Type[nn.Module], nn.Module],
-    ) -> None:
-        ...
+        order: Optional[List[str]],
+        layer: Optional[nn.Module],
+        dropout: Optional[nn.Module],
+        skip: Optional[nn.Module],
+        normalization: Optional[nn.Module],
+        **kwargs: nn.Module,
+    ) -> None: ...
 
     @overload
-    def configure(
-        self,
-        name: Literal["blocks"],
-        index: Union[int, slice, List[Union[int, slice]], None] = None,
-        order: Optional[Sequence[str]] = None,
-        layer: Optional[Type[nn.Module]] = None,
-        skip: Optional[Type[nn.Module]] = None,
-        normalization: Optional[Type[nn.Module]] = None,
-        **kwargs: Any,
-    ) -> None:
-        ...
+    def configure(self, name: Literal["layer"], *args, **kwargs) -> None: ...
 
-    configure = DeeplayModule.configure
+    @overload
+    def configure(self, name: Literal["dropout"], *args, **kwargs) -> None: ...
+
+    @overload
+    def configure(self, name: Literal["skip"], *args, **kwargs) -> None: ...
+
+    @overload
+    def configure(self, name: Literal["normalization"], *args, **kwargs) -> None: ...
+
+    @overload
+    def configure(self, name: str, *args, **kwargs: Any) -> None: ...
+
+    def configure(self, *args, **kwargs):  # type: ignore
+        super().configure(*args, **kwargs)

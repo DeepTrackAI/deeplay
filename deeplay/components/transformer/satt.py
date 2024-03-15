@@ -48,9 +48,9 @@ class MultiheadSelfAttention(DeeplayModule):
         y, attn = self.attention(x, x, x, attn_mask=attn_mask)
 
         if self.return_attn:
-            return y, attn, x
+            return y, attn
         else:
-            return y, x
+            return y
 
     def _fetch_attn_mask(self, batch_index):
         """Fetch attention mask for 2D tensor. The mask is a square matrix with
