@@ -107,3 +107,10 @@ class TestComponentMLP(unittest.TestCase):
         x = torch.randn(2, 2)
         y = mlp(x)
         self.assertEqual(y.shape, (2, 3))
+
+    def test_no_input_no_hidden_layers(self):
+        mlp = MultiLayerPerceptron(None, [], 3)
+        mlp.build()
+        self.assertEqual(len(mlp.blocks), 1)
+        self.assertEqual(mlp.blocks[0].layer.in_features, 0)
+        self.assertEqual(mlp.blocks[0].layer.out_features, 3)

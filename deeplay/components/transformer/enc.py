@@ -1,7 +1,7 @@
 from typing import List, Optional, Literal, Any, Sequence, Type, overload, Union
 
 from .. import DeeplayModule, Layer, LayerList, MultiLayerPerceptron
-from . import LayerSkipNormalization, MultiheadSelfAttention
+from . import LayerDropoutSkipNormalization, MultiheadSelfAttention
 
 from deeplay.blocks.sequential import SequentialBlock
 from deeplay import Sequential
@@ -107,6 +107,8 @@ class TransformerEncoderLayer(DeeplayModule):
         hidden_features: Sequence[Optional[int]],
         out_features: int,
         num_heads: int,
+        dropout_p: float = 0.0,
+
     ):
         super().__init__()
 
@@ -114,6 +116,7 @@ class TransformerEncoderLayer(DeeplayModule):
         self.hidden_features = hidden_features
         self.out_features = out_features
         self.num_heads = num_heads
+        self.dropout_p = dropout_p
 
         if out_features <= 0:
             raise ValueError(
@@ -137,23 +140,27 @@ class TransformerEncoderLayer(DeeplayModule):
                 SequentialBlock(
                     # First sub-block is multihead self-attention followed by
                     # skip connection and normalization.
-                    multihead=LayerSkipNormalization(
+                    multihead=LayerDropoutSkipNormalization(
                         layer=MultiheadSelfAttention(
                             f_out,
                             num_heads,
-                            projection=Layer(nn.LazyLinear, f_out)
-                            if f_in != f_out
-                            else Layer(nn.Identity),
+                            projection=(
+                                Layer(nn.Linear, f_in, f_out)
+                                if f_in != f_out
+                                else Layer(nn.Identity)
+                            ),
                         ),
+                        dropout=Layer(nn.Dropout, dropout_p),
                         skip=Add(),
                         normalization=Layer(nn.LayerNorm, f_out),
                     ),
                     # Second sub-block is feed forward followed by skip connection
                     # and normalization
-                    feed_forward=LayerSkipNormalization(
+                    feed_forward=LayerDropoutSkipNormalization(
                         layer=MultiLayerPerceptron(
                             f_out, [f_out], f_out, flatten_input=False
                         ),
+                        dropout=Layer(nn.Dropout, dropout_p),
                         skip=Add(),
                         normalization=Layer(nn.LayerNorm, f_out),
                     ),
@@ -173,7 +180,6 @@ class TransformerEncoderLayer(DeeplayModule):
         hidden_features: Optional[List[int]] = None,
         out_features: Optional[int] = None,
         num_heads: Optional[int] = None,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     configure = DeeplayModule.configure

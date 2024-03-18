@@ -15,6 +15,9 @@ class Callback:
     def __call__(self, instance):
         return self.func(instance, *self.args, **self.kwargs)
 
+    def __hash__(self) -> int:
+        return id(self)
+
 
 def before_build(func):
     """Decorator for methods that will be run before build instead of immediately."""

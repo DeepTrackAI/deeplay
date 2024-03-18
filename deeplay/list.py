@@ -50,6 +50,7 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
             module.__construct__()
         return self
 
+
     @after_init
     def extend(self, modules: List[DeeplayModule]) -> "LayerList[T]":
         super().extend(modules)

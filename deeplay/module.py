@@ -1,9 +1,11 @@
 import inspect
 from typing import Any, Dict, Tuple, List, Set, Literal, Optional
 
+import torch
 import torch.nn as nn
 import copy
 import inspect
+import numpy as np
 
 from .meta import ExtendedConstructorMeta, not_top_level
 from .decorators import after_init, after_build
@@ -182,6 +184,8 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     _setattr_recording: Set[str]
     _tag: Tuple[str, ...]
 
+    logs: Dict[str, Any]
+
     @property
     def tags(self) -> List[Tuple[str, ...]]:
         tags = [
@@ -230,26 +234,33 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     ) -> Dict[Literal["before_build", "after_build", "after_init"], list]:
         """A dictionary of all hooks.
         Ordered __constructor_hooks__ > __parent_hooks__ > __user_hooks__"""
-        all_hooks = {
-            k: v + self.__parent_hooks__[k] + self.__user_hooks__[k]
-            for k, v in self.__constructor_hooks__.items()
-        }
+        try:
+            all_hooks = {
+                k: v + self.__parent_hooks__[k] + self.__user_hooks__[k]
+                for k, v in self.__constructor_hooks__.items()
+            }
 
-        for key, value in all_hooks.items():
-            all_hooks[key] = sorted(value, key=lambda x: x.timestamp)
-            # warn if two hooks have the same timestamp
-            if len(all_hooks[key]) > 1:
-                for i in range(len(all_hooks[key]) - 1):
-                    if all_hooks[key][i].timestamp == all_hooks[key][i + 1].timestamp:
-                        import warnings
+            for key, value in all_hooks.items():
+                all_hooks[key] = sorted(value, key=lambda x: x.timestamp)
+                # warn if two hooks have the same timestamp
+                if len(all_hooks[key]) > 1:
+                    for i in range(len(all_hooks[key]) - 1):
+                        if all_hooks[key][i].timestamp == all_hooks[key][
+                            i + 1
+                        ].timestamp and (
+                            all_hooks[key][i] is not all_hooks[key][i + 1]
+                        ):
+                            import warnings
 
-                        warnings.warn(
-                            f"Two hooks have the same timestamp: {all_hooks[key][i].func} and {all_hooks[key][i+1].func}.\n "
-                            "This may cause unexpected behavior.\n "
-                            "Please report this issue to the github repository: "
-                            "https://github.com/DeepTrackAI/deeplay"
-                        )
-        return all_hooks
+                            warnings.warn(
+                                f"Two hooks have the same timestamp: {all_hooks[key][i].func} and {all_hooks[key][i+1].func}.\n "
+                                "This may cause unexpected behavior.\n "
+                                "Please report this issue to the github repository: "
+                                "https://github.com/DeepTrackAI/deeplay"
+                            )
+            return all_hooks
+        except AttributeError as e:
+            raise RuntimeError("Module has not been initialized properly") from e
 
     @property
     def __user_hooks__(
@@ -320,8 +331,13 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
         return self.root_module._user_config
 
+    @property
+    def device(self) -> torch.device:
+        return next(self.parameters()).device
+
     def __pre_init__(self, *args, _args=(), **kwargs):
         super().__init__()
+        # Stored as tuple to avoid it being included in modules
         self._root_module = (self,)
 
         self._actual_init_args = {
@@ -353,13 +369,16 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         self._has_built = False
         self._setattr_recording = set()
 
+        self.logs = {}
+
+        self._validate_after_build()
+
     def __init__(self, *args, **kwargs):  # type: ignore
         # We don't want to call the super().__init__ here because it is called
         # in the __pre_init__ method.
         ...
 
-    def __post_init__(self):
-        ...
+    def __post_init__(self): ...
 
     @after_init
     def set_input_map(self, *args: str, **kwargs: str):
@@ -491,7 +510,6 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
         if len(args) == 0:
             self._configure_kwargs(kwargs)
-
         else:
             self._assert_valid_configurable(args[0])
 
@@ -505,6 +523,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
                     f"Unknown configurable {args[0]} for {self.__class__.__name__}. "
                     "Available configurables are {self.configurables}."
                 )
+        return self
 
     def create(self):
         """
@@ -599,6 +618,124 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
     def new(self):
         return copy.deepcopy(self)
+
+    def predict(
+        self, x, *args, batch_size=32, device=None, output_device=None
+    ) -> torch.Tensor:
+        """
+        Predicts the output of the module for the given input.
+
+        This method is a wrapper around the `forward` method, which is used to predict the output of the module
+        for the given input. It is particularly useful for making predictions on large datasets, as it allows
+        for the specification of a batch size for processing the input data.
+
+        Parameters
+        ----------
+        x : array-like
+            The input data for which to predict the output. Should be an array-like object with the same length
+            as the input data.
+        *args : Any
+            Positional arguments for the input data. Should have the same length as the input data.
+        batch_size : int, optional
+            The batch size for processing the input data. Defaults to 32.
+        device : str, Device, optional
+            The device on which to perform the prediction. If None, the model's device is used.
+            Defaults to None.
+        output_device : str, Device, optional
+            The device on which to store the output. If None, the model's device is used.
+            Defaults to None.
+
+        Returns
+        -------
+        Any
+            The output of the module for the given input data.
+
+        Example Usage
+        -------------
+        To predict the output of a module for the given input data:
+        ```
+        module = ExampleModule()
+        output = module.predict(input_data, batch_size=64)
+        ```
+        """
+        if args:
+            for arg in args:
+                assert len(arg) == len(x), "All inputs must have the same length."
+
+        if device is None:
+            device = self.device
+        if output_device is None:
+            output_device = device
+
+        output_containers = []
+        with torch.no_grad():
+            for idx_0 in range(0, len(x), batch_size):
+                idx_1 = min(idx_0 + batch_size, len(x))
+                batch = [item[idx_0:idx_1] for item in [x, *args]]
+                for i, item in enumerate(batch):
+                    if not isinstance(item, torch.Tensor):
+                        if isinstance(item, np.ndarray):
+                            batch[i] = torch.from_numpy(item).to(device)
+                        else:
+                            batch[i] = torch.stack(item).to(device)
+                    else:
+                        batch[i] = item.to(device)
+
+                # ensure that all inputs are tuples
+                res = self.forward(*batch)
+                if not isinstance(res, tuple):
+                    res = (res,)
+                for i, item in enumerate(res):
+                    output_container = (
+                        output_containers[i] if i < len(output_containers) else None
+                    )
+                    if output_container is None:
+                        output_container = torch.empty(
+                            (len(x), *item.shape[1:]), device=output_device
+                        )
+                        output_containers.append(output_container)
+                    output_container[idx_0:idx_1] = item.to(output_device)
+
+        if len(output_containers) == 1:
+            return output_containers[0]
+        return tuple(output_containers)
+
+    @after_build
+    def log_output(self, name: str):
+        root = self._root_module[0]
+
+        def forward_hook(module, input, output):
+            root.logs[name] = output
+
+        self.register_forward_hook(forward_hook)
+
+    @after_build
+    def log_input(self, name: str):
+        root = self._root_module[0]
+
+        def forward_hook(module, input):
+            root.logs[name] = input
+
+        self.register_forward_pre_hook(forward_hook)
+
+    def initialize(self, initializer):
+        for module in self.modules():
+            if isinstance(module, DeeplayModule):
+                module._initialize_after_build(initializer)
+            else:
+                initializer.initialize(module)
+
+    @after_build
+    def _initialize_after_build(self, initializer):
+        initializer.initialize(self)
+
+    @after_build
+    def _validate_after_build(self):
+        if hasattr(self, "validate_after_build"):
+            return self.validate_after_build()
+
+    def validate_after_build(self):
+        pass
 
     def register_before_build_hook(self, func):
         """
@@ -886,7 +1023,10 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     def _run_hooks(self, hook_name, instance=None):
         if instance is None:
             instance = self
-        for hook in self.__hooks__[hook_name]:
+        hooks = self.__hooks__[hook_name]
+        # remove duplicates based on id
+        hooks = list({id(hook): hook for hook in hooks}.values())
+        for hook in hooks:
             hook(instance)
 
     def __construct__(self):
@@ -945,11 +1085,11 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 class Selection(DeeplayModule):
     def __init__(self, model, selections):
         super().__init__()
-        self.model = model
+        self.model = (model,)
         self.selections = selections
 
     def __getitem__(self, selector):
-        return self.model.getitem_with_selections(selector, self.selections.copy())
+        return self.model[0].getitem_with_selections(selector, self.selections.copy())
 
     def __repr__(self):
         s = ""
@@ -968,6 +1108,23 @@ class Selection(DeeplayModule):
     def configure(self, *args, **kwargs):
         for selection in self.selections:
             for item in selection:
-                for name, module in self.model.named_modules():
+                for name, module in self.model[0].named_modules():
                     if name == ".".join(item):
                         module.configure(*args, **kwargs)
+        return self
+
+    def log_output(self, key):
+        for selection in self.selections:
+            for item in selection:
+                for name, module in self.model[0].named_modules():
+                    if name == ".".join(item):
+                        module.log_output(key)
+                        return
+
+    def log_input(self, key):
+        for selection in self.selections:
+            for item in selection:
+                for name, module in self.model[0].named_modules():
+                    if name == ".".join(item):
+                        module.log_input(key)
+                        return

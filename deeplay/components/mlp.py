@@ -1,6 +1,6 @@
 from typing import List, Optional, Literal, Any, Sequence, Type, overload, Union
 
-from .. import DeeplayModule, Layer, LayerList, LayerActivationNormalization
+from .. import DeeplayModule, Layer, LayerList, LayerActivationNormalizationDropout
 
 import torch.nn as nn
 
@@ -30,6 +30,7 @@ class MultiLayerPerceptron(DeeplayModule):
     - `layer`: Equivalent to `.blocks.layer`.
     - `activation`: Equivalent to `.blocks.activation`.
     - `normalization`: Equivalent to `.blocks.normalization`.
+    - `dropout`: Equivalent to `.blocks.dropout`.
 
     Evaluation
     ----------
@@ -55,7 +56,7 @@ class MultiLayerPerceptron(DeeplayModule):
     in_features: Optional[int]
     hidden_features: Sequence[Optional[int]]
     out_features: int
-    blocks: LayerList[LayerActivationNormalization]
+    blocks: LayerList[LayerActivationNormalizationDropout]
 
     @property
     def input(self):
@@ -86,6 +87,11 @@ class MultiLayerPerceptron(DeeplayModule):
     def normalization(self) -> LayerList[Layer]:
         """Return the normalizations of the network. Equivalent to `.blocks.normalization`."""
         return self.blocks.normalization
+
+    @property
+    def dropout(self) -> LayerList[Layer]:
+        """Return the dropout of the network. Equivalent to `.blocks.dropout`."""
+        return self.blocks.dropout
 
     def __init__(
         self,
@@ -123,29 +129,25 @@ class MultiLayerPerceptron(DeeplayModule):
         f_out = in_features
 
         self.blocks = LayerList()
-        for i, f_out in enumerate(self.hidden_features):
-            f_in = self.in_features if i == 0 else self.hidden_features[i - 1]
+        for i, (f_in, f_out) in enumerate(
+            zip([in_features, *hidden_features], [*hidden_features, out_features])
+        ):
 
             self.blocks.append(
-                LayerActivationNormalization(
-                    Layer(nn.Linear, f_in, f_out)
-                    if f_in
-                    else Layer(nn.LazyLinear, f_out),
-                    Layer(nn.ReLU),
+                LayerActivationNormalizationDropout(
+                    (
+                        Layer(nn.Linear, f_in, f_out)
+                        if f_in
+                        else Layer(nn.LazyLinear, f_out)
+                    ),
+                    Layer(nn.ReLU) if i < len(self.hidden_features) else out_activation,
                     # We can give num_features as an argument to nn.Identity
                     # because it is ignored. This means that users do not have
                     # to specify the number of features for nn.Identity.
                     Layer(nn.Identity, num_features=f_out),
+                    Layer(nn.Dropout, p=0),
                 )
             )
-
-        self.blocks.append(
-            LayerActivationNormalization(
-                Layer(nn.Linear, f_out, self.out_features),
-                out_activation,
-                Layer(nn.Identity, num_features=self.out_features),
-            )
-        )
 
     def forward(self, x):
         x = nn.Flatten()(x) if self.flatten_input else x
@@ -161,8 +163,7 @@ class MultiLayerPerceptron(DeeplayModule):
         hidden_features: Optional[List[int]] = None,
         out_features: Optional[int] = None,
         out_activation: Union[Type[nn.Module], nn.Module, None] = None,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @overload
     def configure(
@@ -174,7 +175,6 @@ class MultiLayerPerceptron(DeeplayModule):
         activation: Optional[Type[nn.Module]] = None,
         normalization: Optional[Type[nn.Module]] = None,
         **kwargs: Any,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     configure = DeeplayModule.configure
