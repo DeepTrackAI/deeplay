@@ -27,12 +27,12 @@ class RecurrentModel(DeeplayModule):
     - in_features (int): The number of expected features in the input. Must be specified.
     - hidden_features (Sequence[int]): The number of features in each hidden layer.
     - out_features (Optional[int]): Number of features in the output layer. If None, the final RNN layer's output is returned directly.
-    - rnn_type (Literal['RNN', 'LSTM', 'GRU']): Type of RNN. Defaults to 'GRU'.
+    - rnn_type (Literal['RNN', 'LSTM', 'GRU']): Type of RNN. Defaults to 'RNN'.
     - out_activation (Union[Literal['softmax', 'sigmoid', 'tanh', 'relu', 'leaky_relu', 'gelu', 'none'], torch.nn.Module]): 
       Activation function for the output layer. Can be a string specifying the activation type or an instance of a PyTorch Module. Defaults to 'none'.
     - bidirectional (bool): If True, makes the RNN bidirectional. Defaults to False.
     - batch_first (bool): If True, input and output tensors are provided as (batch, seq, feature). Defaults to True.
-    - dropout (float): Dropout value for the outputs of each RNN layer except the last layer. Defaults to 0.1.
+    - dropout (float): Dropout value for the outputs of each RNN layer except the last layer. Defaults to 0.
     - embedding (Optional[torch.nn.Embedding]): An embedding layer to be applied to the input data. If None, no embedding is applied.
 
     Properties
@@ -105,11 +105,11 @@ class RecurrentModel(DeeplayModule):
         in_features: Optional[int], 
         hidden_features: Sequence[int], 
         out_features: Optional[int] = None,
-        rnn_type: Union[Literal['RNN', 'LSTM', 'GRU'],Type[torch.nn.Module]] = 'GRU',
+        rnn_type: Union[Literal['RNN', 'LSTM', 'GRU'],Type[torch.nn.Module]] = 'RNN',
         out_activation: Union[Type[torch.nn.Module], torch.nn.Module, None] = None,
         bidirectional: bool = False, 
         batch_first: bool = True, 
-        dropout: float = 0.1,
+        dropout: float = 0,
         embedding: Optional[torch.nn.Embedding] = None,
     ):
         super().__init__()
