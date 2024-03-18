@@ -36,8 +36,12 @@ class BinaryClassifier(Application):
         def params(self):
             return self.model.parameters()
 
+    
     def compute_loss(self, y_hat, y):
-        return self.loss(y_hat, y)
+        if isinstance(self.loss, (torch.nn.BCELoss, torch.nn.BCEWithLogitsLoss)):
+            y = y.float()
+        return super().compute_loss(y_hat, y)
+
 
     def forward(self, x):
         return self.model(x)
