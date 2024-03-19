@@ -22,6 +22,7 @@ import torch.nn as nn
 import torchmetrics as tm
 import tqdm
 from lightning.pytorch.callbacks import RichProgressBar
+from lightning.pytorch.callbacks.progress.rich_progress import RichProgressBarTheme
 from torch.nn.modules.module import Module
 from torch_geometric.data import Data
 
@@ -260,7 +261,8 @@ class Application(DeeplayModule, L.LightningModule):
         )
 
         history = LogHistory()
-        progressbar = RichProgressBar()
+        theme = RichProgressBarTheme(metrics_format=".3g")
+        progressbar = RichProgressBar(theme=theme)
 
         callbacks = callbacks + [history, progressbar]
         trainer = dl.Trainer(max_epochs=max_epochs, callbacks=callbacks, **kwargs)
