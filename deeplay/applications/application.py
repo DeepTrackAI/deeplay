@@ -529,6 +529,10 @@ class Application(DeeplayModule, L.LightningModule):
         self, data, batch_size=32, steps_per_epoch=100, replace=False, **kwargs
     ):
         """Create a torch Dataset from data. If data is a Feature, it will create a Dataset with the feature."""
+
+        if isinstance(data, dl.DataLoader):
+            return data
+
         if isinstance(data, np.ndarray):
             data = torch.from_numpy(data)
             return self._maybe_to_channel_first(data)
@@ -577,7 +581,6 @@ class Application(DeeplayModule, L.LightningModule):
         else:
             return optimizer
 
-
     def _apply_batch_transfer_handler(
         self, batch: Any, device: Optional[torch.device] = None, dataloader_idx: int = 0
     ) -> Any:
@@ -620,4 +623,3 @@ class Application(DeeplayModule, L.LightningModule):
             kwargs.update({"batch_size": self._current_batch_size})
 
         super().log(name, value, **kwargs)
-
