@@ -33,7 +33,7 @@ class PositionalEmbedding(DeeplayModule):
         dropout_p: float = 0.0,
         initializer: Callable = sinusoidal_init_,
         learnable: bool = False,
-        batch_first: bool = True,
+        batch_first: bool = False,
     ):
         super().__init__()
 
@@ -100,7 +100,7 @@ class IndexedPositionalEmbedding(PositionalEmbedding):
         indices = torch.arange(len(batch_index), device=batch_index.device)
         relative_indices = indices - torch.repeat_interleave(change_points, sizes)
 
-        return self.embs[0, relative_indices]
+        return self.embs[relative_indices, 0]
 
     def forward(self, x, batch_index):
         x = x + self.fetch_embeddings(batch_index)
