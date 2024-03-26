@@ -317,6 +317,12 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     def root_module(self) -> "DeeplayModule":
         return self._root_module[0]
 
+    @property
+    def logs(self):
+        if self.root_module is self:
+            return self._logs
+        return self.root_module.logs
+
     def set_root_module(self, value):
         self._root_module = (value,)
         for name, module in self.named_modules():
@@ -369,7 +375,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         self._has_built = False
         self._setattr_recording = set()
 
-        self.logs = {}
+        self._logs = {}
 
         self._validate_after_build()
 
