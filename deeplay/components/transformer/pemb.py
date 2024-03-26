@@ -30,7 +30,6 @@ class PositionalEmbedding(DeeplayModule):
         self,
         features: int,
         max_length: int = 5000,
-        dropout_p: float = 0.0,
         initializer: Callable = sinusoidal_init_,
         learnable: bool = False,
         batch_first: bool = False,
@@ -39,7 +38,6 @@ class PositionalEmbedding(DeeplayModule):
 
         self.features = features
         self.max_length = max_length
-        self.dropout_p = dropout_p
         self.learnable = learnable
         self.batch_first = batch_first
 
@@ -49,7 +47,7 @@ class PositionalEmbedding(DeeplayModule):
         )
         self.embs = nn.Parameter(init_embs, requires_grad=learnable)
 
-        self.dropout = Layer(nn.Dropout, dropout_p)
+        self.dropout = Layer(nn.Dropout, 0)
 
     def forward(self, x):
         seq_dim = 1 - self.batched_dim
@@ -62,11 +60,10 @@ class IndexedPositionalEmbedding(PositionalEmbedding):
         self,
         features,
         max_length=5000,
-        dropout_p=0.0,
         initializer: Callable = sinusoidal_init_,
         learnable: bool = False,
     ):
-        super().__init__(features, max_length, dropout_p, initializer, learnable)
+        super().__init__(features, max_length, initializer, learnable)
 
     def fetch_embeddings(self, batch_index):
         """
