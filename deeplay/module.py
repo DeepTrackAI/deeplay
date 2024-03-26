@@ -563,6 +563,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         ```
         """
         obj = self.new()
+        obj.set_root_module(obj.root_module)
         obj = obj.build()
         return obj
 
@@ -622,8 +623,19 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
         return self
 
+    # @property
+    # def __deepcopy__(self):
+    #     if self._has_built:
+    #         return lambda _: self
+    #     else:
+    #         return None
+
     def new(self):
-        return copy.deepcopy(self)
+        memo = {}
+        for module in self.modules():
+            if isinstance(module, DeeplayModule) and module._has_built:
+                memo[id(module)] = module
+        return copy.deepcopy(self, memo)
 
     def predict(
         self, x, *args, batch_size=32, device=None, output_device=None
@@ -861,10 +873,17 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         super().__setattr__(name, value)
 
         if self.is_constructing:
-            if isinstance(value, DeeplayModule) and not value._has_built:
+            if isinstance(value, DeeplayModule):
+                # if not value._has_built:
                 self._give_user_configuration(value, name)
-                value.__construct__()
-            self._setattr_recording.add(name)
+
+                if not value._has_built:
+                    value.__construct__()
+                    # # root module should always be update to
+                    # # ensure that logs are stored in the correct place
+                    # value.set_root_module(self.root_module)
+
+            # self._setattr_recording.add(name)
 
     def _select_string(self, structure, selections, select, ellipsis=False):
         selects = select.split(",")
