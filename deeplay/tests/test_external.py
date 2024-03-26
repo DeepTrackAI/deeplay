@@ -36,8 +36,9 @@ class TestExternal(unittest.TestCase):
     def test_wrapped(self):
         external = dl.External(nn.Sigmoid)
         wrapped = Wrapper(external)
-        built = wrapped.build()
+
         created = wrapped.create()
+        built = wrapped.build()
         self.assertIsInstance(created, Wrapper)
         self.assertIsInstance(built, Wrapper)
         self.assertIsNot(built, created)
