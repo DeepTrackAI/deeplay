@@ -18,3 +18,13 @@ model.
 Moreover, the model architecture should in almost all cases be defined purely out of components and operations. Try to limit direct calls to
 `torch.nn` modules and `blocks`. This is because the `torch.nn` modules are not as flexible as the components and operations in Deeplay. If
 components do not exist for the desired architecture, then it is a good idea to create a new component and add it to the `components` folder.
+
+### Unknown tensor sizes
+
+Tensorflow, and by extension Keras, allows for unknown tensor sizes thanks to the graph structure. This is not possible in PyTorch.
+If you need to support unknown tensor sizes, you can use the `lazy` module. This module allows for unknown tensor sizes by delaying the
+construction of the model until the first forward pass. This is not optimal, so use it sparingly. Examples are `nn.LazyConv2d` and `nn.LazyLinear`.
+
+If a model requires unknown tensor sizes, it is heavily encouraged to define the `validate_after_build` method, which should call the forward
+pass with a small input to validate that the model can be built. This will instantiate the lazy modules directly, allowing for a more
+user-friendly experience.
