@@ -1,5 +1,5 @@
 import inspect
-from typing import Any, Dict, Tuple, List, Set, Literal, Optional
+from typing import Any, Dict, Tuple, List, Set, Literal, Optional, Callable
 
 import torch
 import torch.nn as nn
@@ -1083,10 +1083,12 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
 
 class Selection(DeeplayModule):
-    def __init__(self, model, selections):
+    def __init__(self, model: nn.Module, selections: List[List[Tuple[str]]]):
         super().__init__()
         self.model = (model,)
         self.selections = selections
+        self.first = _MethodForwarder(self, "first")
+        self.all = _MethodForwarder(self, "all")
 
     def __getitem__(self, selector):
         return self.model[0].getitem_with_selections(selector, self.selections.copy())
@@ -1105,26 +1107,69 @@ class Selection(DeeplayModule):
                 names.append(item)
         return names
 
+    def filter(self, func: Callable[[str, nn.Module], bool]) -> "Selection":
+        """Filter the selection based on a function"""
+        new_selections = [selection.copy() for selection in self.selections]
+        for n, module in self.model[0].named_modules():
+            for selection in new_selections:
+                for item in selection:
+                    asstr = ".".join(item)
+                    if asstr == n and not func(n, module):
+                        selection.remove(item)
+
+        return Selection(self.model[0], new_selections)
+
+    def hasattr(self, attr):
+        return self.filter(lambda _, module: hasattr(module, attr))
+
+    def isinstance(self, cls):
+        return self.filter(lambda _, module: isinstance(module, cls))
+
     def configure(self, *args, **kwargs):
-        for selection in self.selections:
-            for item in selection:
-                for name, module in self.model[0].named_modules():
-                    if name == ".".join(item):
-                        module.configure(*args, **kwargs)
-        return self
+        return self.all.configure(*args, **kwargs)
 
     def log_output(self, key):
-        for selection in self.selections:
-            for item in selection:
-                for name, module in self.model[0].named_modules():
-                    if name == ".".join(item):
-                        module.log_output(key)
-                        return
+        return self.first.log_output(key)
 
     def log_input(self, key):
-        for selection in self.selections:
-            for item in selection:
-                for name, module in self.model[0].named_modules():
-                    if name == ".".join(item):
-                        module.log_input(key)
-                        return
+        return self.first.log_input(key)
+
+
+class _MethodForwarder:
+
+    def __init__(self, selection: Selection, mode: str):
+        self.mode = mode
+        self.selection = selection
+
+    def _create_forwarder(self, name):
+        def forwarder(*args, **kwargs):
+            for selection in self.selection.selections:
+                for item in selection:
+                    for n, module in self.selection.model[0].named_modules():
+                        if n == ".".join(item):
+                            try:
+                                v = getattr(module, name)(*args, **kwargs)
+                                if self.mode == "first":
+                                    return v
+                            except AttributeError as e:
+                                raise AttributeError(
+                                    f"Module {module} does not have a method {name}. "
+                                    "Use selection.hasattr('method_name') to filter modules that have the method."
+                                ) from e
+
+        return forwarder
+
+    def __getattr__(self, name):
+        try:
+            return super().__getattr__(name)
+        except AttributeError:
+            return self._create_forwarder(name)
+
+    def configure(self, *args, **kwargs):
+        return self._create_forwarder("configure")(*args, **kwargs)
+
+    def log_output(self, key):
+        return self._create_forwarder("log_output")(key)
+
+    def log_input(self, key):
+        return self._create_forwarder("log_input")(key)
