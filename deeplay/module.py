@@ -1098,6 +1098,7 @@ class Selection(DeeplayModule):
         for selection in self.selections:
             for item in selection:
                 s += ".".join(item) + "\n"
+        s = "Selection(\n" + s + ")"
         return s
 
     def list_names(self):
@@ -1196,13 +1197,56 @@ class Selection(DeeplayModule):
         )
 
     def configure(self, *args, **kwargs):
+        """Applies `DeeplayModule.configure` to all modules in the selection."""
         return self.all.configure(*args, **kwargs)
 
+    def replace(self, *args, **kwargs):
+        """Applies `DeeplayModule.replace` to all modules in the selection."""
+        return self.all.replace(*args, **kwargs)
+
     def log_output(self, key):
+        """Applies `DeeplayModule.log_output` to the first module in the selection."""
         return self.first.log_output(key)
 
     def log_input(self, key):
+        """Applies `DeeplayModule.log_input` to the first module in the selection."""
         return self.first.log_input(key)
+
+    def append(self, *args, **kwargs):
+        """Applies `SequentialBlock.append` to all modules in the selection."""
+        return self.all.append(*args, **kwargs)
+
+    def prepend(self, *args, **kwargs):
+        """Applies `SequentialBlock.prepend` to all modules in the selection."""
+        return self.all.prepend(*args, **kwargs)
+
+    def insert(self, *args, **kwargs):
+        """Applies `SequentialBlock.insert` to all modules in the selection."""
+        return self.all.insert(*args, **kwargs)
+
+    def remove(self, *args, **kwargs):
+        """Applies `SequentialBlock.remove` to all modules in the selection."""
+        return self.all.remove(*args, **kwargs)
+
+    def append_dropout(self, *args, **kwargs):
+        """Applies `SequentialBlock.append_dropout` to all modules in the selection."""
+        return self.all.append_dropout(*args, **kwargs)
+
+    def prepend_dropout(self, *args, **kwargs):
+        """Applies `SequentialBlock.prepend_dropout` to all modules in the selection."""
+        return self.all.prepend_dropout(*args, **kwargs)
+
+    def insert_dropout(self, *args, **kwargs):
+        """Applies `SequentialBlock.insert_dropout` to all modules in the selection."""
+        return self.all.insert_dropout(*args, **kwargs)
+
+    def remove_dropout(self, *args, **kwargs):
+        """Applies `SequentialBlock.remove_dropout` to all modules in the selection."""
+        return self.all.remove_dropout(*args, **kwargs)
+
+    def set_dropout(self, *args, **kwargs):
+        """Applies `SequentialBlock.set_dropout` to all modules in the selection."""
+        return self.all.set_dropout(*args, **kwargs)
 
 
 class _MethodForwarder:
@@ -1236,10 +1280,53 @@ class _MethodForwarder:
             return self._create_forwarder(name)
 
     def configure(self, *args, **kwargs):
+        """See `DeeplayModule.configure`."""
         return self._create_forwarder("configure")(*args, **kwargs)
 
+    def replace(self, *args, **kwargs):
+        """See `DeeplayModule.replace`."""
+        return self._create_forwarder("replace")(*args, **kwargs)
+
     def log_output(self, key):
+        """See `DeeplayModule.log_output`."""
         return self._create_forwarder("log_output")(key)
 
     def log_input(self, key):
+        """See `DeeplayModule.log_input`."""
         return self._create_forwarder("log_input")(key)
+
+    def append(self, *args, **kwargs):
+        """See `SequentialBlock.append`."""
+        return self._create_forwarder("append")(*args, **kwargs)
+
+    def prepend(self, *args, **kwargs):
+        """See `SequentialBlock.prepend`."""
+        return self._create_forwarder("prepend")(*args, **kwargs)
+
+    def insert(self, *args, **kwargs):
+        """See `SequentialBlock.insert`."""
+        return self._create_forwarder("insert")(*args, **kwargs)
+
+    def remove(self, *args, **kwargs):
+        """See `SequentialBlock.remove`."""
+        return self._create_forwarder("remove")(*args, **kwargs)
+
+    def append_dropout(self, *args, **kwargs):
+        """See `SequentialBlock.append_dropout`."""
+        return self._create_forwarder("append_dropout")(*args, **kwargs)
+
+    def prepend_dropout(self, *args, **kwargs):
+        """See `SequentialBlock.prepend_dropout`."""
+        return self._create_forwarder("prepend_dropout")(*args, **kwargs)
+
+    def insert_dropout(self, *args, **kwargs):
+        """See `SequentialBlock.insert_dropout`."""
+        return self._create_forwarder("insert_dropout")(*args, **kwargs)
+
+    def remove_dropout(self, *args, **kwargs):
+        """See `SequentialBlock.remove_dropout`."""
+        return self._create_forwarder("remove_dropout")(*args, **kwargs)
+
+    def set_dropout(self, *args, **kwargs):
+        """See `SequentialBlock.set_dropout`."""
+        return self._create_forwarder("set_dropout")(*args, **kwargs)
