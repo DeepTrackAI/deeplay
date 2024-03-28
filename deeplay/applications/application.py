@@ -1,33 +1,41 @@
 import copy
+
+import logging
 from typing import (
     Callable,
+    Dict,
     Iterator,
-    Tuple,
     Literal,
     Optional,
-    Dict,
-    TypeVar,
     Sequence,
+    Tuple,
+    TypeVar,
     Union,
     Any,
 )
 
 import lightning as L
+import matplotlib.pyplot as plt
+import numpy as np
 import torch
 import torch.nn as nn
 import torchmetrics as tm
+import tqdm
 from torch.nn.modules.module import Module
 from torch_geometric.data import Data
 
+import deeplay as dl
 from deeplay import DeeplayModule, Optimizer
+from deeplay.callbacks import RichProgressBar, LogHistory
 
-import torchmetrics as tm
-import copy
+logging.getLogger("lightning.pytorch.utilities.rank_zero").setLevel(logging.WARNING)
+logging.getLogger("lightning.pytorch.accelerators.cuda").setLevel(logging.WARNING)
 
 T = TypeVar("T")
 
 
 class Application(DeeplayModule, L.LightningModule):
+
     def __init__(
         self,
         loss: Optional[Union[nn.Module, Callable[..., torch.Tensor]]] = None,
@@ -60,6 +68,148 @@ class Application(DeeplayModule, L.LightningModule):
 
     def forward(self, *args, **kwargs):
         raise NotImplementedError
+
+    def fit(
+        self,
+        train_data,
+        val_data=None,
+        max_epochs=None,
+        batch_size=32,
+        steps_per_epoch=100,
+        replace=False,
+        val_batch_size=None,
+        val_steps_per_epoch=10,
+        callbacks=[],
+        **kwargs,
+    ) -> LogHistory:
+        """Train the model on the training data.
+
+        Train the model on the training data, with optional validation data.
+
+        Parameters
+        ----------
+        max_epochs : int
+            The maximum number of epochs to train the model.
+        batch_size : int
+            The batch size to use for training.
+        steps_per_epoch : int
+            The number of steps per epoch (used if train_data is a Feature).
+        replace : bool or float
+            Whether to replace the data after each epoch (used if train_data is a Feature).
+            If a float, the data is replaced with the given probability.
+        val_batch_size : int
+            The batch size to use for validation. If None, the training batch size is used.
+        val_steps_per_epoch : int
+            The number of steps per epoch for validation.
+        callbacks : list
+            A list of callbacks to use during training.
+        permute_target_channels : bool or "auto"
+            Whether to permute the target channels to channel first. If "auto", the model will
+            attempt to infer the correct permutation based on the input and target shapes.
+        **kwargs
+            Additional keyword arguments to pass to the trainer.
+        """
+
+        val_batch_size = val_batch_size or batch_size
+        val_steps_per_epoch = val_steps_per_epoch or 10
+        train_data = self.create_data(train_data, batch_size, steps_per_epoch, replace)
+        val_data = (
+            self.create_data(val_data, val_batch_size, val_steps_per_epoch, False)
+            if val_data
+            else None
+        )
+
+        history = LogHistory()
+        progressbar = RichProgressBar()
+
+        callbacks = callbacks + [history, progressbar]
+        trainer = dl.Trainer(max_epochs=max_epochs, callbacks=callbacks, **kwargs)
+
+        train_dataloader = torch.utils.data.DataLoader(
+            train_data, batch_size=batch_size, shuffle=True
+        )
+
+        if not self._has_built:
+            self.build()
+
+        self.train()
+        if val_data:
+            val_dataloader = (
+                torch.utils.data.DataLoader(
+                    val_data, batch_size=val_batch_size, shuffle=False
+                )
+                if val_data
+                else None
+            )
+            trainer.fit(self, train_dataloader, val_dataloader)
+        else:
+            trainer.fit(self, train_dataloader)
+        self.eval()
+        return history
+
+    def test(
+        self,
+        data,
+        metrics: Union[
+            tm.Metric,
+            Tuple[str, tm.Metric],
+            Sequence[Union[tm.Metric, Tuple[str, tm.Metric]]],
+            Dict[str, tm.Metric],
+        ],
+        batch_size: int = 32,
+    ):
+        """Test the model on the given data.
+
+        Test the model on the given data, using the given metrics. Metrics can be
+        given as a single metric, a tuple of name and metric, a sequence of metrics
+        (or tuples of name and metric) or a dictionary of metrics. In the case of
+        tuples, the name is used as the key in the returned dictionary. In the case
+        of metrics, the name of the metric is used as the key in the returned dictionary.
+
+        Parameters
+        ----------
+        data : data-like
+            The data to test the model on. Can be a Feature, a torch.utils.data.Dataset, a tuple of tensors, a tensor or a numpy array.
+        metrics : metric-like
+            The metrics to use for testing. Can be a single metric, a tuple of name and metric, a sequence of metrics (or tuples of name and metric) or a dictionary of metrics.
+        batch_size : int
+            The batch size to use for testing.
+        """
+
+        device = self.trainer.strategy.root_device
+        self.to(device)
+        test_data = self.create_data(data)
+        test_dataloader = torch.utils.data.DataLoader(
+            test_data, batch_size=batch_size, shuffle=True
+        )
+
+        dict_metrics: Dict[str, tm.Metric]
+        if isinstance(metrics, tm.Metric):
+            dict_metrics = {metrics._get_name(): metrics}
+        elif isinstance(metrics, tuple):
+            dict_metrics = {metrics[0]: metrics[1]}
+        elif isinstance(metrics, list):
+            m = {}
+            for metric in metrics:
+                if isinstance(metric, tm.Metric):
+                    m[metric._get_name()] = metric
+                elif isinstance(metric, tuple):
+                    m[metric[0]] = metric[1]
+            dict_metrics = m
+        else:
+            dict_metrics = {k: v for k, v in metrics.items()}
+
+        for x, y in tqdm.tqdm(test_dataloader):
+            y_hat = self(x.to(device))
+            for metric in dict_metrics.values():
+                metric.to(device)
+                metric.update(y_hat.to(device), y.to(device))
+
+        return {name: dict_metrics[name].compute() for name in dict_metrics}
+
+    def __call__(self, *args, **kwargs):
+        args = [self._maybe_to_channel_first(arg) for arg in args]
+        return super().__call__(*args, **kwargs)
 
     def compute_loss(self, y_hat, y) -> Union[torch.Tensor, Dict[str, torch.Tensor]]:
         if self.loss:
@@ -201,13 +351,14 @@ class Application(DeeplayModule, L.LightningModule):
         ]
 
     def train_preprocess(self, batch):
-        return batch
+        x, y = batch
+        x = self._maybe_to_channel_first(x)
+        y = self._maybe_to_channel_first(y)
 
-    def val_preprocess(self, batch):
-        return batch
+        return x, y
 
-    def test_preprocess(self, batch):
-        return batch
+    val_preprocess = train_preprocess
+    test_preprocess = train_preprocess
 
     def _provide_paramaters_if_has_none(self, optimizer):
         if isinstance(optimizer, Optimizer):
@@ -231,6 +382,55 @@ class Application(DeeplayModule, L.LightningModule):
         ]
 
         yield from (not_optimizers + optimizers)
+
+    def create_data(
+        self, data, batch_size=32, steps_per_epoch=100, replace=False, **kwargs
+    ):
+        """Create a torch Dataset from data. If data is a Feature, it will create a Dataset with the feature."""
+
+        if isinstance(data, dl.DataLoader):
+            return data
+
+        if isinstance(data, np.ndarray):
+            data = torch.from_numpy(data)
+            return self._maybe_to_channel_first(data)
+
+        if isinstance(data, torch.Tensor):
+            return data
+
+        if isinstance(data, torch.utils.data.Dataset):
+            return data
+
+        if isinstance(data, (tuple, list)):
+            datas = [self.create_data(d) for d in data]
+            return torch.utils.data.TensorDataset(*datas)
+
+        # check if deeptrack object
+        if hasattr(data, "__module__") and data.__module__.startswith("deeptrack"):
+            import deeptrack as dt
+
+            if isinstance(data, dt.Feature):
+                return dt.pytorch.Dataset(
+                    data, length=batch_size * steps_per_epoch, replace=replace
+                )
+            elif isinstance(data, dt.pytorch.Dataset):
+                return data
+
+        raise ValueError(f"Data type {type(data)} not supported")
+
+    @staticmethod
+    def _maybe_to_channel_first(x, other=None):
+
+        if not isinstance(x, np.ndarray):
+            return x
+
+        if x.ndim <= 2:
+            return x
+
+        if x.dtype in [torch.int8, torch.int16, torch.int32, torch.int64]:
+            return x
+
+        return np.moveaxis(x, -1, 1)
 
     def create_optimizer_with_params(self, optimizer, params):
         if isinstance(optimizer, Optimizer):
@@ -281,4 +481,3 @@ class Application(DeeplayModule, L.LightningModule):
             kwargs.update({"batch_size": self._current_batch_size})
 
         super().log(name, value, **kwargs)
-
