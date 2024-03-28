@@ -220,11 +220,38 @@ class TestSelectors(unittest.TestCase):
             ],
         )
 
+    def test_selector_isinstance_2(self):
+        selections = self.module["encoder", 0, ...].isinstance(nn.Conv2d).list_names()
+        self.assertListEqual(
+            selections,
+            [
+                ("encoder", "0", "layer"),
+            ],
+        )
+
+    def test_selector_isinstance_3(self):
+        selections = self.module["encoder", 0, ...].isinstance(nn.ReLU).list_names()
+        self.assertListEqual(
+            selections,
+            [
+                ("encoder", "0", "activation"),
+            ],
+        )
+
     def test_selector_hasattr(self):
         selections = self.module["encoder", 0, ...].hasattr("append").list_names()
         self.assertListEqual(
             selections,
             [("encoder", "0")],
+        )
+
+    def test_selector_hasattr_2(self):
+        selections = (
+            self.module["encoder", 0, ...].hasattr("_conv_forward").list_names()
+        )
+        self.assertListEqual(
+            selections,
+            [("encoder", "0", "layer")],
         )
 
     def test_selector_append_all(self):

@@ -1108,7 +1108,18 @@ class Selection(DeeplayModule):
         return names
 
     def filter(self, func: Callable[[str, nn.Module], bool]) -> "Selection":
-        """Filter the selection based on a function"""
+        """Filter the selection based on a function that takes the module name (separated by .) and module as input.
+
+        Parameters
+        ----------
+        func : Callable[[str, nn.Module], bool]
+            A function that takes the module name (separated by .) and module as input and returns a boolean.
+
+        Returns
+        -------
+        Selection
+            A new selection with the modules that satisfy the condition.
+        """
         new_selections = [selection.copy() for selection in self.selections]
         for n, module in self.model[0].named_modules():
             for selection in new_selections:
@@ -1119,11 +1130,70 @@ class Selection(DeeplayModule):
 
         return Selection(self.model[0], new_selections)
 
-    def hasattr(self, attr):
-        return self.filter(lambda _, module: hasattr(module, attr))
+    def hasattr(self, attr: str, include_layer_classtype: bool = True) -> "Selection":
+        """Filter the selection based on whether the modules have a certain attribute.
 
-    def isinstance(self, cls):
-        return self.filter(lambda _, module: isinstance(module, cls))
+        Note, for layers, the attribute is checked in the layer's classtype
+        (if include_layer_classtype is True). However, this does not include
+        non-class attributes of the layer since they are not accessible from the
+        layer's classtype. For example, Selection(Layer(nn.Conv2d)).hasattr("kernel_size")
+        will return False, but Selection(Layer(nn.Conv2d)).hasattr("_conv_forward") will return True.
+
+        Parameters
+        ----------
+        attr : str
+            The attribute to check for.
+        include_layer_classtype : bool, optional
+            Whether to check the attribute in the layer's classtype, by default True
+
+        Returns
+        -------
+        Selection
+            A new selection with the modules that have the attribute.
+        """
+        from deeplay.external import Layer
+
+        return self.filter(
+            lambda _, module: hasattr(module, attr)
+            or (
+                include_layer_classtype
+                and isinstance(module, Layer)
+                and hasattr(module.classtype, attr)
+            )
+        )
+
+    def isinstance(
+        self, cls: type, include_layer_classtype: bool = True
+    ) -> "Selection":
+        """Filter the selection based on whether the modules are instances of a certain class.
+
+        Note, for layers, the class is checked in the layer's classtype
+        (if include_layer_classtype is True).
+
+        Parameters
+        ----------
+        cls : type
+            The class to check for.
+        include_layer_classtype : bool, optional
+            Whether to check the class in the layer's classtype, by default True
+
+        Returns
+        -------
+        Selection
+            A new selection with the modules that are instances of the class.
+        """
+
+        from deeplay.external import Layer
+
+        return self.filter(
+            lambda _, module: isinstance(module, cls)
+            or (
+                include_layer_classtype
+                and isinstance(module, Layer)
+                and isinstance(module.classtype, type)
+                and issubclass(module.classtype, cls)
+            )
+        )
 
     def configure(self, *args, **kwargs):
         return self.all.configure(*args, **kwargs)
