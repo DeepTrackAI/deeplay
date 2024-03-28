@@ -107,8 +107,7 @@ class TransformerEncoderLayer(DeeplayModule):
         hidden_features: Sequence[Optional[int]],
         out_features: int,
         num_heads: int,
-        dropout_p: float = 0.0,
-
+        batch_first: bool = False,
     ):
         super().__init__()
 
@@ -116,7 +115,7 @@ class TransformerEncoderLayer(DeeplayModule):
         self.hidden_features = hidden_features
         self.out_features = out_features
         self.num_heads = num_heads
-        self.dropout_p = dropout_p
+        self.batch_first = batch_first
 
         if out_features <= 0:
             raise ValueError(
@@ -149,8 +148,9 @@ class TransformerEncoderLayer(DeeplayModule):
                                 if f_in != f_out
                                 else Layer(nn.Identity)
                             ),
+                            batch_first=batch_first,
                         ),
-                        dropout=Layer(nn.Dropout, dropout_p),
+                        dropout=Layer(nn.Dropout, 0),
                         skip=Add(),
                         normalization=Layer(nn.LayerNorm, f_out),
                     ),
@@ -160,7 +160,7 @@ class TransformerEncoderLayer(DeeplayModule):
                         layer=MultiLayerPerceptron(
                             f_out, [f_out], f_out, flatten_input=False
                         ),
-                        dropout=Layer(nn.Dropout, dropout_p),
+                        dropout=Layer(nn.Dropout, 0),
                         skip=Add(),
                         normalization=Layer(nn.LayerNorm, f_out),
                     ),

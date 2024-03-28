@@ -16,6 +16,7 @@ class MultiheadSelfAttention(DeeplayModule):
         num_heads: int,
         projection: nn.Module = nn.Identity(),
         return_attn: bool = False,
+        batch_first: bool = False,
     ):
         super().__init__()
         self.features = features
@@ -27,11 +28,13 @@ class MultiheadSelfAttention(DeeplayModule):
         if features <= 0:
             raise ValueError(f"Number of features must be positive, got {features}")
 
-        self.attention = Layer(nn.MultiheadAttention, features, num_heads)
+        self.attention = Layer(
+            nn.MultiheadAttention, features, num_heads, batch_first=batch_first
+        )
 
     def forward(self, x, batch_index=None):
         """Apply multihead self-attention to the input tensor.
-        Returns (y, attn, x) if return_attn is True, otherwise returns (y, x).
+        Returns (y, attn) if return_attn is True, otherwise returns y.
         y is the output of the multihead self-attention layer, attn is the
         attention matrix, and x is the input to the multihead self-attention.
         If projection is nn.Identity, then x is the same as the input to the

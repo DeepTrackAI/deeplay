@@ -145,7 +145,11 @@ class MultiLayerPerceptron(DeeplayModule):
                     # because it is ignored. This means that users do not have
                     # to specify the number of features for nn.Identity.
                     Layer(nn.Identity, num_features=f_out),
-                    Layer(nn.Dropout, p=0),
+                    (
+                        Layer(nn.Dropout, p=0)
+                        if i < len(self.hidden_features)
+                        else Layer(nn.Identity)
+                    ),
                 )
             )
 
