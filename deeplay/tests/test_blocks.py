@@ -409,3 +409,21 @@ class TestSequentalBlock(unittest.TestCase):
 
         self.assertNotIn("dropout", created.order)
         self.assertNotIn("dropout", built.order)
+
+    def test_default_name(self):
+        block = SequentialBlock(a=Layer(nn.Linear, 1, 2), b=Layer(nn.Linear, 2, 1))
+        block.append(Layer(nn.Conv2d, 1, 1, 1))
+
+        self.assertListEqual(block.order, ["a", "b", "conv2d"])
+
+    def test_default_name_not_layer(self):
+        block = SequentialBlock(a=Layer(nn.Linear, 1, 2), b=Layer(nn.Linear, 2, 1))
+        block.append(SequentialBlock())
+
+        self.assertListEqual(block.order, ["a", "b", "sequentialblock"])
+
+    def test_default_name_conflict(self):
+        block = SequentialBlock(a=Layer(nn.Linear, 1, 2), b=Layer(nn.Linear, 2, 1))
+
+        with self.assertRaises(ValueError):
+            block.append(Layer(nn.Conv2d, 1, 1, 1), name="b")

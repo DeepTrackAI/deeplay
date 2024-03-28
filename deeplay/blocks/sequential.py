@@ -6,7 +6,7 @@ from .block import Block
 
 from typing import List, Optional, Union, overload, Any, Literal
 from ..module import DeeplayModule
-from deeplay.external import Layer
+from deeplay.external import Layer, External
 
 
 class SequentialBlock(Block):
@@ -40,8 +40,7 @@ class SequentialBlock(Block):
             The name of the layer, by default None.
             If None, the name of the layer will be the lowercase of its class name.
         """
-        if name is None:
-            name = layer.__class__.__name__.lower()
+        name = self._create_name(layer, name)
         self.configure(**{name: layer}, order=self.order + [name])
 
     def prepend(self, layer: DeeplayModule, name: Optional[str] = None):
@@ -55,8 +54,7 @@ class SequentialBlock(Block):
             The name of the layer, by default None.
             If None, the name of the layer will be the lowercase of its class name.
         """
-        if name is None:
-            name = layer.__class__.__name__.lower()
+        name = self._create_name(layer, name)
         self.configure(**{name: layer}, order=[name] + self.order)
 
     def insert(self, layer: DeeplayModule, after: str, name: Optional[str] = None):
@@ -77,8 +75,7 @@ class SequentialBlock(Block):
             If the layer `after` is not found in the block.
         """
 
-        if name is None:
-            name = layer.__class__.__name__.lower()
+        name = self._create_name(layer, name)
         if after not in self.order:
             raise ValueError(f"Layer `{after}` not found in the block.")
         index = self.order.index(after) + 1
@@ -224,3 +221,27 @@ class SequentialBlock(Block):
         for name in self.order:
             x = getattr(self, name)(x)
         return x
+
+    def _create_name(self, module: DeeplayModule, name: Optional[str] = None):
+
+        name = self._create_name_from_module_if_name_is_none(module, name)
+
+        if name in self.order:
+            raise ValueError(
+                f"Layer `{name}` already exists in the block. "
+                "To change it, use .{name}.configure(...). "
+                f"To execute the same layer multiple times, use .configure(order=[order with {name} multiple times])"
+            )
+
+        return name
+
+    def _create_name_from_module_if_name_is_none(
+        self, module: DeeplayModule, name: Optional[str]
+    ):
+        if name is not None:
+            return name
+
+        if isinstance(module, External):
+            return module.classtype.__name__.lower()
+        else:
+            return module.__class__.__name__.lower()
