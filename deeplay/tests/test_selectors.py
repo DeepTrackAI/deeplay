@@ -209,3 +209,63 @@ class TestSelectors(unittest.TestCase):
                 ("decoder", "3", "activation"),
             ],
         )
+
+    def test_selector_isinstance(self):
+        selections = self.module["encoder", 0, ...].isinstance(Layer).list_names()
+        self.assertListEqual(
+            selections,
+            [
+                ("encoder", "0", "layer"),
+                ("encoder", "0", "activation"),
+            ],
+        )
+
+    def test_selector_isinstance_2(self):
+        selections = self.module["encoder", 0, ...].isinstance(nn.Conv2d).list_names()
+        self.assertListEqual(
+            selections,
+            [
+                ("encoder", "0", "layer"),
+            ],
+        )
+
+    def test_selector_isinstance_3(self):
+        selections = self.module["encoder", 0, ...].isinstance(nn.ReLU).list_names()
+        self.assertListEqual(
+            selections,
+            [
+                ("encoder", "0", "activation"),
+            ],
+        )
+
+    def test_selector_hasattr(self):
+        selections = self.module["encoder", 0, ...].hasattr("append").list_names()
+        self.assertListEqual(
+            selections,
+            [("encoder", "0")],
+        )
+
+    def test_selector_hasattr_2(self):
+        selections = (
+            self.module["encoder", 0, ...].hasattr("_conv_forward").list_names()
+        )
+        self.assertListEqual(
+            selections,
+            [("encoder", "0", "layer")],
+        )
+
+    def test_selector_append_all(self):
+        self.module["encoder", :2, ...].hasattr("append").all.append(
+            Layer(nn.Conv2d, 3, 3, 1, 1), name="conv"
+        )
+        created = self.module.create()
+        self.assertIsInstance(created.encoder[0].conv, nn.Conv2d)
+        self.assertIsInstance(created.encoder[1].conv, nn.Conv2d)
+
+    def test_selector_append_first(self):
+        self.module["encoder", 0, ...].hasattr("append").first.append(
+            Layer(nn.Conv2d, 3, 3, 1, 1), name="conv"
+        )
+        created = self.module.create()
+        self.assertIsInstance(created.encoder[0].conv, nn.Conv2d)
+        self.assertFalse(hasattr(created.encoder[1], "conv"))
