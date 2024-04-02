@@ -116,13 +116,14 @@ class TestComponentViT(unittest.TestCase):
 
     def test_vit_defaults(self):
         vit = ViT(
+            in_channels=3,
             image_size=32,
             patch_size=4,
-            hidden_channels=[
+            hidden_features=[
                 384,
             ]
             * 7,
-            out_channels=10,
+            out_features=10,
             num_heads=12,
         )
         vit.build()
@@ -130,7 +131,7 @@ class TestComponentViT(unittest.TestCase):
 
         self.assertEqual(len(vit.hidden.blocks), 7)
 
-        self.assertEqual(vit.input.layer.in_channels, 0)
+        self.assertEqual(vit.input.layer.in_channels, 3)
         self.assertEqual(vit.input.layer.out_channels, 384)
 
         self.assertEqual(vit.output.blocks[0].layer.in_features, 384)
@@ -143,33 +144,58 @@ class TestComponentViT(unittest.TestCase):
 
     def test_vit_change_depth(self):
         vit = ViT(
+            in_channels=3,
             image_size=32,
             patch_size=4,
-            hidden_channels=[
+            hidden_features=[
                 384,
             ]
             * 7,
-            out_channels=10,
+            out_features=10,
             num_heads=12,
         )
-        vit.configure(hidden_channels=[384, 384])
+        vit.configure(hidden_features=[384, 384])
         vit.create()
         vit.build()
         self.assertEqual(len(vit.hidden.blocks), 2)
 
-    def test_empty_hidden_channels(self):
+    def test_empty_hidden_features(self):
         vit = ViT(
+            in_channels=3,
             image_size=32,
             patch_size=4,
-            hidden_channels=[
+            hidden_features=[
                 384,
             ]
             * 7,
-            out_channels=10,
+            out_features=10,
+            num_heads=12,
+        ).build()
+        self.assertEqual(vit.input.layer.in_channels, 3)
+        self.assertEqual(vit.input.layer.out_channels, 384)
+
+        self.assertIs(vit.output.blocks[0].layer.in_features, 384)
+        self.assertIs(vit.output.blocks[-1].layer.out_features, 10)
+
+    def test_lazy_input(self):
+        vit = ViT(
+            None,
+            image_size=32,
+            patch_size=4,
+            hidden_features=[
+                384,
+            ]
+            * 7,
+            out_features=10,
             num_heads=12,
         ).build()
         self.assertEqual(vit.input.layer.in_channels, 0)
         self.assertEqual(vit.input.layer.out_channels, 384)
 
-        self.assertIs(vit.output.blocks[0].layer.in_features, 384)
-        self.assertIs(vit.output.blocks[-1].layer.out_features, 10)
+        self.assertEqual(vit.output.blocks[0].layer.in_features, 384)
+        self.assertEqual(vit.output.blocks[-1].layer.out_features, 10)
+
+        # test on a batch of 2
+        x = torch.randn(2, 3, 32, 32)
+        y = vit(x)
+        self.assertEqual(y.shape, (2, 10))
