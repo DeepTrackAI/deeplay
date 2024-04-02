@@ -6,3 +6,4 @@ from .gnn import *
 from .cyclegan import *
 from .dict import *
 from .transformer import *
+from .diffusion import *
