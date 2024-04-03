@@ -319,6 +319,12 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     def root_module(self) -> "DeeplayModule":
         return self._root_module[0]
 
+    @property
+    def logs(self):
+        if self.root_module is self:
+            return self._logs
+        return self.root_module.logs
+
     def set_root_module(self, value):
         self._root_module = (value,)
         for name, module in self.named_modules():
@@ -371,7 +377,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         self._has_built = False
         self._setattr_recording = set()
 
-        self.logs = {}
+        self._logs = {}
 
         self._validate_after_build()
 
@@ -560,6 +566,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         ```
         """
         obj = self.new()
+        obj.set_root_module(obj.root_module)
         obj = obj.build()
         return obj
 
@@ -619,8 +626,19 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
         return self
 
+    # @property
+    # def __deepcopy__(self):
+    #     if self._has_built:
+    #         return lambda _: self
+    #     else:
+    #         return None
+
     def new(self):
-        return copy.deepcopy(self)
+        memo = {}
+        for module in self.modules():
+            if isinstance(module, DeeplayModule) and module._has_built:
+                memo[id(module)] = module
+        return copy.deepcopy(self, memo)
 
     def predict(
         self, x, *args, batch_size=32, device=None, output_device=None
@@ -874,10 +892,17 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         super().__setattr__(name, value)
 
         if self.is_constructing:
-            if isinstance(value, DeeplayModule) and not value._has_built:
+            if isinstance(value, DeeplayModule):
+                # if not value._has_built:
                 self._give_user_configuration(value, name)
-                value.__construct__()
-            self._setattr_recording.add(name)
+
+                if not value._has_built:
+                    value.__construct__()
+                    # # root module should always be update to
+                    # # ensure that logs are stored in the correct place
+                    # value.set_root_module(self.root_module)
+
+            # self._setattr_recording.add(name)
 
     def _select_string(self, structure, selections, select, ellipsis=False):
         selects = select.split(",")
@@ -1102,10 +1127,12 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
 
 class Selection(DeeplayModule):
-    def __init__(self, model, selections):
+    def __init__(self, model: nn.Module, selections: List[List[Tuple[str]]]):
         super().__init__()
         self.model = (model,)
         self.selections = selections
+        self.first = _MethodForwarder(self, "first")
+        self.all = _MethodForwarder(self, "all")
 
     def __getitem__(self, selector):
         return self.model[0].getitem_with_selections(selector, self.selections.copy())
@@ -1115,6 +1142,7 @@ class Selection(DeeplayModule):
         for selection in self.selections:
             for item in selection:
                 s += ".".join(item) + "\n"
+        s = "Selection(\n" + s + ")"
         return s
 
     def list_names(self):
@@ -1124,26 +1152,225 @@ class Selection(DeeplayModule):
                 names.append(item)
         return names
 
+    def filter(self, func: Callable[[str, nn.Module], bool]) -> "Selection":
+        """Filter the selection based on a function that takes the module name (separated by .) and module as input.
+
+        Parameters
+        ----------
+        func : Callable[[str, nn.Module], bool]
+            A function that takes the module name (separated by .) and module as input and returns a boolean.
+
+        Returns
+        -------
+        Selection
+            A new selection with the modules that satisfy the condition.
+        """
+        new_selections = [selection.copy() for selection in self.selections]
+        for n, module in self.model[0].named_modules():
+            for selection in new_selections:
+                for item in selection:
+                    asstr = ".".join(item)
+                    if asstr == n and not func(n, module):
+                        selection.remove(item)
+
+        return Selection(self.model[0], new_selections)
+
+    def hasattr(self, attr: str, include_layer_classtype: bool = True) -> "Selection":
+        """Filter the selection based on whether the modules have a certain attribute.
+
+        Note, for layers, the attribute is checked in the layer's classtype
+        (if include_layer_classtype is True). However, this does not include
+        non-class attributes of the layer since they are not accessible from the
+        layer's classtype. For example, Selection(Layer(nn.Conv2d)).hasattr("kernel_size")
+        will return False, but Selection(Layer(nn.Conv2d)).hasattr("_conv_forward") will return True.
+
+        Parameters
+        ----------
+        attr : str
+            The attribute to check for.
+        include_layer_classtype : bool, optional
+            Whether to check the attribute in the layer's classtype, by default True
+
+        Returns
+        -------
+        Selection
+            A new selection with the modules that have the attribute.
+        """
+        from deeplay.external import Layer
+
+        return self.filter(
+            lambda _, module: hasattr(module, attr)
+            or (
+                include_layer_classtype
+                and isinstance(module, Layer)
+                and hasattr(module.classtype, attr)
+            )
+        )
+
+    def isinstance(
+        self, cls: type, include_layer_classtype: bool = True
+    ) -> "Selection":
+        """Filter the selection based on whether the modules are instances of a certain class.
+
+        Note, for layers, the class is checked in the layer's classtype
+        (if include_layer_classtype is True).
+
+        Parameters
+        ----------
+        cls : type
+            The class to check for.
+        include_layer_classtype : bool, optional
+            Whether to check the class in the layer's classtype, by default True
+
+        Returns
+        -------
+        Selection
+            A new selection with the modules that are instances of the class.
+        """
+
+        from deeplay.external import Layer
+
+        return self.filter(
+            lambda _, module: isinstance(module, cls)
+            or (
+                include_layer_classtype
+                and isinstance(module, Layer)
+                and isinstance(module.classtype, type)
+                and issubclass(module.classtype, cls)
+            )
+        )
+
     def configure(self, *args, **kwargs):
-        for selection in self.selections:
-            for item in selection:
-                for name, module in self.model[0].named_modules():
-                    if name == ".".join(item):
-                        module.configure(*args, **kwargs)
-        return self
+        """Applies `DeeplayModule.configure` to all modules in the selection."""
+        return self.all.configure(*args, **kwargs)
+
+    def replace(self, *args, **kwargs):
+        """Applies `DeeplayModule.replace` to all modules in the selection."""
+        return self.all.replace(*args, **kwargs)
 
     def log_output(self, key):
-        for selection in self.selections:
-            for item in selection:
-                for name, module in self.model[0].named_modules():
-                    if name == ".".join(item):
-                        module.log_output(key)
-                        return
+        """Applies `DeeplayModule.log_output` to the first module in the selection."""
+        return self.first.log_output(key)
 
     def log_input(self, key):
-        for selection in self.selections:
-            for item in selection:
-                for name, module in self.model[0].named_modules():
-                    if name == ".".join(item):
-                        module.log_input(key)
-                        return
+        """Applies `DeeplayModule.log_input` to the first module in the selection."""
+        return self.first.log_input(key)
+
+    def append(self, *args, **kwargs):
+        """Applies `SequentialBlock.append` to all modules in the selection."""
+        return self.all.append(*args, **kwargs)
+
+    def prepend(self, *args, **kwargs):
+        """Applies `SequentialBlock.prepend` to all modules in the selection."""
+        return self.all.prepend(*args, **kwargs)
+
+    def insert(self, *args, **kwargs):
+        """Applies `SequentialBlock.insert` to all modules in the selection."""
+        return self.all.insert(*args, **kwargs)
+
+    def remove(self, *args, **kwargs):
+        """Applies `SequentialBlock.remove` to all modules in the selection."""
+        return self.all.remove(*args, **kwargs)
+
+    def append_dropout(self, *args, **kwargs):
+        """Applies `SequentialBlock.append_dropout` to all modules in the selection."""
+        return self.all.append_dropout(*args, **kwargs)
+
+    def prepend_dropout(self, *args, **kwargs):
+        """Applies `SequentialBlock.prepend_dropout` to all modules in the selection."""
+        return self.all.prepend_dropout(*args, **kwargs)
+
+    def insert_dropout(self, *args, **kwargs):
+        """Applies `SequentialBlock.insert_dropout` to all modules in the selection."""
+        return self.all.insert_dropout(*args, **kwargs)
+
+    def remove_dropout(self, *args, **kwargs):
+        """Applies `SequentialBlock.remove_dropout` to all modules in the selection."""
+        return self.all.remove_dropout(*args, **kwargs)
+
+    def set_dropout(self, *args, **kwargs):
+        """Applies `SequentialBlock.set_dropout` to all modules in the selection."""
+        return self.all.set_dropout(*args, **kwargs)
+
+
+class _MethodForwarder:
+
+    def __init__(self, selection: Selection, mode: str):
+        self.mode = mode
+        self.selection = selection
+
+    def _create_forwarder(self, name):
+        def forwarder(*args, **kwargs):
+            for selection in self.selection.selections:
+                for item in selection:
+                    for n, module in self.selection.model[0].named_modules():
+                        if n == ".".join(item):
+                            try:
+                                v = getattr(module, name)(*args, **kwargs)
+                                if self.mode == "first":
+                                    return v
+                            except AttributeError as e:
+                                raise AttributeError(
+                                    f"Module {module} does not have a method {name}. "
+                                    "Use selection.hasattr('method_name') to filter modules that have the method."
+                                ) from e
+
+        return forwarder
+
+    def __getattr__(self, name):
+        try:
+            return super().__getattr__(name)
+        except AttributeError:
+            return self._create_forwarder(name)
+
+    def configure(self, *args, **kwargs):
+        """See `DeeplayModule.configure`."""
+        return self._create_forwarder("configure")(*args, **kwargs)
+
+    def replace(self, *args, **kwargs):
+        """See `DeeplayModule.replace`."""
+        return self._create_forwarder("replace")(*args, **kwargs)
+
+    def log_output(self, key):
+        """See `DeeplayModule.log_output`."""
+        return self._create_forwarder("log_output")(key)
+
+    def log_input(self, key):
+        """See `DeeplayModule.log_input`."""
+        return self._create_forwarder("log_input")(key)
+
+    def append(self, *args, **kwargs):
+        """See `SequentialBlock.append`."""
+        return self._create_forwarder("append")(*args, **kwargs)
+
+    def prepend(self, *args, **kwargs):
+        """See `SequentialBlock.prepend`."""
+        return self._create_forwarder("prepend")(*args, **kwargs)
+
+    def insert(self, *args, **kwargs):
+        """See `SequentialBlock.insert`."""
+        return self._create_forwarder("insert")(*args, **kwargs)
+
+    def remove(self, *args, **kwargs):
+        """See `SequentialBlock.remove`."""
+        return self._create_forwarder("remove")(*args, **kwargs)
+
+    def append_dropout(self, *args, **kwargs):
+        """See `SequentialBlock.append_dropout`."""
+        return self._create_forwarder("append_dropout")(*args, **kwargs)
+
+    def prepend_dropout(self, *args, **kwargs):
+        """See `SequentialBlock.prepend_dropout`."""
+        return self._create_forwarder("prepend_dropout")(*args, **kwargs)
+
+    def insert_dropout(self, *args, **kwargs):
+        """See `SequentialBlock.insert_dropout`."""
+        return self._create_forwarder("insert_dropout")(*args, **kwargs)
+
+    def remove_dropout(self, *args, **kwargs):
+        """See `SequentialBlock.remove_dropout`."""
+        return self._create_forwarder("remove_dropout")(*args, **kwargs)
+
+    def set_dropout(self, *args, **kwargs):
+        """See `SequentialBlock.set_dropout`."""
+        return self._create_forwarder("set_dropout")(*args, **kwargs)
