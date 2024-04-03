@@ -1,6 +1,6 @@
 from typing import List, Optional, Literal, Any, Sequence, Type, overload, Union
 
-from ... import DeeplayModule, Layer, LayerList, PoolLayerActivationNormalization
+from ... import DeeplayModule, Layer, LayerList, Conv2dBlock
 
 import torch.nn as nn
 
@@ -83,7 +83,7 @@ class ConvolutionalNeuralNetwork(DeeplayModule):
     in_channels: Optional[int]
     hidden_channels: Sequence[Optional[int]]
     out_channels: int
-    blocks: LayerList[PoolLayerActivationNormalization]
+    blocks: LayerList[Conv2dBlock]
 
     @property
     def input(self):
@@ -144,6 +144,11 @@ class ConvolutionalNeuralNetwork(DeeplayModule):
             out_activation = Layer(nn.Identity)
         elif isinstance(out_activation, type) and issubclass(out_activation, nn.Module):
             out_activation = Layer(out_activation)
+        elif isinstance(out_activation, nn.Module) and not isinstance(
+            out_activation, Layer
+        ):
+            prev_out_activation = out_activation
+            out_activation = Layer(lambda: prev_out_activation)
 
         self.blocks = LayerList()
 
@@ -152,40 +157,90 @@ class ConvolutionalNeuralNetwork(DeeplayModule):
         for i, c_out in enumerate([*self.hidden_channels, out_channels]):
             c_in = self.in_channels if i == 0 else self.hidden_channels[i - 1]
 
-            if i == 0:
-                pool_layer = Layer(nn.Identity)
-            elif pool is None:
-                pool_layer = Layer(nn.Identity)
-            elif isinstance(pool, type) and issubclass(pool, nn.Module):
-                pool_layer = Layer(pool)
-            elif isinstance(pool, DeeplayModule):
-                pool_layer = pool.new()
-            else:
-                pool_layer = pool
-
-            layer = (
-                Layer(nn.Conv2d, c_in, c_out, 3, 1, 1)
-                if c_in
-                else Layer(nn.LazyConv2d, c_out, 3, 1, 1)
-            )
             activation = (
                 Layer(nn.ReLU) if i < len(self.hidden_channels) else out_activation
             )
-            normalization = Layer(nn.Identity, num_features=c_out)
 
-            block = PoolLayerActivationNormalization(
-                pool=pool_layer,
-                layer=layer,
+            block = Conv2dBlock(
+                c_in,
+                c_out,
+                kernel_size=3,
+                stride=1,
+                padding=1,
                 activation=activation,
-                normalization=normalization,
             )
 
             self.blocks.append(block)
+
+        if pool is not None:
+            if isinstance(pool, type) and issubclass(pool, nn.Module):
+                pool = Layer(pool)
+            if isinstance(pool, nn.Module) and not isinstance(pool, Layer):
+                pool = Layer(lambda: pool)
+            self.pooled(pool)
 
     def forward(self, x):
         for block in self.blocks:
             x = block(x)
         return x
+
+    # Configuration shorthands
+    def pooled(
+        self,
+        layer: Layer = Layer(nn.MaxPool2d, 2),
+        before_first: bool = False,
+    ):
+
+        for block in self.blocks[1:]:
+            block.pooled(layer.new())
+
+        if before_first:
+            self.blocks[0].pooled(layer.new())
+
+        return self
+
+    def normalized(
+        self,
+        normalization: Layer = Layer(nn.BatchNorm2d),
+        after_last_layer: bool = True,
+    ):
+        for idx, block in enumerate(self.blocks[:1]):
+            block.normalized(normalization.new())
+
+        if after_last_layer:
+            self.blocks[-1].normalized(normalization.new())
+
+        return self
+
+    def strided(
+        self,
+        stride: int | tuple[int, ...],
+        apply_to_first: bool = False,
+    ):
+        for block in self.blocks[1:]:
+            block.strided(stride)
+
+        if apply_to_first:
+            self.blocks[0].strided(stride)
+
+        return self
+
+    def residual(
+        self,
+        shortcut: Layer = Layer(nn.Identity),
+        merge_after: str = "activation",
+        merge_block: int = -1,
+        num_blocks: int = 2,
+    ):
+        for block in self.blocks:
+            block.residual(
+                shortcut=shortcut.new(),
+                hidden_channels=[block.out_channels] * (num_blocks - 1),
+                merge_after=merge_after,
+                merge_block=merge_block,
+            )
+
+        return self
 
     @overload
     def configure(
@@ -195,8 +250,7 @@ class ConvolutionalNeuralNetwork(DeeplayModule):
         hidden_channels: Optional[List[int]] = None,
         out_channels: Optional[int] = None,
         out_activation: Union[Type[nn.Module], nn.Module, None] = None,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @overload
     def configure(
@@ -207,8 +261,7 @@ class ConvolutionalNeuralNetwork(DeeplayModule):
         activation: Optional[Type[nn.Module]] = None,
         normalization: Optional[Type[nn.Module]] = None,
         **kwargs: Any,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @overload
     def configure(
@@ -220,7 +273,6 @@ class ConvolutionalNeuralNetwork(DeeplayModule):
         activation: Optional[Type[nn.Module]] = None,
         normalization: Optional[Type[nn.Module]] = None,
         **kwargs: Any,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     configure = DeeplayModule.configure

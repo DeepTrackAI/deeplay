@@ -1,5 +1,5 @@
 import inspect
-from typing import Any, Dict, Tuple, List, Set, Literal, Optional
+from typing import Any, Dict, Tuple, List, Set, Literal, Optional, Callable
 
 import torch
 import torch.nn as nn
@@ -13,6 +13,7 @@ from functools import partial
 
 
 class UserConfig(dict):
+
     __hook_containers__ = [
         ("__user_hooks__",),
     ]
@@ -176,6 +177,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     ]
     _is_building: bool = False
     _init_method = "__init__"
+    _style_map: Dict[str, Callable] = {}
 
     _args: tuple
     _kwargs: dict
@@ -420,6 +422,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
             module,
         )
 
+    @after_init
     def replace(self, target: str, replacement: nn.Module):
         """
         Replaces a child module with another module.
@@ -699,6 +702,22 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         if len(output_containers) == 1:
             return output_containers[0]
         return tuple(output_containers)
+
+    def available_styles(self):
+        return list(self._style_map.keys())
+
+    def style(self, style: str, *args, **kwargs):
+        if style not in self._style_map:
+            raise ValueError(
+                f"Style {style} not found. Available styles are {self.available_styles()}"
+            )
+        self._style_map[style](self, *args, **kwargs)
+
+    @classmethod
+    def register_style(cls, func):
+        cls._style_map = cls._style_map.copy()
+        cls._style_map[func.__name__] = func
+        return func
 
     @after_build
     def log_output(self, name: str):

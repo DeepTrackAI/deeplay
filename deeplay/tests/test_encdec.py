@@ -11,7 +11,12 @@ class TestComponentEncDec(unittest.TestCase):
     ...
 
     def test_encdec_defaults(self):
-        encdec = ConvolutionalEncoderDecoder2d(3, [8, 16, 32], [16, 8, 4], 1)
+        encdec = ConvolutionalEncoderDecoder2d(
+            in_channels=3,
+            encoder_channels=[8, 16, 32],
+            decoder_channels=[16, 8, 4],
+            out_channels=1,
+        )
         encdec.build()
         encdec.create()
 
@@ -30,7 +35,12 @@ class TestComponentEncDec(unittest.TestCase):
         self.assertEqual(y.shape, (2, 1, 64, 64))
 
     def test_change_act(self):
-        encdec = ConvolutionalEncoderDecoder2d(3, [8, 16, 32], [16, 8, 4], 1)
+        encdec = ConvolutionalEncoderDecoder2d(
+            in_channels=3,
+            encoder_channels=[8, 16, 32],
+            decoder_channels=[16, 8, 4],
+            out_channels=1,
+        )
         encdec.configure(out_activation=nn.Sigmoid)
         encdec.build()
         encdec.create()
@@ -39,7 +49,12 @@ class TestComponentEncDec(unittest.TestCase):
         self.assertEqual(encdec.out_activation, nn.Sigmoid)
 
     def test_change_out_act_Layer(self):
-        encdec = ConvolutionalEncoderDecoder2d(3, [8, 16, 32], [16, 8, 4], 1)
+        encdec = ConvolutionalEncoderDecoder2d(
+            in_channels=3,
+            encoder_channels=[8, 16, 32],
+            decoder_channels=[16, 8, 4],
+            out_channels=1,
+        )
         encdec.configure(out_activation=Layer(nn.Sigmoid))
         encdec.build()
         encdec.create()
@@ -48,7 +63,12 @@ class TestComponentEncDec(unittest.TestCase):
         self.assertIsInstance(encdec.out_activation, nn.Sigmoid)
 
     def test_change_out_act_instance(self):
-        encdec = ConvolutionalEncoderDecoder2d(3, [8, 16, 32], [16, 8, 4], 1)
+        encdec = ConvolutionalEncoderDecoder2d(
+            in_channels=3,
+            encoder_channels=[8, 16, 32],
+            decoder_channels=[16, 8, 4],
+            out_channels=1,
+        )
         encdec.configure(out_activation=nn.Sigmoid())
         encdec.build()
         encdec.create()
