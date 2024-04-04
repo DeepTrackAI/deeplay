@@ -2,6 +2,7 @@ from typing import Any, overload, Iterator, List, Generic, TypeVar, Union, Tuple
 
 import torch
 from torch import nn
+from torch_geometric.data import Data
 
 from .module import DeeplayModule
 from .decorators import after_init
@@ -50,7 +51,6 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
             module.__construct__()
         return self
 
-
     @after_init
     def extend(self, modules: List[DeeplayModule]) -> "LayerList[T]":
         super().extend(modules)
@@ -70,12 +70,10 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
     @overload
     def configure(
         self, *args: Union[int, slice, List[int], slice], **kwargs: Any
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @overload
-    def configure(self, name: str, *args: Any, **kwargs: Any) -> None:
-        ...
+    def configure(self, name: str, *args: Any, **kwargs: Any) -> None: ...
 
     def configure(self, *args, **kwargs):
         if len(args) > 0:
@@ -126,12 +124,10 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
                 raise
 
     @overload
-    def __getitem__(self, index: int) -> "T":
-        ...
+    def __getitem__(self, index: int) -> "T": ...
 
     @overload
-    def __getitem__(self, index: slice) -> "LayerList[T]":
-        ...
+    def __getitem__(self, index: slice) -> "LayerList[T]": ...
 
     def __getitem__(self, index: Union[int, slice]) -> "Union[T, LayerList[T]]":
         if isinstance(index, int):
@@ -188,8 +184,11 @@ class Parallel(LayerList, Generic[T]):
                 f"Key arguments {[key for _, key in self._keys]} were provided but input was not a dictionary. Got {type(x)} instead."
             )
 
-        if isinstance(x, dict):
+        if isinstance(x, (dict, Data)):
             updates = [layer(x, overwrite_output=False) for layer in self]
-            return {**x, **{k: v for update in updates for k, v in update.items()}}
+            x.update(
+                {key: value for update in updates for key, value in update.items()}
+            )
+            return x
 
         return [layer(x) for layer in self]
