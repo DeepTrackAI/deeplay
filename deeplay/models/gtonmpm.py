@@ -6,7 +6,7 @@ import torch.nn as nn
 
 
 class GraphToNodesMPM(MPM):
-    """Graph-to-Nodes Message Passing Neural Network (MPN) model.
+    """Graph-to-Node Message Passing Neural Network (MPN) model.
 
     Parameters
     ----------
