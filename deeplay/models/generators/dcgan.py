@@ -5,6 +5,26 @@ from deeplay.external.layer import Layer
 from deeplay.initializers.normal import Normal
 
 
+@ConvolutionalDecoder2d.register_style
+def dcgan_generator(generator: ConvolutionalDecoder2d):
+    generator.normalized()
+    generator.blocks.configure(
+        "layer", nn.ConvTranspose2d, kernel_size=4, stride=2, padding=0
+    )
+    generator.blocks[0].layer.configure(stride=1)
+    init = Normal(
+        targets=(
+            nn.ConvTranspose2d,
+            nn.BatchNorm2d,
+            nn.Embedding,
+            nn.Linear,
+        ),
+        mean=0,
+        std=0.02,
+    )
+    generator.initialize(init)
+
+
 class DCGANGenerator(ConvolutionalDecoder2d):
     """
     Deep Convolutional Generative Adversarial Network (DCGAN) generator.
@@ -92,23 +112,7 @@ class DCGANGenerator(ConvolutionalDecoder2d):
             self.label_embedding = Layer(nn.Embedding, num_classes, embedding_dim)
         else:
             self.label_embedding = Layer(nn.Identity)
-
-        self.normalized()
-        self.blocks.configure(
-            "layer", nn.ConvTranspose2d, kernel_size=4, stride=2, padding=0
-        )
-        self.blocks[0].layer.configure(stride=1)
-        init = Normal(
-            targets=(
-                nn.ConvTranspose2d,
-                nn.BatchNorm2d,
-                nn.Embedding,
-                nn.Linear,
-            ),
-            mean=0,
-            std=0.02,
-        )
-        self.initialize(init)
+        self.style("dcgan_generator")
 
     def forward(self, x, y=None):
         if self.class_conditioned_model:
