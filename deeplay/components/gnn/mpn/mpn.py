@@ -87,11 +87,11 @@ class MessagePassingNeuralNetwork(DeeplayModule):
                 layer=Layer(nn.LazyLinear, c_out),
                 activation=activation.new(),
             )
-            transform.set_input_map("x", "A", "edgefeat")
-            transform.set_output_map("edgefeat")
+            transform.set_input_map("x", "edge_index", "edge_attr")
+            transform.set_output_map("edge_attr")
 
             propagate = Sum()
-            propagate.set_input_map("x", "A", "edgefeat")
+            propagate.set_input_map("x", "edge_index", "edge_attr")
             propagate.set_output_map("aggregate")
 
             update = Update(
@@ -122,8 +122,7 @@ class MessagePassingNeuralNetwork(DeeplayModule):
         hidden_features: Optional[List[int]] = None,
         out_features: Optional[int] = None,
         out_activation: Union[Type[nn.Module], nn.Module, None] = None,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @overload
     def configure(
@@ -134,8 +133,7 @@ class MessagePassingNeuralNetwork(DeeplayModule):
         propagate: Optional[Type[nn.Module]] = None,
         update: Optional[Type[nn.Module]] = None,
         **kwargs: Any,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @overload
     def configure(
@@ -147,7 +145,6 @@ class MessagePassingNeuralNetwork(DeeplayModule):
         propagate: Optional[Type[nn.Module]] = None,
         update: Optional[Type[nn.Module]] = None,
         **kwargs: Any,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     configure = DeeplayModule.configure
