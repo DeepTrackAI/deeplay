@@ -14,3 +14,6 @@ class FromDict(DeeplayModule):
             if len(self.keys) == 1
             else tuple(x[key] for key in self.keys)
         )
+
+    def extra_repr(self) -> str:
+        return ", ".join(self.keys)
