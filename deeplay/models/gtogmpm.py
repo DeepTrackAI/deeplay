@@ -46,7 +46,7 @@ class GlobalMeanPool(DeeplayModule):
 
 
 class GraphToGlobalMPM(MPM):
-    """Message Passing Neural Network (MPN) model.
+    """Graph-to-Global Message Passing Neural Network (MPN) model.
 
     Parameters
     ----------
@@ -81,7 +81,7 @@ class GraphToGlobalMPM(MPM):
 
         NOTE: node_in_features and edge_in_features are inferred from the input data.
 
-    - output: torch.Tensor of shape (num_nodes, out_features)
+    - output: torch.Tensor of shape (batch_size, out_features)
 
     Examples
     --------
