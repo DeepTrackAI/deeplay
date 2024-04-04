@@ -1,9 +1,16 @@
 import unittest
+
 import torch
 import torch.nn as nn
+from torch_geometric.data import Data
+
 from deeplay import (
     GraphConvolutionalNeuralNetwork,
+    GraphToGlobalMPM,
+    GraphToNodeMPM,
+    GraphToEdgeMPM,
     MessagePassingNeuralNetwork,
+    MultiLayerPerceptron,
     dense_laplacian_normalization,
     Sum,
     Mean,
@@ -11,6 +18,7 @@ from deeplay import (
     Min,
     Max,
     Layer,
+    GlobalMeanPool,
 )
 
 import itertools
@@ -178,6 +186,19 @@ class TestComponentGCN(unittest.TestCase):
         out = gnn(inp)
         self.assertTrue(torch.all(out["x"] == 0))
 
+    def test_tg_data_input(self):
+        gnn = GraphConvolutionalNeuralNetwork(2, [4], 1)
+        gnn.build()
+        gnn.create()
+
+        inp = Data(
+            x=torch.randn(3, 2),
+            edge_index=torch.tensor([[0, 1, 1, 2], [1, 0, 2, 1]]),
+        )
+
+        out = gnn(inp)
+        self.assertEqual(out.x.shape, (3, 1))
+
 
 class TestComponentMPN(unittest.TestCase):
     def test_mpn_defaults(self):
@@ -334,3 +355,224 @@ class TestComponentMPN(unittest.TestCase):
         expected[uniques] = 1.0
 
         self.assertTrue(torch.all(out["aggregate"] == expected))
+
+    def test_tg_data_input(self):
+        gnn = MessagePassingNeuralNetwork([4], 1)
+        gnn.build()
+        gnn.create()
+
+        inp = Data(
+            x=torch.randn(10, 2),
+            edge_index=torch.randint(0, 10, (2, 20)),
+            edge_attr=torch.ones(20, 1),
+        )
+
+        out = gnn(inp)
+
+        self.assertEqual(out.x.shape, (10, 1))
+        self.assertEqual(out.edge_attr.shape, (20, 1))
+        self.assertTrue(torch.all(inp.edge_index == out.edge_index))
+
+
+class TestModelGraphToGlobalMPM(unittest.TestCase):
+    def test_gtogmpm_defaults(self):
+        model = GraphToGlobalMPM([64, 64], 1)
+        model = model.create()
+
+        # node and edge encoders are defined as Linear layers by default
+        self.assertEqual(len(model.encoder[0].blocks), 1)
+        self.assertEqual(len(model.encoder[1].blocks), 1)
+
+        self.assertEqual(model.encoder[0].blocks[0].layer.in_features, 0)
+        self.assertEqual(model.encoder[0].blocks[0].layer.out_features, 64)
+        self.assertEqual(model.encoder[1].blocks[0].layer.in_features, 0)
+        self.assertEqual(model.encoder[1].blocks[0].layer.out_features, 64)
+
+        self.assertIsInstance(model.backbone, MessagePassingNeuralNetwork)
+
+        backbone_blocks = model.backbone.blocks
+        self.assertEqual(len(backbone_blocks), 2)
+
+        for block in backbone_blocks:
+
+            self.assertEqual(block.transform.layer.in_features, 0)
+            self.assertEqual(block.transform.layer.out_features, 64)
+            self.assertIsInstance(block.transform.activation, nn.ReLU)
+
+            self.assertIsInstance(block.propagate, Sum)
+
+            self.assertEqual(block.update.layer.in_features, 0)
+            self.assertEqual(block.update.layer.out_features, 64)
+            self.assertIsInstance(block.update.activation, nn.ReLU)
+
+        self.assertEqual(model.selector.keys, ("x", "batch"))
+
+        self.assertIsInstance(model.pool, GlobalMeanPool)
+
+        self.assertIsInstance(model.head, MultiLayerPerceptron)
+        self.assertEqual(model.head.blocks[0].layer.in_features, 64)
+        self.assertEqual(model.head.blocks[0].layer.out_features, 64 // 2)
+        self.assertEqual(model.head.blocks[1].layer.in_features, 64 // 2)
+        self.assertEqual(model.head.blocks[1].layer.out_features, 64 // 4)
+        self.assertEqual(model.head.blocks[2].layer.in_features, 64 // 4)
+        self.assertEqual(model.head.blocks[2].layer.out_features, 1)
+
+        model = GraphToGlobalMPM([64, 64], 1).create()
+        inp = {}
+        inp["x"] = torch.randn(10, 16)
+        inp["edge_index"] = torch.randint(0, 10, (2, 20))
+        inp["edge_attr"] = torch.randn(20, 8)
+        inp["batch"] = torch.Tensor([0, 0, 0, 0, 1, 1, 1, 1, 1, 1]).long()
+
+        out = model(inp)
+
+        self.assertEqual(out.shape, (2, 1))
+
+    def test_gtogmpm_change_depth(self):
+        model = GraphToGlobalMPM([64, 64], 1)
+        model.configure(hidden_features=[64, 64, 64])
+        model.create()
+        model.build()
+
+        backbone_blocks = model.backbone.blocks
+        self.assertEqual(len(backbone_blocks), 3)
+
+        for block in backbone_blocks:
+
+            self.assertEqual(block.transform.layer.in_features, 0)
+            self.assertEqual(block.transform.layer.out_features, 64)
+            self.assertIsInstance(block.transform.activation, nn.ReLU)
+
+            self.assertIsInstance(block.propagate, Sum)
+
+            self.assertEqual(block.update.layer.in_features, 0)
+            self.assertEqual(block.update.layer.out_features, 64)
+            self.assertIsInstance(block.update.activation, nn.ReLU)
+
+    def test_gtogmpm_change_head_activation(self):
+        model = GraphToGlobalMPM([64, 64], 1, out_activation=nn.Sigmoid)
+        model.create()
+        model.build()
+
+        self.assertIsInstance(model.head.blocks[-1].activation, nn.Sigmoid)
+
+    def test_gtogmpm_change_head_depth(self):
+        model = GraphToGlobalMPM([64, 64], 1)
+        model.head.configure(hidden_features=[64, 64, 64])
+        model.create()
+        model.build()
+
+        self.assertEqual(model.head.blocks[0].layer.in_features, 64)
+        self.assertEqual(model.head.blocks[0].layer.out_features, 64)
+        self.assertEqual(model.head.blocks[1].layer.in_features, 64)
+        self.assertEqual(model.head.blocks[1].layer.out_features, 64)
+        self.assertEqual(model.head.blocks[2].layer.in_features, 64)
+        self.assertEqual(model.head.blocks[2].layer.out_features, 64)
+        self.assertEqual(model.head.blocks[3].layer.in_features, 64)
+        self.assertEqual(model.head.blocks[3].layer.out_features, 1)
+
+
+class TestModelGraphToNodesMPM(unittest.TestCase):
+    def test_gtonmpm_defaults(self):
+        model = GraphToNodeMPM([64, 64], 1)
+        model = model.create()
+
+        # node and edge encoders are defined as Linear layers by default
+        self.assertEqual(len(model.encoder[0].blocks), 1)
+        self.assertEqual(len(model.encoder[1].blocks), 1)
+
+        self.assertEqual(model.encoder[0].blocks[0].layer.in_features, 0)
+        self.assertEqual(model.encoder[0].blocks[0].layer.out_features, 64)
+        self.assertEqual(model.encoder[1].blocks[0].layer.in_features, 0)
+        self.assertEqual(model.encoder[1].blocks[0].layer.out_features, 64)
+
+        self.assertIsInstance(model.backbone, MessagePassingNeuralNetwork)
+
+        backbone_blocks = model.backbone.blocks
+        self.assertEqual(len(backbone_blocks), 2)
+
+        for block in backbone_blocks:
+
+            self.assertEqual(block.transform.layer.in_features, 0)
+            self.assertEqual(block.transform.layer.out_features, 64)
+            self.assertIsInstance(block.transform.activation, nn.ReLU)
+
+            self.assertIsInstance(block.propagate, Sum)
+
+            self.assertEqual(block.update.layer.in_features, 0)
+            self.assertEqual(block.update.layer.out_features, 64)
+            self.assertIsInstance(block.update.activation, nn.ReLU)
+
+        self.assertEqual(model.selector.keys, ("x",))
+        self.assertIsInstance(model.pool, nn.Identity)
+
+        self.assertIsInstance(model.head, MultiLayerPerceptron)
+        self.assertEqual(model.head.blocks[0].layer.in_features, 64)
+        self.assertEqual(model.head.blocks[0].layer.out_features, 64 // 2)
+        self.assertEqual(model.head.blocks[1].layer.in_features, 64 // 2)
+        self.assertEqual(model.head.blocks[1].layer.out_features, 64 // 4)
+        self.assertEqual(model.head.blocks[2].layer.in_features, 64 // 4)
+        self.assertEqual(model.head.blocks[2].layer.out_features, 1)
+
+        model = GraphToNodeMPM([64, 64], 1).create()
+        inp = {}
+        inp["x"] = torch.randn(10, 16)
+        inp["edge_index"] = torch.randint(0, 10, (2, 20))
+        inp["edge_attr"] = torch.randn(20, 8)
+
+        out = model(inp)
+
+        self.assertEqual(out.shape, (10, 1))
+
+
+class TestModelGraphToEdgeMPM(unittest.TestCase):
+    def test_gtoempm_defaults(self):
+        model = GraphToEdgeMPM([64, 64], 1)
+        model = model.create()
+
+        # node and edge encoders are defined as Linear layers by default
+        self.assertEqual(len(model.encoder[0].blocks), 1)
+        self.assertEqual(len(model.encoder[1].blocks), 1)
+
+        self.assertEqual(model.encoder[0].blocks[0].layer.in_features, 0)
+        self.assertEqual(model.encoder[0].blocks[0].layer.out_features, 64)
+        self.assertEqual(model.encoder[1].blocks[0].layer.in_features, 0)
+        self.assertEqual(model.encoder[1].blocks[0].layer.out_features, 64)
+
+        self.assertIsInstance(model.backbone, MessagePassingNeuralNetwork)
+
+        backbone_blocks = model.backbone.blocks
+        self.assertEqual(len(backbone_blocks), 2)
+
+        for block in backbone_blocks:
+
+            self.assertEqual(block.transform.layer.in_features, 0)
+            self.assertEqual(block.transform.layer.out_features, 64)
+            self.assertIsInstance(block.transform.activation, nn.ReLU)
+
+            self.assertIsInstance(block.propagate, Sum)
+
+            self.assertEqual(block.update.layer.in_features, 0)
+            self.assertEqual(block.update.layer.out_features, 64)
+            self.assertIsInstance(block.update.activation, nn.ReLU)
+
+        self.assertEqual(model.selector.keys, ("edge_attr",))
+        self.assertIsInstance(model.pool, nn.Identity)
+
+        self.assertIsInstance(model.head, MultiLayerPerceptron)
+        self.assertEqual(model.head.blocks[0].layer.in_features, 64)
+        self.assertEqual(model.head.blocks[0].layer.out_features, 64 // 2)
+        self.assertEqual(model.head.blocks[1].layer.in_features, 64 // 2)
+        self.assertEqual(model.head.blocks[1].layer.out_features, 64 // 4)
+        self.assertEqual(model.head.blocks[2].layer.in_features, 64 // 4)
+        self.assertEqual(model.head.blocks[2].layer.out_features, 1)
+
+        model = GraphToEdgeMPM([64, 64], 1).create()
+        inp = {}
+        inp["x"] = torch.randn(10, 16)
+        inp["edge_index"] = torch.randint(0, 10, (2, 20))
+        inp["edge_attr"] = torch.randn(20, 8)
+
+        out = model(inp)
+
+        self.assertEqual(out.shape, (20, 1))
