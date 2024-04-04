@@ -299,15 +299,17 @@ class TestLayerList(unittest.TestCase):
                 super().__init__()
 
                 model = MLP(1, [1, 1], 1)
-                model.blocks[0].layer.configure(in_features=1, out_features=2)
-                model.blocks[1].layer.configure(in_features=1, out_features=2)
-                model.blocks[2].layer.configure(in_features=1, out_features=2)
-
+                model.blocks[0].layer.configure(out_features=2, in_features=2)
+                model.blocks[1].layer.configure(in_features=2, out_features=2)
+                model.blocks[2].layer.configure(in_features=2, out_features=2)
                 self.model = model
 
         testclass = TestClass()
         testclass.build()
         self.assertEqual(len(testclass.model.blocks), 3)
+        self.assertEqual(testclass.model.blocks[0].layer.in_features, 2)
+        self.assertEqual(testclass.model.blocks[1].layer.in_features, 2)
+        self.assertEqual(testclass.model.blocks[2].layer.in_features, 2)
         self.assertEqual(testclass.model.blocks[0].layer.out_features, 2)
         self.assertEqual(testclass.model.blocks[1].layer.out_features, 2)
         self.assertEqual(testclass.model.blocks[2].layer.out_features, 2)

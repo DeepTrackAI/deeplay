@@ -18,12 +18,13 @@ class TestComponentEncDec(unittest.TestCase):
             out_channels=1,
         )
         encdec.build()
-        encdec.create()
+        # encdec.create()
 
-        self.assertEqual(len(encdec.blocks), 8)
+        self.assertEqual(len(encdec.encoder.blocks), 4)
+        self.assertEqual(len(encdec.decoder.blocks), 4)
 
-        self.assertEqual(encdec.blocks[0].layer.in_channels, 3)
-        self.assertEqual(encdec.blocks[1].layer.out_channels, 16)
+        self.assertEqual(encdec.encoder.blocks[0].layer.in_channels, 3)
+        self.assertEqual(encdec.encoder.blocks[1].layer.out_channels, 16)
         self.assertEqual(encdec.encoder.blocks[0].layer.in_channels, 3)
         self.assertEqual(encdec.decoder.blocks[-2].layer.out_channels, 4)
 
@@ -43,10 +44,9 @@ class TestComponentEncDec(unittest.TestCase):
         )
         encdec.configure(out_activation=nn.Sigmoid)
         encdec.build()
-        encdec.create()
 
         self.assertEqual(len(encdec.blocks), 8)
-        self.assertEqual(encdec.out_activation, nn.Sigmoid)
+        self.assertIsInstance(encdec.decoder.output.activation, nn.Sigmoid)
 
     def test_change_out_act_Layer(self):
         encdec = ConvolutionalEncoderDecoder2d(
@@ -57,10 +57,9 @@ class TestComponentEncDec(unittest.TestCase):
         )
         encdec.configure(out_activation=Layer(nn.Sigmoid))
         encdec.build()
-        encdec.create()
 
         self.assertEqual(len(encdec.blocks), 8)
-        self.assertIsInstance(encdec.out_activation, nn.Sigmoid)
+        self.assertIsInstance(encdec.decoder.output.activation, nn.Sigmoid)
 
     def test_change_out_act_instance(self):
         encdec = ConvolutionalEncoderDecoder2d(
@@ -71,10 +70,9 @@ class TestComponentEncDec(unittest.TestCase):
         )
         encdec.configure(out_activation=nn.Sigmoid())
         encdec.build()
-        encdec.create()
 
         self.assertEqual(len(encdec.blocks), 8)
-        self.assertIsInstance(encdec.out_activation, nn.Sigmoid)
+        self.assertIsInstance(encdec.decoder.output.activation, nn.Sigmoid)
 
     # def test_default_values_initialization(self):
     #     cnn = ConvolutionalNeuralNetwork(

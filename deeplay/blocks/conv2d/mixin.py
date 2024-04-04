@@ -40,12 +40,13 @@ class BaseConvBlockMixin(nn.Module):
 
     def residual(
         self,
-        hidden_channels: List[int] = [],
+        hidden_channels: Optional[List[int]] = None,
         merge_after: str = "activation",
         merge_block: int = -1,
         shortcut: Layer = Layer(nn.Identity),
     ) -> Self:
-
+        if hidden_channels is None:
+            hidden_channels = [self.out_channels]
         self.configure(
             mode="residual",
             hidden_channels=hidden_channels,

@@ -9,6 +9,7 @@ from ... import (
     LayerActivationNormalizationUpsample,
 )
 from deeplay.components.cnn import ConvolutionalNeuralNetwork
+from deeplay.blocks.conv2d import Conv2dBlock
 import torch.nn as nn
 import torch
 
@@ -69,7 +70,7 @@ class ConvolutionalEncoder2d(ConvolutionalNeuralNetwork):
     in_channels: Optional[int]
     hidden_channels: Sequence[Optional[int]]
     out_channels: int
-    blocks: LayerList[PoolLayerActivationNormalization]
+    blocks: LayerList[Conv2dBlock]
 
     @property
     def channel(self) -> Sequence[int]:
@@ -141,7 +142,7 @@ class ConvolutionalEncoder2d(ConvolutionalNeuralNetwork):
         if apply_to_last_layer:
             self.blocks[-1].layer.configure(stride=stride)
 
-        self["blocks", :].remove("pool")
+        self["blocks", :].remove("pool", allow_missing=True)
 
     @overload
     def configure(
@@ -240,7 +241,7 @@ class ConvolutionalDecoder2d(ConvolutionalNeuralNetwork):
     in_channels: Optional[int]
     channels: Sequence[Optional[int]]
     out_channels: int
-    blocks: LayerList[LayerActivationNormalizationUpsample]
+    blocks: LayerList[Conv2dBlock]
 
     def __init__(
         self,
@@ -249,7 +250,7 @@ class ConvolutionalDecoder2d(ConvolutionalNeuralNetwork):
         out_channels: int,
         out_activation: Optional[Union[Type[nn.Module], nn.Module, None]] = None,
         upsample: Optional[Union[Type[nn.Module], nn.Module, None]] = None,
-        preprocess: Union[Type[nn.Module], nn.Module] = Layer(nn.Identity),
+        preprocess: Union[Type[nn.Module], nn.Module] = None,
     ):
         super().__init__(
             in_channels=in_channels,
@@ -261,9 +262,9 @@ class ConvolutionalDecoder2d(ConvolutionalNeuralNetwork):
         self.in_channels = in_channels
         self.hidden_channels = hidden_channels
         self.out_channels = out_channels
-        self.preprocess = preprocess
+        self.preprocess = preprocess if preprocess is not None else Layer(nn.Identity)
 
-        for block in self.blocks[:-1]:
+        for idx, block in enumerate(self.blocks[:-1]):
             if upsample is None:
                 block.append(Layer(nn.Upsample, scale_factor=2), name="upsample")
             elif isinstance(upsample, type) and issubclass(upsample, nn.Module):
@@ -282,7 +283,7 @@ class ConvolutionalDecoder2d(ConvolutionalNeuralNetwork):
         self,
         /,
         in_channels: Optional[int] = None,
-        channels: Optional[List[int]] = None,
+        hidden_channels: Optional[List[int]] = None,
         out_channels: Optional[int] = None,
         out_activation: Union[Type[nn.Module], nn.Module, None] = None,
     ) -> None: ...
@@ -333,6 +334,11 @@ class ConvolutionalEncoderDecoder2d(DeeplayModule):
         """Return the upsampling layers of the decoder. Equivalent to `.decoder.upsample`."""
         return self.decoder.upsample
 
+    @property
+    def blocks(self) -> LayerList[Layer]:
+        """Return the blocks of the encoder and decoder. Equivalent to `.encoder.blocks + .decoder.blocks`."""
+        return self.encoder.blocks + self.decoder.blocks
+
     def __init__(
         self,
         in_channels: Optional[int],
@@ -340,7 +346,7 @@ class ConvolutionalEncoderDecoder2d(DeeplayModule):
         bottleneck_channels: Sequence[int] = [],
         decoder_channels: Optional[Sequence[int]] = None,
         out_channels: int = None,
-        out_activation: Layer = Layer(nn.Identity),
+        out_activation: Optional[Layer] = None,
     ):
         if out_channels is None:
             raise ValueError("The `out_channels` parameter must be specified.")
@@ -355,11 +361,10 @@ class ConvolutionalEncoderDecoder2d(DeeplayModule):
         )
         self.hidden_channels = list(self.encoder_channels) + list(self.decoder_channels)
         self.out_channels = out_channels
-        self.out_activation = out_activation
 
         self.encoder = ConvolutionalEncoder2d(
             self.in_channels,
-            self.encoder_channels,
+            self.encoder_channels[:-1],
             self.encoder_channels[-1],
             out_activation=Layer(nn.ReLU),
         )
@@ -375,10 +380,12 @@ class ConvolutionalEncoderDecoder2d(DeeplayModule):
             self.bottleneck = Layer(nn.Identity)
 
         self.decoder = ConvolutionalDecoder2d(
-            self.encoder_channels[-1],
+            (encoder_channels + bottleneck_channels)[-1],
             self.decoder_channels,
             self.out_channels,
-            self.out_activation,
+            out_activation=(
+                Layer(nn.Identity) if out_activation is None else out_activation
+            ),
         )
 
     def forward(self, x):
@@ -408,21 +415,27 @@ class UNet2d(ConvolutionalEncoderDecoder2d):
     def __init__(
         self,
         in_channels: Optional[int],
-        channels: Sequence[int],
-        out_channels=int,
-        out_activation: Optional[Type[nn.Module]] = nn.Identity,
-        pool: Optional[Union[Type[nn.Module], nn.Module, None]] = None,
-        upsample: Optional[Union[Type[nn.Module], nn.Module, None]] = None,
-        skip: Optional[Type[nn.Module]] = Cat(),
+        encoder_channels: List[int],
+        bottleneck_channels: List[int] = [],
+        decoder_channels: Optional[List[int]] = None,
+        out_channels: int = 1,
+        out_activation: Union[Type[nn.Module], Layer] = nn.Identity,
+        # pool: Optional[Union[Type[nn.Module], nn.Module, None]] = None,
+        # upsample: Optional[Union[Type[nn.Module], nn.Module, None]] = None,
+        skip: DeeplayModule = Cat(),
     ):
+        out_activation = (
+            Layer(out_activation)
+            if not isinstance(out_activation, Layer)
+            else out_activation
+        )
         super().__init__(
             in_channels=in_channels,
-            encoder_channels=channels,
-            decoder_channels=channels[::-1],
+            encoder_channels=encoder_channels,
+            bottleneck_channels=bottleneck_channels,
+            decoder_channels=decoder_channels,
             out_channels=out_channels,
             out_activation=out_activation,
-            pool=pool,
-            upsample=upsample,
         )
         self.in_channels = in_channels
         self.out_channels = out_channels

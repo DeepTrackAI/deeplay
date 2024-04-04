@@ -176,12 +176,15 @@ class ConvolutionalNeuralNetwork(DeeplayModule):
             if isinstance(pool, type) and issubclass(pool, nn.Module):
                 pool = Layer(pool)
             if isinstance(pool, nn.Module) and not isinstance(pool, Layer):
-                pool = Layer(lambda: pool)
+                prev = pool
+                pool = Layer(lambda: prev)
             self.pooled(pool)
 
     def forward(self, x):
+        idx = 0
         for block in self.blocks:
             x = block(x)
+            idx += 1
         return x
 
     # Configuration shorthands
@@ -204,8 +207,8 @@ class ConvolutionalNeuralNetwork(DeeplayModule):
         normalization: Layer = Layer(nn.BatchNorm2d),
         after_last_layer: bool = True,
     ):
-        for idx, block in enumerate(self.blocks[:1]):
-            block.normalized(normalization.new())
+        for idx in range(len(self.blocks) - 1):
+            self.blocks[idx].normalized(normalization.new())
 
         if after_last_layer:
             self.blocks[-1].normalized(normalization.new())

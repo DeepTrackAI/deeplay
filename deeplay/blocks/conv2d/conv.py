@@ -22,6 +22,7 @@ class Conv2dBlock(SequentialBlock, BaseConvBlockMixin):
         padding,
         activation: Layer = Layer(nn.ReLU),
         mode: str = "base",
+        # order: List[str] = ["layer", "activation"],
         **kwargs,
     ):
         self.mode = mode
@@ -56,7 +57,10 @@ class Conv2dBlock(SequentialBlock, BaseConvBlockMixin):
         self.class_impl.strided(self, stride=stride, remove_pool=remove_pool, **kwargs)
 
     def forward(self, x):
-        self.class_impl.forward(self, x)
+        return self.class_impl.forward(self, x)
+
+    def _assert_valid_configurable(self, *args):
+        return True
 
 
 class ConvBlockMixin(BaseConvBlockMixin):
@@ -69,17 +73,17 @@ class ConvBlockMixin(BaseConvBlockMixin):
                 nn.Conv2d,
                 self.in_channels,
                 self.out_channels,
-                self.kernel_size,
-                self.stride,
-                self.padding,
+                kernel_size=self.kernel_size,
+                stride=self.stride,
+                padding=self.padding,
             )
         else:
             layer = Layer(
                 nn.LazyConv2d,
                 self.out_channels,
-                self.kernel_size,
-                self.stride,
-                self.padding,
+                kernel_size=self.kernel_size,
+                stride=self.stride,
+                padding=self.padding,
             )
         kwargs.setdefault("layer", layer)
 
@@ -92,7 +96,7 @@ class ConvBlockMixin(BaseConvBlockMixin):
                     "You can provide it using `configure({name}=module)` or "
                     "by passing it as a positional argument to the constructor."
                 )
-            setattr(self, name, kwargs[name])
+            setattr(self, name, kwargs[name].new())
 
     def forward(self, x):
         for name in self.order:
@@ -131,7 +135,7 @@ class MultiConvBlockMixin(BaseConvBlockMixin):
     blocks: LayerList[Conv2dBlock]
     hidden_channels: List[int]
 
-    def __init__(self, hidden_channels: List[int], **kwargs):
+    def __init__(self, hidden_channels: List[int], activation: Layer, **kwargs):
         self.hidden_channels = hidden_channels
         self.blocks = LayerList()
         for in_c, out_c in zip(
@@ -144,7 +148,7 @@ class MultiConvBlockMixin(BaseConvBlockMixin):
                     self.kernel_size,
                     self.stride,
                     self.padding,
-                    activation=self.activation,
+                    activation=activation.new(),
                 )
             )
 
@@ -180,7 +184,7 @@ class ResidualConvBlockMixin(MultiConvBlockMixin):
         shortcut: Layer = Layer(nn.Identity),
         **kwargs,
     ):
-        super().__init__(hidden_channels, **kwargs)
+        MultiConvBlockMixin.__init__(self, hidden_channels, **kwargs)
         self.merge_after = merge_after
         self.merge_block = merge_block
         self.shortcut = shortcut.new()

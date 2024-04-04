@@ -1,4 +1,50 @@
-class CycleGANGenerator(DeeplayModule):
+from typing import List, Optional, Literal, Any, Sequence, Type, overload, Union
+
+from deeplay.blocks import Conv2dBlock
+from deeplay.components import (
+    ConvolutionalEncoderDecoder2d,
+    ConvolutionalEncoder2d,
+    ConvolutionalDecoder2d,
+    ConvolutionalNeuralNetwork,
+)
+from deeplay.external import Layer
+from deeplay.list import LayerList
+from deeplay.module import DeeplayModule
+
+import torch.nn as nn
+
+__all__ = ["CycleGANResnetGenerator"]
+
+
+@ConvolutionalEncoder2d.register_style
+def cyclegan_resnet_encoder(encoder: ConvolutionalEncoder2d):
+    encoder.strided(2)
+    encoder.normalized(Layer(nn.InstanceNorm2d))
+    encoder.blocks.configure(order=["layer", "normalization", "activation"])
+    encoder.blocks[0].prepend(Layer(nn.ReflectionPad2d, 3))
+    encoder.blocks[0].configure("layer", kernel_size=7, stride=1, padding=0)
+
+
+@ConvolutionalDecoder2d.register_style
+def cyclegan_resnet_decoder(decoder: ConvolutionalDecoder2d):
+    decoder.normalized(Layer(nn.InstanceNorm2d))
+    decoder.blocks.configure(order=["layer", "normalization", "activation"])
+    decoder.blocks[:-1].configure(
+        "layer", nn.ConvTranspose2d, stride=2, output_padding=1
+    )
+    decoder.blocks[-1].configure(kernel_size=7, stride=1, padding=0)
+    decoder.blocks[-1].prepend(Layer(nn.ReflectionPad2d, 3))
+
+
+@ConvolutionalNeuralNetwork.register_style
+def cyclegan_resnet_bottleneck(cnn: ConvolutionalNeuralNetwork, n_blocks=7):
+    cnn.configure(hidden_channels=[256] * (n_blocks - 1))
+    cnn.residual(merge_after="activation")
+    cnn.normalized(Layer(nn.InstanceNorm2d))
+    cnn.blocks.configure(order=["layer", "normalization", "activation"])
+
+
+class CycleGANResnetGenerator(ConvolutionalEncoderDecoder2d):
     """
     CycleGAN generator.
 
@@ -38,85 +84,25 @@ class CycleGANGenerator(DeeplayModule):
     n_residual_blocks: int
     blocks: LayerList[Layer]
 
-    @property
-    def input(self):
-        """Return the input layer of the network. Equivalent to `self.blocks[0]`."""
-        return self.blocks[0]
-
-    @property
-    def hidden(self):
-        """Return the hidden layers of the network. Equivalent to `self.blocks[:-1]`."""
-        return self.blocks[:-1]
-
-    @property
-    def output(self):
-        """Return the last layer of the network. Equivalent to `self.blocks[-1]`."""
-        return self.blocks[-1]
-
-    @property
-    def activation(self) -> LayerList[Layer]:
-        """Return the activations of the network. Equivalent to `.blocks.activation`."""
-        return self.blocks.activation
-
     def __init__(
         self,
         in_channels: int = 1,
         out_channels: int = 1,
         n_residual_blocks: int = 9,
     ):
-        super().__init__()
-
-        self.blocks = LayerList()
-
-        # Initial convolution block
-        self.blocks.append(
-            CycleGANBlock(in_channels, 64, kernel_size=7, stride=1, padding=3)
+        super().__init__(
+            in_channels=in_channels,
+            encoder_channels=[64, 128, 256],
+            bottleneck_channels=[256] * n_residual_blocks,
+            decoder_channels=[128, 64],
+            out_channels=out_channels,
+            out_activation=Layer(nn.Tanh),
         )
 
-        # Downsampling convolutions
-        self.blocks.append(CycleGANBlock(64, 128, kernel_size=3, stride=2, padding=1))
-        self.blocks.append(CycleGANBlock(128, 256, kernel_size=3, stride=2, padding=1))
-
-        # Residual blocks
-        for _ in range(n_residual_blocks):
-            self.blocks.append(ResidualBlock(channels=256))
-
-        # Upsampling convolutions
-        self.blocks.append(
-            CycleGANBlock(
-                256,
-                128,
-                transposed_conv=True,
-                kernel_size=3,
-                stride=2,
-                padding=1,
-                output_padding=1,
-            )
-        )
-        self.blocks.append(
-            CycleGANBlock(
-                128,
-                64,
-                transposed_conv=True,
-                kernel_size=3,
-                stride=2,
-                padding=1,
-                output_padding=1,
-            )
-        )
-
-        # Output layer
-        self.blocks.append(
-            CycleGANBlock(
-                64,
-                out_channels,
-                kernel_size=7,
-                stride=1,
-                padding=3,
-                activation=nn.Tanh(),
-                normalization=nn.Identity(),
-            )
-        )
+        # Encoder style
+        self.encoder.style("cyclegan_resnet_encoder")
+        self.bottleneck.style("cyclegan_resnet_bottleneck", n_residual_blocks)
+        self.decoder.style("cyclegan_resnet_decoder")
 
     def forward(self, x):
         for block in self.blocks:

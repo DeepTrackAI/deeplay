@@ -1,5 +1,5 @@
 import inspect
-from typing import Any, Dict, Tuple, List, Set, Literal, Optional, Callable
+from typing import Any, Dict, Tuple, List, Set, Literal, Optional, Callable, Union
 
 import torch
 import torch.nn as nn
@@ -12,35 +12,67 @@ from .decorators import after_init, after_build
 from functools import partial
 
 
-class UserConfig(dict):
+class ConfigItem:
+
+    def __init__(self, source: Optional[List[Tuple[str, ...]]], value: Any):
+        self.source = source
+        self.value = value
+
+    def prefix(self, tags: Tuple[str, ...]):
+        if self.source is None:
+            return ConfigItem(self.source, self.value)
+        else:
+            return ConfigItem([tags + tag for tag in self.source], self.value)
+
+
+class DetachedConfigItem:
+    def __init__(
+        self,
+        source: "DeeplayModule",
+        value: Any,
+    ):
+        self.source = source
+        self.value = value
+
+    def prefix(self, tags: Tuple[str, ...]):
+        return DetachedConfigItem(self.source, self.value)
+
+
+class ConfigItemList(List[Union[ConfigItem, DetachedConfigItem]]): ...
+
+
+class Config(Dict[Tuple[str, ...], ConfigItemList]):
 
     __hook_containers__ = [
         ("__user_hooks__",),
     ]
 
     def __init__(self, *args, **kwargs):
+        self.hooks = {}
         super().__init__(*args, **kwargs)
 
     def update(self, __m):
         for key, value in __m.items():
             if key[-1] == "__user_hooks__":
-                if key not in self:
-                    self[key] = value.copy()
+                if key not in self.hooks:
+                    self.hooks[key] = value.copy()
                 else:
                     for hook_name, hooks in value.items():
-                        self[key][hook_name] += hooks
+                        self.hooks[key][hook_name] += hooks
             else:
-                self[key] = value
+                self._set_or_extend(key, value)
 
     def prefix(self, tags: List[Tuple[str, ...]]):
-        d = {}
+        d = Config()
         for tag in tags:
             for key, value in self.items():
-                d[tag + key] = value
-        return UserConfig(d)
+                d._set(tag + key, ConfigItemList([v.prefix(tag) for v in value]))
+            for hook_key, hooks in self.hooks.items():
+                d.hooks[tag + hook_key] = hooks
+        return d
 
-    def take(self, tags: List[Tuple[str, ...]]):
-        res = UserConfig()
+    def take(self, tags: List[Tuple[str, ...]], keep_list=False):
+        res = Config()
         for tag in tags:
             res.update(
                 {
@@ -49,12 +81,154 @@ class UserConfig(dict):
                     if len(key) == len(tag) + 1 and key[: len(tag)] == tag
                 }
             )
+            res.update(
+                {
+                    key: value
+                    for key, value in self.hooks.items()
+                    if len(key) == len(tag) + 1 and key[: len(tag)] == tag
+                }
+            )
+        out = {}
+        # Take the last value None source value
+        # or the last value if no None source value is found
+        if not keep_list:
+            for key, itemlist in res.items():
+                if len(itemlist) == 0:
+                    continue
+                out[key] = itemlist[-1].value
+                for item in reversed(itemlist):
+                    if item.source is None:
+                        out[key] = item.value
+                        break
+        else:
+            out = {**res}
 
-        return res
+        out.update(res.hooks)
 
-    def set_for_tags(self, tags: List[Tuple[str, ...]], key, value):
+        return out
+
+    def set_for_tags(
+        self,
+        tags: List[Tuple[str, ...]],
+        key: str,
+        value: Any,
+        source: Optional[List[Tuple[str, ...]]] = None,
+    ):
         for tag in tags:
-            self[tag + (key,)] = value
+            self._set_or_append(tag + (key,), ConfigItem(source, value))
+
+    def add_detached_configuration(
+        self, source: "DeeplayModule", child: "DeeplayModule", name: str, value: Any
+    ):
+        for tag in child.tags:
+            self._set_or_append(tag + (name,), DetachedConfigItem(source, value))
+
+    def try_attach_detached_configurations(self, target: "DeeplayModule"):
+        for itemlist in self.values():
+            for idx, item in enumerate(itemlist):
+                if isinstance(item, DetachedConfigItem):
+                    # Same hierarchy if have same root.
+                    if item.source.root_module is target.root_module:
+                        newitem = ConfigItem(item.source.tags, item.value)
+                        itemlist[idx] = newitem
+
+    def remove_derived_configurations(self, tags: List[Tuple[str, ...]]):
+        assert all(isinstance(tag, tuple) for tag in tags), (
+            f"Tags must be a list of tuples, but found {tags}. "
+            "Please check the tags being used."
+        )
+        for itemlist in self.values():
+            for item in itemlist:
+                if (
+                    item.source is not None
+                    and isinstance(item, ConfigItem)
+                    and any(tag in item.source for tag in tags)
+                ):
+                    itemlist.remove(item)
+
+    def _set(
+        self,
+        key: Tuple[str, ...],
+        value: Union[ConfigItem, DetachedConfigItem, ConfigItemList],
+    ):
+        assert isinstance(value, (ConfigItem, DetachedConfigItem, ConfigItemList)), (
+            f"Value must be a ConfigItem, DetachedConfigItem or ConfigItemList, but found {type(value)}. "
+            "Please check the value being set."
+        )
+        if isinstance(value, (ConfigItem, DetachedConfigItem)):
+            value = ConfigItemList([value])
+        self[key] = value
+
+    def _set_or_append(
+        self, key: Tuple[str, ...], value: Union[ConfigItem, DetachedConfigItem]
+    ):
+        assert isinstance(value, (ConfigItem, DetachedConfigItem)), (
+            f"Value must be a ConfigItem, but found {type(value)}. "
+            "Please check the value being set."
+        )
+        if key in self:
+            self[key].append(value)
+        else:
+            self._set(key, value)
+
+    def _set_or_extend(self, key: Tuple[str, ...], value: ConfigItemList):
+        assert isinstance(value, ConfigItemList), (
+            f"Value must be a ConfigItemList, but found {type(value)}. "
+            "Please check the value being set."
+        )
+        if key in self:
+            self[key].extend(value)
+        else:
+            self._set(key, value)
+
+    def __setitem__(self, key: Tuple[str, ...], value: ConfigItemList):
+        assert isinstance(value, ConfigItemList), (
+            f"Value must be a ConfigItemList, but found {type(value)}. "
+            "Please check the value being set."
+        )
+        super().__setitem__(key, value)
+
+
+# class DerivedConfig(UserConfig):
+#     """Derived configuration for a module.
+
+#     Derived configuration differs from user configuration in that it is
+#     automatically generated by the module itself, rather than being set
+#     by the user. Derived configuration is typically used to store internal
+#     module settings, such as default values or calculated attributes.
+
+#     The derived configuration is stored in the module that creates the
+#     configuration, not the target module. This ensure the configuration
+#     has the correct lifecycle. Even if the target module is re-initialized,
+#     the derived configuration will remain the same since it is stored in
+#     the creating module. If the the creating module is re-initialized, the
+#     derived configuration will be re-calculated from scratch.
+
+#     The relation between the creating module and the target module is
+#     established by the `tags` attribute, which uses the hierarchical
+#     structure of the module to identify the target module.
+
+#     However, the target module might not be attached to the same hierarchy
+#     at the time of configuration. Then, no relation can be established.
+#     In this case, the derived configuration is stored in the target module's
+#     root module temporarily. When the target module is attached to a new
+#     hierarchy, the derived configuration is moved to the original creating
+#     module.
+#     """
+
+#     def __init__(self, *args, **kwargs):
+#         self._detached_configurations = []
+#         super().__init__(*args, **kwargs)
+
+
+# class TemporaryDerivedConfig(dict):
+#     """Temporary derived configuration for a module.
+
+#     Temporary derived configuration is used to store derived configuration
+#     for a module that is not yet attached to the core hierarchy. This
+#     configuration is stored in the root module of the module until the
+#     module is attached to the hierarchy.
+#     """
 
 
 def _create_forward_with_input_dict(
@@ -216,6 +390,8 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     @property
     def kwargs(self) -> Dict[str, Any]:
         kwdict = self._kwargs.copy()
+
+        # User config should always override derived config
         for key, value in self._user_config.take(self.tags).items():
             if key[-1] not in [
                 "__parent_hooks__",
@@ -275,8 +451,8 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         user_config = self._user_config
         tags = self.tags
         for tag in tags:
-            if tag + ("__user_hooks__",) in user_config:
-                return user_config[tag + ("__user_hooks__",)]
+            if tag + ("__user_hooks__",) in user_config.hooks:
+                return user_config.hooks[tag + ("__user_hooks__",)]
         # not found, add
         __user_hooks__: Dict[
             Literal["before_build", "after_build", "after_init"], list
@@ -286,7 +462,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
             "after_init": [],
         }
         for tag in tags:
-            user_config[tag + ("__user_hooks__",)] = __user_hooks__
+            user_config.hooks[tag + ("__user_hooks__",)] = __user_hooks__
 
         return __user_hooks__
 
@@ -327,11 +503,13 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
     def set_root_module(self, value):
         self._root_module = (value,)
+
         for name, module in self.named_modules():
             module._root_module = (value,)
+            self._user_config.try_attach_detached_configurations(module)
 
     @property
-    def _user_config(self) -> UserConfig:
+    def _user_config(self) -> Config:
         if self.root_module is None:
             return self._base_user_config
         if self.root_module is self:
@@ -354,7 +532,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
             "kwargs": kwargs,
         }
 
-        self._base_user_config = UserConfig()
+        self._base_user_config = Config()
 
         self.__parent_hooks__ = {
             "before_build": [],
@@ -724,7 +902,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     def available_styles(self):
         return list(self._style_map.keys())
 
-    def style(self, style: str, *args, **kwargs):
+    def style(self, style: str, *args, **kwargs) -> None:
         if style not in self._style_map:
             raise ValueError(
                 f"Style {style} not found. Available styles are {self.available_styles()}"
@@ -844,13 +1022,39 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     def get_from_user_config(self, key):
         v = self._user_config.take(self.tags)
         v = [value for k, value in v.items() if k[-1] == key]
+        if not v:
+            v = self._base_derived_config.take(self.tags)
+            v = [value for k, value in v.items() if k[-1] == key]
 
         return v[-1]
 
     def _configure_kwargs(self, kwargs):
         for name, value in kwargs.items():
             self._assert_valid_configurable(name)
-            self._user_config.set_for_tags(self.tags, name, value)
+            if ExtendedConstructorMeta._is_top_level["value"]:
+                self._user_config.set_for_tags(self.tags, name, value)
+            else:
+                current_constructing_module: DeeplayModule = (
+                    ExtendedConstructorMeta._is_top_level["constructing_module"]
+                )
+                # check if self is a child of the constructing module
+                tags = [
+                    tuple(name.split("."))
+                    for name, module in current_constructing_module.named_modules(
+                        remove_duplicate=False
+                    )
+                    if module is self
+                ]
+                tags = [() if tag == ("",) else tag for tag in tags]
+
+                if tags:
+                    self._user_config.set_for_tags(
+                        tags, name, value, source=current_constructing_module.tags
+                    )
+                else:
+                    self._user_config.add_detached_configuration(
+                        current_constructing_module, self, name, value
+                    )
         self.__construct__()
 
     def _give_user_configuration(self, receiver: "DeeplayModule", name):
@@ -870,7 +1074,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         for _, model in self.named_modules():
             if isinstance(model, DeeplayModule):
                 tags = model.tags
-                subconfig = receiver._user_config.take(tags)
+                subconfig = receiver._user_config.take(tags, keep_list=True)
                 for key, value in subconfig.items():
                     for tag in receivertags:
                         if len(key) >= len(tag) and key[: len(tag)] == tag:
@@ -880,13 +1084,24 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
                     for tag in mytags:
                         d[tag + (name,) + key] = value
 
+                    for citem in value:
+                        if isinstance(citem, ConfigItem) and citem.source is not None:
+                            citem.source = [
+                                tag + (name,) + key
+                                for key in citem.source
+                                for tag in mytags
+                            ]
+
         self._user_config.update(d)
+        # self._user_config._detached_configurations += (
+        #     receiver._user_config._detached_configurations
+        # )
         receiver.set_root_module(self.root_module)
 
     def __setattr__(self, name, value):
         if name == "_user_config" and hasattr(self, "_user_config"):
-            if not isinstance(value, UserConfig):
-                raise ValueError("User configuration must be a UserConfig instance.")
+            if not isinstance(value, Config):
+                raise ValueError("User configuration must be a Config instance.")
             super().__setattr__(name, value)
 
         super().__setattr__(name, value)
@@ -1075,7 +1290,9 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
     def __construct__(self):
         with not_top_level(ExtendedConstructorMeta, self):
+            # Reset construction
             self._modules.clear()
+            self._user_config.remove_derived_configurations(self.tags)
 
             self.is_constructing = True
 
