@@ -1,3 +1,4 @@
+from __future__ import annotations
 from os import remove
 from typing import List, Optional, Literal, Any, Sequence, Type, overload, Union
 

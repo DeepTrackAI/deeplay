@@ -1,5 +1,6 @@
-from typing import List, Optional, Literal, Any, Sequence, Type, overload, Union
+from __future__ import annotations
 
+from typing import List, Optional, Literal, Any, Sequence, Type, overload, Union
 
 import torch.nn as nn
 
