@@ -2,7 +2,7 @@ from typing import List, Optional, Literal, Any, Sequence, Type, overload, Union
 
 from deeplay.blocks.linear.linear import LinearBlock
 
-from .. import DeeplayModule, Layer, LayerList, LayerActivationNormalizationDropout
+from .. import DeeplayModule, Layer, LayerList
 
 import torch.nn as nn
 
