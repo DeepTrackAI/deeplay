@@ -1,5 +1,6 @@
 import inspect
 from typing import Any, Dict, Tuple, List, Set, Literal, Optional, Callable, Union
+from typing_extensions import Self
 
 import torch
 import torch.nn as nn
@@ -789,10 +790,14 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
                 if value._has_built:
                     continue
                 value = value.build()
+
                 if value is not None:
+
                     try:
                         setattr(self, name, value)
+
                     except TypeError:
+
                         # torch will complain if we try to set an attribute
                         # that is not a nn.Module.
                         # We circumvent this by setting the attribute using object.__setattr__
@@ -902,12 +907,13 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     def available_styles(self):
         return list(self._style_map.keys())
 
-    def style(self, style: str, *args, **kwargs) -> None:
+    def style(self, style: str, *args, **kwargs) -> Self:
         if style not in self._style_map:
             raise ValueError(
                 f"Style {style} not found. Available styles are {self.available_styles()}"
             )
         self._style_map[style](self, *args, **kwargs)
+        return self
 
     @classmethod
     def register_style(cls, func):
@@ -932,6 +938,22 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
             root.logs[name] = input
 
         self.register_forward_pre_hook(forward_hook)
+
+    def log_tensor(self, name: str, tensor: torch.Tensor):
+        """Stores a tensor in the root log.
+
+        Allows for storing tensors in the root module's logs. Can be used in
+        inference to make tensors globally available outside the direct
+        forward pass.
+
+        Parameters
+        ----------
+        name : str
+            The name of the tensor to store.
+        tensor : torch.Tensor
+            The tensor to store in the logs.
+        """
+        self.logs[name] = tensor
 
     def initialize(self, initializer):
         for module in self.modules():
@@ -1525,12 +1547,13 @@ class _MethodForwarder:
                             try:
                                 v = getattr(module, name)(*args, **kwargs)
                                 if self.mode == "first":
-                                    return v
+                                    return self
                             except AttributeError as e:
                                 raise AttributeError(
                                     f"Module {module} does not have a method {name}. "
                                     "Use selection.hasattr('method_name') to filter modules that have the method."
                                 ) from e
+            return self
 
         return forwarder
 
