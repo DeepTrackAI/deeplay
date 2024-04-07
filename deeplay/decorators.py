@@ -8,6 +8,7 @@ class Callback:
 
     def __init__(self, func, *args, **kwargs):
         self.timestamp = time.perf_counter_ns()
+        time.sleep(0.001)  # Ensure unique timestamps. Awful hack.
         self.func = func
         self.args = args
         self.kwargs = kwargs
