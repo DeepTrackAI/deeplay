@@ -1,3 +1,4 @@
+from os import remove
 from typing import List, Optional, Literal, Any, Sequence, Type, overload, Union
 
 from ... import (
@@ -134,15 +135,13 @@ class ConvolutionalEncoder2d(ConvolutionalNeuralNetwork):
     ):
 
         if apply_to_first_layer:
-            self.blocks[0].layer.configure(stride=stride)
+            self.blocks[0].strided(stride, remove_pool=True)
 
         for block in self.blocks[1:]:
-            block.layer.configure(stride=stride)
+            block.strided(stride, remove_pool=True)
 
         if apply_to_last_layer:
-            self.blocks[-1].layer.configure(stride=stride)
-
-        self["blocks", :].remove("pool", allow_missing=True)
+            self.blocks[-1].strided(stride, remove_pool=True)
 
     @overload
     def configure(
@@ -249,7 +248,6 @@ class ConvolutionalDecoder2d(ConvolutionalNeuralNetwork):
         hidden_channels: Sequence[int],
         out_channels: int,
         out_activation: Optional[Union[Type[nn.Module], nn.Module, None]] = None,
-        upsample: Optional[Union[Type[nn.Module], nn.Module, None]] = None,
         preprocess: Union[Type[nn.Module], nn.Module] = None,
     ):
         super().__init__(
@@ -264,13 +262,8 @@ class ConvolutionalDecoder2d(ConvolutionalNeuralNetwork):
         self.out_channels = out_channels
         self.preprocess = preprocess if preprocess is not None else Layer(nn.Identity)
 
-        for idx, block in enumerate(self.blocks[:-1]):
-            if upsample is None:
-                block.append(Layer(nn.Upsample, scale_factor=2), name="upsample")
-            elif isinstance(upsample, type) and issubclass(upsample, nn.Module):
-                block.append(Layer(upsample), name="upsample")
-            else:
-                block.append(upsample, name="upsample")
+        for block in self.blocks[:-1]:
+            block.upsampled()
 
     def forward(self, x):
         x = self.preprocess(x)
@@ -429,6 +422,7 @@ class UNet2d(ConvolutionalEncoderDecoder2d):
             if not isinstance(out_activation, Layer)
             else out_activation
         )
+        out_activation = out_activation.new()
         super().__init__(
             in_channels=in_channels,
             encoder_channels=encoder_channels,
@@ -439,7 +433,7 @@ class UNet2d(ConvolutionalEncoderDecoder2d):
         )
         self.in_channels = in_channels
         self.out_channels = out_channels
-        self.skip = skip
+        self.skip = skip.new()
         self.decoder.blocks.layer.configure(nn.LazyConv2d)
 
     def forward(self, x):
