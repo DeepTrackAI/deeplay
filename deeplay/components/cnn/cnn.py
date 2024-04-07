@@ -1,8 +1,12 @@
 from typing import List, Optional, Literal, Any, Sequence, Type, overload, Union
 
-from ... import DeeplayModule, Layer, LayerList, Conv2dBlock
 
 import torch.nn as nn
+
+from deeplay.blocks.conv2d.conv import Conv2dBlock
+from deeplay.external.layer import Layer
+from deeplay.list import LayerList
+from deeplay.module import DeeplayModule
 
 
 class ConvolutionalNeuralNetwork(DeeplayModule):
@@ -158,7 +162,7 @@ class ConvolutionalNeuralNetwork(DeeplayModule):
             c_in = self.in_channels if i == 0 else self.hidden_channels[i - 1]
 
             activation = (
-                Layer(nn.ReLU) if i < len(self.hidden_channels) else out_activation
+                Layer(nn.ReLU) if i < (len(self.hidden_channels)) else out_activation
             )
 
             block = Conv2dBlock(
@@ -167,7 +171,7 @@ class ConvolutionalNeuralNetwork(DeeplayModule):
                 kernel_size=3,
                 stride=1,
                 padding=1,
-                activation=activation,
+                activation=activation.new(),
             )
 
             self.blocks.append(block)
@@ -225,23 +229,6 @@ class ConvolutionalNeuralNetwork(DeeplayModule):
 
         if apply_to_first:
             self.blocks[0].strided(stride)
-
-        return self
-
-    def residual(
-        self,
-        shortcut: Layer = Layer(nn.Identity),
-        merge_after: str = "activation",
-        merge_block: int = -1,
-        num_blocks: int = 2,
-    ):
-        for block in self.blocks:
-            block.residual(
-                shortcut=shortcut.new(),
-                hidden_channels=[block.out_channels] * (num_blocks - 1),
-                merge_after=merge_after,
-                merge_block=merge_block,
-            )
 
         return self
 
