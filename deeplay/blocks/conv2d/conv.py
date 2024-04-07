@@ -1,39 +1,28 @@
 import warnings
-from typing import List, Type, Union
-
+from typing import List, Optional, Type, Union, Literal
+from typing_extensions import Self
 import torch.nn as nn
 
-from deeplay.blocks.conv2d.mixin import BaseConvBlockMixin
-from deeplay.blocks.sequential import SequentialBlock
+from deeplay.blocks.base import BaseBlock
 from deeplay.external import Layer
-from deeplay.list import LayerList
 from deeplay.module import DeeplayModule
+from deeplay.ops.logs import FromLogs
+from deeplay.ops.merge import Add, MergeOp
+from deeplay.ops.shape import Permute
 
 
-class Conv2dBlock(SequentialBlock, BaseConvBlockMixin):
+class Conv2dBlock(BaseBlock):
     """Convolutional block with optional normalization and activation."""
 
     def __init__(
         self,
-        in_channels,
-        out_channels,
-        kernel_size,
-        stride,
-        padding,
-        activation: Layer = Layer(nn.ReLU),
-        mode: str = "base",
-        # order: List[str] = ["layer", "activation"],
+        in_channels: Optional[int],
+        out_channels: int,
+        kernel_size=3,
+        stride=1,
+        padding=0,
         **kwargs,
     ):
-        self.mode = mode
-        if mode == "base":
-            self.class_impl = ConvBlockMixin
-        elif mode == "multi":
-            self.class_impl = MultiConvBlockMixin
-        elif mode == "residual":
-            self.class_impl = ResidualConvBlockMixin
-        else:
-            raise ValueError(f"Invalid mode: {mode}")
 
         self.in_channels = in_channels
         self.out_channels = out_channels
@@ -41,196 +30,343 @@ class Conv2dBlock(SequentialBlock, BaseConvBlockMixin):
         self.stride = stride
         self.padding = padding
 
-        self.class_impl.__init__(self, activation=activation, **kwargs)
+        if in_channels is None:
+            layer = Layer(
+                nn.LazyConv2d,
+                out_channels,
+                kernel_size=kernel_size,
+                stride=stride,
+                padding=padding,
+            )
+        else:
+            layer = Layer(
+                nn.Conv2d,
+                in_channels,
+                out_channels,
+                kernel_size=kernel_size,
+                stride=stride,
+                padding=padding,
+            )
+
+        super().__init__(layer=layer, **kwargs)
+
+    def normalized(
+        self,
+        normalization: Union[Type[nn.Module], DeeplayModule] = nn.BatchNorm2d,
+        mode="append",
+        after=None,
+    ) -> Self:
+        did_replace = mode == "replace" and "normalization" in self.order
+
+        super().normalized(normalization, mode=mode, after=after)
+
+        if did_replace:
+            # Assume num_features is already correct
+            return self
+
+        idx = self.order.index("normalization")
+        # if layer or blocks before normalization
+        if any(name in self.order[:idx] for name in ["layer", "blocks"]):
+            channels = self.out_channels
+        else:
+            channels = self.in_channels
+
+        self._configure_normalization(channels)
+
+        return self
+
+    def _configure_normalization(self, channels):
+        type: Type[nn.Module] = self.normalization.classtype
+
+        if type == nn.BatchNorm2d:
+            self.normalization.configure(num_features=channels)
+        elif type == nn.GroupNorm:
+            num_groups = self.normalization.kwargs.get("num_groups", 1)
+            self.normalization.configure(num_groups=num_groups, num_channels=channels)
+        elif type == nn.InstanceNorm2d:
+            self.normalization.configure(num_features=channels)
+        elif type == nn.LayerNorm:
+            self.normalization.configure(normalized_shape=channels)
 
     def pooled(
+        self, pool: Layer = Layer(nn.MaxPool2d, 2, 2), mode="prepend", after=None
+    ) -> Self:
+        self.set("pool", pool, mode=mode, after=after)
+        return self
+
+    def upsampled(
         self,
-        pool: Union[DeeplayModule, Type[nn.Module]] = Layer(nn.MaxPool2d, 2, 2),
-        **kwargs,
-    ):
-        self.class_impl.pooled(self, pool=pool, **kwargs)
+        upsample: Layer = Layer(nn.Upsample, scale_factor=2),
+        mode="append",
+        after=None,
+    ) -> Self:
+        self.set("upsample", upsample, mode=mode, after=after)
+        return self
 
-    def normalized(self, normalization: Layer = Layer(nn.BatchNorm2d), **kwargs):
-        self.class_impl.normalized(self, normalization=normalization, **kwargs)
+    def transposed(
+        self,
+        transpose: Layer = Layer(
+            nn.ConvTranspose2d, kernel_size=4, stride=2, padding=1
+        ),
+        mode="prepend",
+        after=None,
+        remove_upsample=True,
+        remove_layer=True,
+    ) -> Self:
+        self.set("transpose", transpose, mode=mode, after=after)
+        if remove_upsample:
+            self.remove("upsample", allow_missing=True)
+        if remove_layer:
+            self.remove("layer", allow_missing=True)
+        return self
 
-    def strided(self, stride: int | tuple[int, ...], remove_pool=True, **kwargs):
-        self.class_impl.strided(self, stride=stride, remove_pool=remove_pool, **kwargs)
+    def strided(self, stride: int | tuple[int, ...], remove_pool=True) -> Self:
+        self.configure(stride=stride)
+        self["layer"].configure(nn.Conv2d)  # Might be Identity
+        if hasattr(self, "blocks"):
+            self.blocks[0].strided(stride, remove_pool=remove_pool)
+        elif hasattr(self, "layer"):
+            self.layer.configure(stride=stride)
+            if remove_pool:
+                self.remove("pool", allow_missing=True)
 
-    def forward(self, x):
-        return self.class_impl.forward(self, x)
+        if hasattr(self, "shortcut_start"):
+            if isinstance(self.shortcut_start, Conv2dBlock):
+                self.shortcut_start.strided(stride, remove_pool=remove_pool)
+            elif isinstance(self.shortcut_start, Layer):
+                self.shortcut_start.configure(
+                    nn.Conv2d,
+                    self.in_channels,
+                    self.out_channels,
+                    kernel_size=1,
+                    stride=stride,
+                    padding=0,
+                )
+        return self
+
+    def multi(self, n=1) -> Self:
+        super().multi(n)
+        self.blocks[1:].configure(in_channels=self.out_channels)
+        return self
+
+    def shortcut(
+        self,
+        merge: MergeOp = Add(),
+        shortcut: Optional[
+            Union[Literal["auto"], Type[nn.Module], DeeplayModule]
+        ] = "auto",
+    ) -> Self:
+        merge = merge.new()
+        if shortcut == "auto":
+            shortcut = Conv2dBlock(
+                self.in_channels,
+                self.out_channels,
+                kernel_size=1,
+                stride=self.stride,
+                padding=0,
+                activation=Layer(nn.Identity),
+            )
+            if self.in_channels == self.out_channels and (
+                self.stride == 1 or self.stride == (1, 1)
+            ):
+                shortcut.layer.configure(nn.Identity)
+        elif shortcut is None:
+            shortcut = Layer(nn.Identity)
+        elif isinstance(shortcut, type):
+            shortcut = Layer(shortcut)
+
+        shortcut = shortcut.new()
+
+        return super().shortcut(merge=merge, shortcut=shortcut)
 
     def _assert_valid_configurable(self, *args):
         return True
 
 
-class ConvBlockMixin(BaseConvBlockMixin):
+@Conv2dBlock.register_style
+def residual(
+    block: Conv2dBlock,
+    order: str = "lanlan|",
+    activation=nn.ReLU,
+    normalization=nn.BatchNorm2d,
+    dropout=0.1,
+):
+    order = order.lower()
+    if "|" not in order:
+        order += "|"
+    # only accept the characters 'l', 'a', 'n', 'd' and '|'
+    assert all(
+        c in "land|" for c in order
+    ), f"The residual order shorthand must only contain the characters 'l', 'a', 'n', 'd' and '|'. Received: {order}"
 
-    order: List[str]
+    after_skip_order = order[order.index("|") + 1 :]
+    assert all(
+        c in "and" for c in after_skip_order
+    ), f"The residual order shorthand must only contain the characters 'a', 'n', 'd' after the skip connection. Received: {order}"
 
-    def __init__(self, **kwargs):
-        if self.in_channels is not None and self.in_channels > 0:
-            layer = Layer(
-                nn.Conv2d,
-                self.in_channels,
-                self.out_channels,
-                kernel_size=self.kernel_size,
-                stride=self.stride,
-                padding=self.padding,
-            )
-        else:
-            layer = Layer(
-                nn.LazyConv2d,
-                self.out_channels,
-                kernel_size=self.kernel_size,
-                stride=self.stride,
-                padding=self.padding,
-            )
-        kwargs.setdefault("layer", layer)
+    letter_count_map = {c: after_skip_order.count(c) for c in "lan"}
+    assert all(
+        count <= 1 for count in letter_count_map.values()
+    ), f"The residual order shorthand must contain at most one of each of the characters 'l', 'a', 'n' after the skip connection. Received: {order}"
 
-        self.order = kwargs.pop("order", ["layer", "activation"])
+    block_orders = []
+    _order = []
+    for c in order[: order.index("|")]:
+        if c == "l":
+            _name = "layer"
+        elif c == "a":
+            _name = "activation"
+        elif c == "n":
+            _name = "normalization"
+        elif c == "d":
+            _name = "dropout"
 
-        for name in self.order:
-            if not name in kwargs:
-                warnings.warn(
-                    f"Block {self.__class__.__name__} does not have a module called `{name}`. "
-                    "You can provide it using `configure({name}=module)` or "
-                    "by passing it as a positional argument to the constructor."
-                )
-            setattr(self, name, kwargs[name].new())
+        if _name in _order:
+            block_orders.append(_order)
+            _order = []
 
-    def forward(self, x):
-        for name in self.order:
-            x = getattr(self, name)(x)
-        return x
+        _order.append(_name)
 
-    def pooled(self, pool: Layer):
-        if "pool" in self.order:
-            self.configure(pool=pool)
-        else:
-            self.append(pool.new(), name="pool")
-        return self
+    if _order:
+        block_orders.append(_order)
 
-    def normalized(self, normalization: Layer):
-        if "normalization" in self.order:
-            self.configure(normalization=normalization)
-        else:
-            self.append(normalization.new(), name="normalization")
-            self.normalization.configure(num_features=self.out_channels)
-        return self
+    block.multi(n=len(block_orders))
+    block.shortcut()
 
-    def strided(self, stride: int | tuple[int], remove_pool=True):
-        if "strided" in self.order:
-            self.configure(stride=stride)
-        else:
-            self.append(stride, name="stride")
+    for i, block_order in enumerate(block_orders):
+        if "activation" in block_order:
+            block.blocks[i].activated(activation)
+        if "normalization" in block_order:
+            block.blocks[i].normalized(normalization)
+        if "dropout" in block_order:
+            block.blocks[i].set_dropout(dropout)
+        block.blocks[i].configure(order=block_order)
 
-        if remove_pool:
-            self.remove("pool", allow_missing=True)
-
-        return self
-
-
-class MultiConvBlockMixin(BaseConvBlockMixin):
-
-    blocks: LayerList[Conv2dBlock]
-    hidden_channels: List[int]
-
-    def __init__(self, hidden_channels: List[int], activation: Layer, **kwargs):
-        self.hidden_channels = hidden_channels
-        self.blocks = LayerList()
-        for in_c, out_c in zip(
-            [self.in_channels, *hidden_channels], [*hidden_channels, self.out_channels]
-        ):
-            self.blocks.append(
-                Conv2dBlock(
-                    in_c,
-                    out_c,
-                    self.kernel_size,
-                    self.stride,
-                    self.padding,
-                    activation=activation.new(),
-                )
-            )
-
-    def forward(self, x):
-        for block in self.blocks:
-            x = block(x)
-        return x
-
-    def pooled(self, pool: Layer, block: int = 0):
-        self.blocks[block].pooled(pool)
-        return self
-
-    def normalized(self, normalization: Layer):
-        for block in self.blocks:
+    for i, letter in enumerate(after_skip_order):
+        if letter == "a":
+            block.activated(activation)
+        elif letter == "n":
             block.normalized(normalization)
-        return self
+        elif letter == "d":
+            block.set_dropout(dropout)
 
-    def strided(self, stride: int | tuple[int, ...], block: int = 0, remove_pool=True):
-        self.blocks[block].strided(stride, remove_pool=remove_pool)
-        return self
+    return block
 
 
-class ResidualConvBlockMixin(MultiConvBlockMixin):
+@Conv2dBlock.register_style
+def spatial_self_attention(
+    block: Conv2dBlock,
+    to_channel_last: bool = False,
+    normalization: Union[Layer, Type[nn.Module]] = nn.LayerNorm,
+):
+    if block.out_channels != block.in_channels:
+        warnings.warn(
+            "Spatial self-attention should be used with the same number of input and output channels. "
+            "Setting the output channels to the input channels."
+        )
+    block.out_channels = block.in_channels
 
-    merge_after: str
-    merge_block: int
+    block.shortcut()
 
-    def __init__(
-        self,
-        hidden_channels: List[int],
-        merge_after: str = "activation",
-        merge_block: int = -1,
-        shortcut: Layer = Layer(nn.Identity),
-        **kwargs,
-    ):
-        MultiConvBlockMixin.__init__(self, hidden_channels, **kwargs)
-        self.merge_after = merge_after
-        self.merge_block = merge_block
-        self.shortcut = shortcut.new()
+    from deeplay.ops.attention.self import MultiheadSelfAttention
 
-    def forward(self, x):
-        shortcut = x
+    block.layer.configure(
+        MultiheadSelfAttention,
+        features=block.in_channels,
+        num_heads=1,
+        batch_first=True,
+    )
+    block.normalized(normalization, mode="insert", after="shortcut_start")
 
-        merge_block = (
-            self.merge_block
-            if self.merge_block >= 0
-            else len(self.blocks) + self.merge_block
+    if to_channel_last:
+        block.prepend(Permute(0, 2, 3, 1), name="channel_last")
+        block.append(Permute(0, 3, 1, 2), name="channel_first")
+
+
+@Conv2dBlock.register_style
+def spatial_cross_attention(
+    block: Conv2dBlock,
+    to_channel_last: bool = False,
+    normalization: Union[Layer, Type[nn.Module]] = nn.LayerNorm,
+    condition_name: str = "condition",
+):
+    block.out_channels = block.in_channels
+
+    block.residual(hidden_channels=[], merge_after="layer", merge_block=-1)
+
+    from deeplay.ops.attention.cross import MultiheadCrossAttention
+
+    block[..., "layer"].configure(
+        MultiheadCrossAttention,
+        features=block.in_channels,
+        num_heads=1,
+        batch_first=True,
+        values=0,
+        keys=FromLogs(condition_name),
+        queries=FromLogs(condition_name),
+    )
+    normalization = (
+        Layer(normalization) if not isinstance(normalization, Layer) else normalization
+    )
+    block.normalized(normalization)
+    block.blocks.configure(order=["normalization", "layer"])
+
+    if to_channel_last:
+        block.blocks[0].prepend(Permute(0, 2, 3, 1), name="channel_last")
+        block.blocks[-1].append(Permute(0, 3, 1, 2), name="channel_first")
+
+
+@Conv2dBlock.register_style
+def spatial_tranformer(
+    block: Conv2dBlock,
+    to_channel_last: bool = False,
+    normalization: Union[Layer, Type[nn.Module]] = nn.LayerNorm,
+    conditioned_name: Optional[str] = "condition",
+):
+    block.residual(
+        hidden_channels=[block.in_channel, block.in_channel],
+        merge_after="layer",
+        merge_block=-1,
+    )
+
+    normalization = (
+        Layer(normalization) if not isinstance(normalization, Layer) else normalization
+    )
+
+    block.blocks[0].style(
+        "spatial_self_attention", normalization=normalization, to_channel_last=False
+    )
+    if conditioned_name is not None:
+        block.blocks[1].style(
+            "spatial_cross_attention",
+            normalization=normalization,
+            to_channel_last=False,
+            condition_name=conditioned_name,
+        )
+    else:
+        block.blocks[1].style(
+            "spatial_self_attention",
+            normalization=normalization,
+            to_channel_last=False,
         )
 
-        for block in self.blocks[:merge_block]:
-            x = block(x)
+    block.blocks[2].residual(
+        hidden_channels=[block.out_channels], merge_after="activation", merge_block=-1
+    )
+    block.blocks[2].blocks[0].layer.configure(
+        nn.Linear, block.in_channel, block.out_channel
+    )
+    block.blocks[2].blocks[0].activation.configure(nn.GELU)
+    block.blocks[2].blocks[0].normalized(normalization)
+    block.blocks[2].blocks[0].configure(order=["normalization", "layer", "activation"])
+    block.blocks[2].blocks[1].layer.configure(
+        nn.Linear, block.out_channel, block.out_channel
+    )
+    block.blocks[2].blocks[1].activation.configure(nn.Identity)
 
-        for name in self.blocks[-1].order:
-            x = getattr(self.blocks[-1], name)(x)
-            if name == self.merge_after:
-                x = x + shortcut
+    block.normalized(normalization)
+    block.blocks.configure(order=["normalization", "layer"])
 
-        for block in self.blocks[merge_block:]:
-            x = block(x)
-
-        return x
-
-    def strided(self, stride: int, block: int = 0, remove_pool=True):
-        super().strided(stride, block, remove_pool)
-        self.shortcut.configure(
-            nn.Conv2d,
-            self.in_channels,
-            self.out_channels,
-            kernel_size=1,
-            stride=stride,
-            padding=0,
-        )
-        return self
-
-    def pooled(self, pool: Layer, block: int = 0):
-        super().pooled(pool, block)
-        self.shortcut.configure(
-            nn.Conv2d,
-            self.in_channels,
-            self.out_channels,
-            kernel_size=1,
-            padding=0,
-            stride=pool.stride,
-        )
-        return self
+    if to_channel_last:
+        block.blocks[0].prepend(Permute(0, 2, 3, 1), name="channel_last")
+        block.blocks[-1].append(Permute(0, 3, 1, 2), name="channel_first")
