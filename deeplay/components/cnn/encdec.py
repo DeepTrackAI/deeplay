@@ -5,9 +5,6 @@ from ... import (
     DeeplayModule,
     Layer,
     LayerList,
-    Sequential,
-    PoolLayerActivationNormalization,
-    LayerActivationNormalizationUpsample,
 )
 from deeplay.components.cnn import ConvolutionalNeuralNetwork
 from deeplay.blocks.conv2d import Conv2dBlock
