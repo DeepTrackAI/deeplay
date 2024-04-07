@@ -98,7 +98,7 @@ class TestComponentMLP(unittest.TestCase):
 
     def test_configure_normalization(self):
         mlp = MultiLayerPerceptron(2, [4, 3, 5], 3)
-        mlp.normalization.configure(nn.BatchNorm1d)
+        mlp["blocks", :].all.normalized(nn.BatchNorm1d)
         mlp.build()
         self.assertEqual(len(mlp.blocks), 4)
         for idx, block in enumerate(mlp.blocks):

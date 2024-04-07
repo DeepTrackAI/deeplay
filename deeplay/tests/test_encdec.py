@@ -20,7 +20,7 @@ class TestComponentEncDec(unittest.TestCase):
         encdec.build()
         # encdec.create()
 
-        self.assertEqual(len(encdec.encoder.blocks), 4)
+        self.assertEqual(len(encdec.encoder.blocks), 3)
         self.assertEqual(len(encdec.decoder.blocks), 4)
 
         self.assertEqual(encdec.encoder.blocks[0].layer.in_channels, 3)
@@ -45,7 +45,7 @@ class TestComponentEncDec(unittest.TestCase):
         encdec.configure(out_activation=nn.Sigmoid)
         encdec.build()
 
-        self.assertEqual(len(encdec.blocks), 8)
+        self.assertEqual(len(encdec.blocks), 7)
         self.assertIsInstance(encdec.decoder.output.activation, nn.Sigmoid)
 
     def test_change_out_act_Layer(self):
@@ -58,7 +58,7 @@ class TestComponentEncDec(unittest.TestCase):
         encdec.configure(out_activation=Layer(nn.Sigmoid))
         encdec.build()
 
-        self.assertEqual(len(encdec.blocks), 8)
+        self.assertEqual(len(encdec.blocks), 7)
         self.assertIsInstance(encdec.decoder.output.activation, nn.Sigmoid)
 
     def test_change_out_act_instance(self):
@@ -71,7 +71,7 @@ class TestComponentEncDec(unittest.TestCase):
         encdec.configure(out_activation=nn.Sigmoid())
         encdec.build()
 
-        self.assertEqual(len(encdec.blocks), 8)
+        self.assertEqual(len(encdec.blocks), 7)
         self.assertIsInstance(encdec.decoder.output.activation, nn.Sigmoid)
 
     # def test_default_values_initialization(self):

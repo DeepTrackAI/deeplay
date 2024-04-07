@@ -413,7 +413,7 @@ class TestLayer(unittest.TestCase):
                 model = dl.MultiLayerPerceptron(None, [64], 10)
 
                 self.model = model
-                model.output.normalization.configure(nn.BatchNorm1d)
+                model.output.normalized(nn.BatchNorm1d)
 
         testclass = TestClass()
 
@@ -429,7 +429,7 @@ class TestLayer(unittest.TestCase):
                 super().__init__()
 
                 model = dl.MultiLayerPerceptron(None, [64], 10)
-                model.output.normalization.configure(nn.BatchNorm1d)
+                model.output.normalized(nn.BatchNorm1d)
                 self.model = model
 
         testclass = TestClass()
