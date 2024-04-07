@@ -50,7 +50,6 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
             module.__construct__()
         return self
 
-
     @after_init
     def extend(self, modules: List[DeeplayModule]) -> "LayerList[T]":
         super().extend(modules)
@@ -70,12 +69,10 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
     @overload
     def configure(
         self, *args: Union[int, slice, List[int], slice], **kwargs: Any
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @overload
-    def configure(self, name: str, *args: Any, **kwargs: Any) -> None:
-        ...
+    def configure(self, name: str, *args: Any, **kwargs: Any) -> None: ...
 
     def configure(self, *args, **kwargs):
         if len(args) > 0:
@@ -120,18 +117,17 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
                 for layer in self
                 if hasattr(layer, name) and isinstance(getattr(layer, name), nn.Module)
             ]
+
             if len(submodules) > 0:
                 return ReferringLayerList(*submodules)
             else:
                 raise
 
     @overload
-    def __getitem__(self, index: int) -> "T":
-        ...
+    def __getitem__(self, index: int) -> "T": ...
 
     @overload
-    def __getitem__(self, index: slice) -> "LayerList[T]":
-        ...
+    def __getitem__(self, index: slice) -> "LayerList[T]": ...
 
     def __getitem__(self, index: Union[int, slice]) -> "Union[T, LayerList[T]]":
         if isinstance(index, int):
