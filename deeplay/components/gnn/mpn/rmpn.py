@@ -22,32 +22,32 @@ class ResidualMessagePassingNeuralNetwork(DeeplayModule):
     @property
     def input(self):
         """Return the input layer of the network. Equivalent to `.blocks[0]`."""
-        return self.blocks[0]
+        return self.blocks[0].layer
 
     @property
     def hidden(self):
         """Return the hidden layers of the network. Equivalent to `.blocks[:-1]`"""
-        return self.blocks[:-1]
+        return self.blocks[:-1].layer
 
     @property
     def output(self):
         """Return the last layer of the network. Equivalent to `.blocks[-1]`."""
-        return self.blocks[-1]
+        return self.blocks[-1].layer
 
     @property
     def transform(self) -> LayerList[Layer]:
         """Return the transform layers of the network. Equivalent to `.blocks.transform`."""
-        return self.blocks.transform
+        return self.blocks.layer.transform
 
     @property
     def propagate(self) -> LayerList[Layer]:
         """Return the propagate layers of the network. Equivalent to `.blocks.propagate`."""
-        return self.blocks.propagate
+        return self.blocks.layer.propagate
 
     @property
     def update(self) -> LayerList[Layer]:
         """Return the update layers of the network. Equivalent to `.blocks.update`."""
-        return self.blocks.update
+        return self.blocks.layer.update
 
     def __init__(
         self,
