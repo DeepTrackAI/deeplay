@@ -10,6 +10,7 @@ from deeplay import (
     GraphToNodeMPM,
     GraphToEdgeMPM,
     MessagePassingNeuralNetwork,
+    ResidualMessagePassingNeuralNetwork,
     MultiLayerPerceptron,
     dense_laplacian_normalization,
     Sum,
@@ -371,6 +372,108 @@ class TestComponentMPN(unittest.TestCase):
 
         self.assertEqual(out.x.shape, (10, 1))
         self.assertEqual(out.edge_attr.shape, (20, 1))
+        self.assertTrue(torch.all(inp.edge_index == out.edge_index))
+
+
+class TestComponentRMLP(unittest.TestCase):
+    def test_rmpn_defaults(self):
+        gnn = ResidualMessagePassingNeuralNetwork([4], 4)
+        gnn.build()
+        gnn.create()
+
+        self.assertEqual(len(gnn.blocks), 2)
+
+        self.assertEqual(gnn.transform[0].layer.out_features, 4)
+        self.assertEqual(gnn.update[0].layer.out_features, 4)
+
+        self.assertEqual(gnn.output.update.layer.out_features, 4)
+
+        inp = {}
+        inp["x"] = torch.randn(10, 4)
+        inp["edge_index"] = torch.randint(0, 10, (2, 30))
+        inp["edge_attr"] = torch.ones(30, 4)
+
+        out = gnn(inp)
+
+        self.assertEqual(out["x"].shape, (10, 4))
+        self.assertEqual(out["edge_attr"].shape, (30, 4))
+        self.assertTrue(torch.all(inp["edge_index"] == out["edge_index"]))
+
+    def test_gnn_change_depth(self):
+        gnn = ResidualMessagePassingNeuralNetwork([4], 4)
+        gnn.configure(hidden_features=[4, 4])
+        gnn.create()
+        gnn.build()
+        self.assertEqual(len(gnn.blocks), 3)
+
+    def test_gnn_activation_change(self):
+        gnn = ResidualMessagePassingNeuralNetwork([4, 4], 1)
+        gnn.configure(out_activation=nn.Sigmoid)
+        gnn.create()
+        gnn.build()
+
+        self.assertIsInstance(gnn.output.transform.activation, nn.Sigmoid)
+        self.assertIsInstance(gnn.output.update.activation, nn.Sigmoid)
+
+    def test_gnn_default_propagation(self):
+        gnn = ResidualMessagePassingNeuralNetwork([4], 4)
+        gnn.build()
+        gnn.create()
+
+        inp = {}
+        inp["x"] = torch.randn(10, 4)
+        inp["edge_index"] = torch.randint(0, 10, (2, 30))
+        inp["edge_attr"] = torch.ones(30, 4)
+
+        # by default, the propagation is a sum
+        propagator = gnn.propagate[0]
+        out = propagator(inp)
+
+        uniques = torch.unique(inp["edge_index"][1], return_counts=True)
+        expected = torch.zeros(10, 1)
+        expected[uniques[0]] = uniques[1].unsqueeze(1).float()
+
+        self.assertTrue(torch.all(out["aggregate"] == expected))
+
+    def test_gnn_propagation_change_Mean(self):
+        gnn = ResidualMessagePassingNeuralNetwork([4], 4)
+
+        gnn.blocks[0].layer.replace("propagate", Mean())
+        gnn.propagate.set_input_map("x", "edge_index", "edge_attr")
+        gnn.propagate.set_output_map("aggregate")
+
+        gnn.create()
+        gnn.build()
+
+        inp = {}
+        inp["x"] = torch.randn(10, 4)
+        inp["edge_index"] = torch.randint(0, 10, (2, 3))
+        inp["edge_attr"] = torch.ones(3, 4)
+
+        propagator = gnn.propagate[0]
+        out = propagator(inp)
+
+        uniques = torch.unique(inp["edge_index"][1])
+        expected = torch.zeros(10, 1)
+        expected[uniques] = 1.0
+
+        self.assertTrue(torch.all(out["aggregate"] == expected))
+
+    def test_tg_data_input(self):
+        gnn = ResidualMessagePassingNeuralNetwork([4], 4)
+        gnn.build()
+        gnn.create()
+
+        inp = Data(
+            x=torch.randn(10, 4),
+            edge_index=torch.randint(0, 10, (2, 20)),
+            edge_attr=torch.ones(20, 4),
+        )
+
+        out = gnn(inp)
+
+        self.assertEqual(out.x.shape, (10, 4))
+        self.assertEqual(out.edge_attr.shape, (20, 4))
         self.assertTrue(torch.all(inp.edge_index == out.edge_index))
 
 
