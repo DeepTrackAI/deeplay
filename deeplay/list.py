@@ -184,11 +184,16 @@ class Parallel(LayerList, Generic[T]):
                 f"Key arguments {[key for _, key in self._keys]} were provided but input was not a dictionary. Got {type(x)} instead."
             )
 
-        if isinstance(x, (dict, Data)):
-            updates = [layer(x, overwrite_output=False) for layer in self]
-            x.update(
-                {key: value for update in updates for key, value in update.items()}
-            )
-            return x
+        if isinstance(x, dict):
+            x = x.copy()
+            return self._forward_with_dict(x)
+        elif isinstance(x, Data):
+            x = x.clone()
+            return self._forward_with_dict(x)
+        else:
+            return [layer(x) for layer in self]
 
-        return [layer(x) for layer in self]
+    def _forward_with_dict(self, x):
+        updates = [layer(x, overwrite_output=False) for layer in self]
+        x.update({key: value for update in updates for key, value in update.items()})
+        return x
