@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from deeplay.blocks.conv2d.conv import Conv2dBlock
 from deeplay.components import ConvolutionalDecoder2d
 from deeplay.external.layer import Layer
 from deeplay.initializers.normal import Normal
@@ -7,11 +8,11 @@ from deeplay.initializers.normal import Normal
 
 @ConvolutionalDecoder2d.register_style
 def dcgan_generator(generator: ConvolutionalDecoder2d):
-    generator.normalized()
-    generator.blocks.configure(
-        "layer", nn.ConvTranspose2d, kernel_size=4, stride=2, padding=0
-    )
-    generator.blocks[0].layer.configure(stride=1)
+    generator.normalized(after_last_layer=False)
+    generator[...].isinstance(Conv2dBlock).hasattr("layer").all.configure(
+        "layer", nn.ConvTranspose2d, kernel_size=4, stride=2, padding=1
+    ).remove("upsample", allow_missing=True)
+    generator.blocks[0].layer.configure(stride=1, padding=0)
     init = Normal(
         targets=(
             nn.ConvTranspose2d,
@@ -112,6 +113,7 @@ class DCGANGenerator(ConvolutionalDecoder2d):
             self.label_embedding = Layer(nn.Embedding, num_classes, embedding_dim)
         else:
             self.label_embedding = Layer(nn.Identity)
+
         self.style("dcgan_generator")
 
     def forward(self, x, y=None):
