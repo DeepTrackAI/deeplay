@@ -12,7 +12,6 @@ class TestResnet18(unittest.TestCase):
     def test_init(self):
         model = BackboneResnet18(in_channels=3)
         model.build()
-        print(model)
 
     def test_style_resnet18_input(self):
         block = Conv2dBlock(3, 64).style("resnet18_input").build()

@@ -20,7 +20,12 @@ class BaseBlock(SequentialBlock):
     def multi(self, n=1) -> Self:
         def make_new_self():
             args, kwargs = self.get_init_args()
-            return type(self)(*(args + self._args), **kwargs)
+            args = list(args) + list(self._args)
+            args = [args.new() if isinstance(args, Layer) else args for args in args]
+            for key, value in kwargs.items():
+                if isinstance(value, Layer):
+                    kwargs[key] = value.new()
+            return type(self)(*args, **kwargs)
 
         blocks = Sequential([make_new_self() for _ in range(n)])
         self.configure(order=["blocks"], blocks=blocks)

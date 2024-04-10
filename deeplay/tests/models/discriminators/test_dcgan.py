@@ -10,7 +10,6 @@ class TestDCGANGenerator(unittest.TestCase):
 
     def test_init(self):
         discr = DCGANDiscriminator().build()
-        print(discr)
         data = torch.randn(1, 1, 64, 64)
         output = discr(data)
 

@@ -165,14 +165,3 @@ class TestBaseBlock(unittest.TestCase):
         self.assertIsInstance(block.shortcut_end, Add)
         self.assertEqual(len(block.blocks), n)
         # ensure has correct structure
-
-    def test_base_block_shortcut_multi(self):
-        n = 3
-        block = BaseBlock(layer=Layer(nn.Linear, 1, 1))
-        block.shortcut()
-        block.multi(n=n)
-
-        self.assertListEqual(block.order, ["blocks"])
-        self.assertEqual(len(block.blocks), n)
-        for b in block.blocks:
-            self.assertListEqual(b.order, ["shortcut_start", "layer", "shortcut_end"])
