@@ -18,7 +18,7 @@ class BaseBlock(SequentialBlock):
         super(BaseBlock, self).__init__(*args, **kwargs)
 
     def multi(self, n=1) -> Self:
-        blocks = Sequential(*[self.new() for _ in range(n)])
+        blocks = Sequential(*[self.new(True) for _ in range(n)])
 
         self.configure(order=["blocks"], blocks=blocks)
 
@@ -31,7 +31,8 @@ class BaseBlock(SequentialBlock):
     ) -> Self:
 
         shortcut = Layer(shortcut) if isinstance(shortcut, type) else shortcut
-        self.prepend(shortcut.new(), name="shortcut_start")
+        # print(shortcut.new())
+        self.prepend(shortcut, name="shortcut_start")
         self.append(merge.new(), name="shortcut_end")
         return self
 
