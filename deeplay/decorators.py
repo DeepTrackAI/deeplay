@@ -6,9 +6,11 @@ import datetime
 class Callback:
     """A deepcopy safe callback."""
 
+    instance_count = 0
+
     def __init__(self, func, *args, **kwargs):
-        self.timestamp = time.perf_counter_ns()
-        time.sleep(0.001)  # Ensure unique timestamps. Awful hack.
+        self.id = Callback.instance_count
+        Callback.instance_count += 1
         self.func = func
         self.args = args
         self.kwargs = kwargs
