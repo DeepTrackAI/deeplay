@@ -115,6 +115,10 @@ class TestConv2dBlock(unittest.TestCase):
         for b in block.blocks:
             self.assertEqual(b.layer.stride, (2, 2))
 
+    def test_multi_multi(self):
+        block = Conv2dBlock(in_channels=1, out_channels=1).multi(2)
+        block.blocks[0].multi(2)
+
     def test_style_residual(self):
         block = Conv2dBlock(in_channels=1, out_channels=1).style("residual").build()
         self.assertIsInstance(block.shortcut_end, Add)
