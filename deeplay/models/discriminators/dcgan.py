@@ -11,7 +11,8 @@ from deeplay.initializers.normal import Normal
 def dcgan_discriminator(encoder: ConvolutionalEncoder2d):
     encoder.blocks.configure("layer", kernel_size=4, stride=2, padding=1)
     encoder.blocks[-1].configure("layer", padding=0)
-    encoder.blocks[1:-1].normalized()
+    encoder["blocks", :].all.remove("pool", allow_missing=True)
+    encoder["blocks", 1:-1].all.normalized()
     encoder[..., "activation#:-1"].configure(nn.LeakyReLU, negative_slope=0.2)
 
     init = Normal(
@@ -78,24 +79,24 @@ class DCGANDiscriminator(ConvolutionalEncoder2d):
 
     def __init__(
         self,
-        input_channels: int = 1,
+        in_channels: int = 1,
         features_dim: int = 64,
         class_conditioned_model: bool = False,
         embedding_dim: int = 100,
         num_classes: int = 10,
     ):
-        in_channels = input_channels
+        in_channels = in_channels
         if class_conditioned_model:
             in_channels += 1
 
-        self.input_channels = input_channels
+        self.in_channels = in_channels
         self.features_dim = features_dim
         self.class_conditioned_model = class_conditioned_model
         self.embedding_dim = embedding_dim
         self.num_classes = num_classes
 
         super().__init__(
-            in_channels=input_channels,
+            in_channels=in_channels,
             hidden_channels=[
                 features_dim,
                 features_dim * 2,
@@ -105,8 +106,6 @@ class DCGANDiscriminator(ConvolutionalEncoder2d):
             out_channels=1,
             out_activation=Layer(nn.Sigmoid),
         )
-
-        self.input_channels = input_channels
         self.features_dim = features_dim
         self.class_conditioned_model = class_conditioned_model
 
@@ -125,10 +124,10 @@ class DCGANDiscriminator(ConvolutionalEncoder2d):
         self.style("dcgan_discriminator")
 
     def forward(self, x, y=None):
-        expected_shape = (x.shape[0], self.input_channels, 64, 64)
-        if x.shape != expected_shape:
+        expected_shape = (x.shape[0], self.in_channels, 64, 64)
+        if x.shape[-2:] != expected_shape[-2:]:
             raise ValueError(
-                f"Input shape is {x.shape}, expected {expected_shape}. DCGAN discriminator expects 64x64 images. Check the input channels in the model initialization."
+                f"Input shape is {x.shape}, expected {expected_shape}. DCGAN discriminator expects 64x64 images. "
             )
 
         if self.class_conditioned_model:
