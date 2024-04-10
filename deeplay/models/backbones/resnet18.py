@@ -8,8 +8,6 @@ import torchvision.models as models
 
 from deeplay.external.layer import Layer
 
-resnet18 = models.resnet18(pretrained=True)
-
 
 @Conv2dBlock.register_style
 def resnet(block: Conv2dBlock, stride: int = 1):
