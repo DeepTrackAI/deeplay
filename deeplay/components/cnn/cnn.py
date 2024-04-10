@@ -172,18 +172,20 @@ class ConvolutionalNeuralNetwork(DeeplayModule):
                 kernel_size=3,
                 stride=1,
                 padding=1,
-                activation=activation.new(),
             )
+            if activation.classtype != nn.Identity:
+                block.activated(activation.new())
 
             self.blocks.append(block)
 
         if pool is not None:
             if isinstance(pool, type) and issubclass(pool, nn.Module):
-                pool = Layer(pool)
-            if isinstance(pool, nn.Module) and not isinstance(pool, Layer):
-                prev = pool
-                pool = Layer(lambda: prev)
-            self.pooled(pool)
+                self.pooled(Layer(pool))
+            elif isinstance(pool, nn.Module) and not isinstance(pool, Layer):
+                for block in self.blocks[1:]:
+                    block.configure(pool=pool, order=["pool"] + block.order)
+            else:
+                self.pooled(pool)
 
     def forward(self, x):
         idx = 0
