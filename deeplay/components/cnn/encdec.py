@@ -1,6 +1,7 @@
 from __future__ import annotations
 from os import remove
 from typing import List, Optional, Literal, Any, Sequence, Type, overload, Union
+import warnings
 
 from ... import (
     DeeplayModule,
@@ -107,16 +108,8 @@ class ConvolutionalEncoder2d(ConvolutionalNeuralNetwork):
             hidden_channels=hidden_channels,
             out_channels=out_channels,
             out_activation=out_activation,
+            pool=pool,
         )
-
-        if pool is None:
-            pool = Layer(nn.MaxPool2d, kernel_size=2, stride=2)
-        elif isinstance(pool, type) and issubclass(pool, nn.Module):
-            pool = Layer(pool, kernel_size=2, stride=2)
-        elif isinstance(pool, nn.Module) and not isinstance(pool, Layer):
-            pool = Layer(lambda: pool)
-
-        self.pooled(pool)
         self.postprocess = postprocess.new()
 
     def forward(self, x):
@@ -338,18 +331,37 @@ class ConvolutionalEncoderDecoder2d(DeeplayModule):
         decoder_channels: Optional[Sequence[int]] = None,
         out_channels: int = None,
         out_activation: Optional[Layer] = None,
+        repeat_last_encoder_channel: Optional[bool] = None,
     ):
         if out_channels is None:
             raise ValueError("The `out_channels` parameter must be specified.")
 
-        super().__init__()
-        self.in_channels = in_channels
-        self.encoder_channels = encoder_channels
         self.decoder_channels = (
             decoder_channels
             if decoder_channels is not None
             else encoder_channels[1::-1]
         )
+
+        if (
+            len(encoder_channels) == len(self.decoder_channels)
+            and repeat_last_encoder_channel is None
+        ):
+            warnings.warn(
+                "Using the same length of `encoder_channels` and `decoder_channels` will result in a larger output size than input size. "
+                "Generally, the `decoder_channels` should be one element shorter than the `encoder_channels`.\n"
+                "Previous versions of Deeplay used to repeat the last encoder channel to match the input size.\n"
+                "To silence this warning, set `repeat_last_encoder_channel` to `True`.\n"
+                "To disable this behavior, set `repeat_last_encoder_channel` to `False`."
+            )
+            repeat_last_encoder_channel = True
+
+        super().__init__()
+
+        self.in_channels = in_channels
+        self.encoder_channels = encoder_channels
+        if repeat_last_encoder_channel:
+            self.encoder_channels.append(self.encoder_channels[-1])
+
         self.hidden_channels = list(self.encoder_channels) + list(self.decoder_channels)
         self.out_channels = out_channels
 
