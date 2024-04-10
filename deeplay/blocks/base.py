@@ -5,7 +5,7 @@ import torch.nn as nn
 
 from deeplay.blocks.sequential import SequentialBlock
 from deeplay.external.layer import Layer
-from deeplay.module import DeeplayModule
+from deeplay.module import ConfigItemList, DeeplayModule, DetachedConfigItem
 from deeplay.ops.merge import Add
 from deeplay.list import Sequential
 from typing_extensions import Self
@@ -18,10 +18,12 @@ class BaseBlock(SequentialBlock):
         super(BaseBlock, self).__init__(*args, **kwargs)
 
     def multi(self, n=1) -> Self:
-        blocks = Sequential(*[self.new(True) for _ in range(n)])
+        def make_new_self():
+            args, kwargs = self.get_init_args()
+            return type(self)(*(args + self._args), **kwargs)
 
+        blocks = Sequential([make_new_self() for _ in range(n)])
         self.configure(order=["blocks"], blocks=blocks)
-
         return self
 
     def shortcut(
