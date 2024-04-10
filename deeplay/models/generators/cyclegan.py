@@ -39,9 +39,9 @@ def cyclegan_resnet_decoder(decoder: ConvolutionalDecoder2d):
 @ConvolutionalNeuralNetwork.register_style
 def cyclegan_resnet_bottleneck(cnn: ConvolutionalNeuralNetwork, n_blocks=7):
     cnn.configure(hidden_channels=[256] * (n_blocks - 1))
-    cnn.residual(merge_after="activation")
-    cnn.normalized(Layer(nn.InstanceNorm2d))
-    cnn.blocks.configure(order=["layer", "normalization", "activation"])
+    cnn["blocks", :].all.style(
+        "residual", order="lnalna|", normalization=nn.InstanceNorm2d
+    )
 
 
 class CycleGANResnetGenerator(ConvolutionalEncoderDecoder2d):
