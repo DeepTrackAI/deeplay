@@ -72,21 +72,24 @@ class Config(Dict[Tuple[str, ...], ConfigItemList]):
                 d.hooks[tag + hook_key] = hooks
         return d
 
-    def take(self, tags: List[Tuple[str, ...]], keep_list=False):
+    def take(self, tags: List[Tuple[str, ...]], keep_list=False, take_subconfig=False):
         res = Config()
+
+        def matches_key(key, tag):
+            if not take_subconfig:
+                return len(key) == len(tag) + 1 and key[: len(tag)] == tag
+
+            return len(key) >= len(tag) and key[: len(tag)] == tag
+
         for tag in tags:
             res.update(
-                {
-                    key: value
-                    for key, value in self.items()
-                    if len(key) == len(tag) + 1 and key[: len(tag)] == tag
-                }
+                {key: value for key, value in self.items() if matches_key(key, tag)}
             )
             res.update(
                 {
                     key: value
                     for key, value in self.hooks.items()
-                    if len(key) == len(tag) + 1 and key[: len(tag)] == tag
+                    if matches_key(key, tag)
                 }
             )
         out = {}
@@ -365,6 +368,9 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
     @property
     def tags(self) -> List[Tuple[str, ...]]:
+        if self.root_module is self:
+            return [()]
+
         tags = [
             tuple(name.split("."))
             for name, module in self.root_module.named_modules(remove_duplicate=False)
@@ -433,6 +439,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
                             warnings.warn(
                                 f"Two hooks have the same timestamp: {all_hooks[key][i].func} and {all_hooks[key][i+1].func}.\n "
+                                f"{self}\n"
                                 "This may cause unexpected behavior.\n "
                                 "Please report this issue to the github repository: "
                                 "https://github.com/DeepTrackAI/deeplay"
@@ -557,8 +564,8 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         self._setattr_recording = set()
 
         self._logs = {}
-
-        self._validate_after_build()
+        if hasattr(self, "validate_after_build"):
+            self._validate_after_build()
 
     def __init__(self, *args, **kwargs):  # type: ignore
         # We don't want to call the super().__init__ here because it is called
@@ -816,12 +823,19 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     #     else:
     #         return None
 
-    def new(self):
+    def new(self, detach: bool = False) -> "DeeplayModule":
         memo = {}
         for module in self.modules():
             if isinstance(module, DeeplayModule) and module._has_built:
                 memo[id(module)] = module
-        return copy.deepcopy(self, memo)
+
+        new = copy.deepcopy(self, memo)
+
+        if detach:
+            new._root_module = (new,)
+            for name, module in new.named_modules():
+                module._root_module = (new,)
+        return new
 
     def predict(
         self, x, *args, batch_size=32, device=None, output_device=None
@@ -915,6 +929,8 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         self._style_map[style](self, *args, **kwargs)
         return self
 
+    styled = style
+
     @classmethod
     def register_style(cls, func):
         cls._style_map = cls._style_map.copy()
@@ -970,9 +986,6 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     def _validate_after_build(self):
         if hasattr(self, "validate_after_build"):
             return self.validate_after_build()
-
-    def validate_after_build(self):
-        pass
 
     def register_before_build_hook(self, func):
         """
@@ -1049,6 +1062,10 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
             v = [value for k, value in v.items() if k[-1] == key]
 
         return v[-1]
+
+    def get_subconfig(self):
+        tags = self.tags
+        return self._user_config.take(tags, keep_list=True, take_subconfig=True)
 
     def _configure_kwargs(self, kwargs):
         for name, value in kwargs.items():
