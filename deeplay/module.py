@@ -72,7 +72,13 @@ class Config(Dict[Tuple[str, ...], ConfigItemList]):
                 d.hooks[tag + hook_key] = hooks
         return d
 
-    def take(self, tags: List[Tuple[str, ...]], keep_list=False, take_subconfig=False):
+    def take(
+        self,
+        tags: List[Tuple[str, ...]],
+        keep_list=False,
+        take_subconfig=False,
+        trim_tags=False,
+    ):
         res = Config()
 
         def matches_key(key, tag):
@@ -81,13 +87,22 @@ class Config(Dict[Tuple[str, ...], ConfigItemList]):
 
             return len(key) >= len(tag) and key[: len(tag)] == tag
 
+        def new_key(key, tag):
+            if not trim_tags:
+                return key
+            return key[len(tag) :]
+
         for tag in tags:
             res.update(
-                {key: value for key, value in self.items() if matches_key(key, tag)}
+                {
+                    new_key(key, tag): value
+                    for key, value in self.items()
+                    if matches_key(key, tag)
+                }
             )
             res.update(
                 {
-                    key: value
+                    new_key(key, tag): value
                     for key, value in self.hooks.items()
                     if matches_key(key, tag)
                 }
