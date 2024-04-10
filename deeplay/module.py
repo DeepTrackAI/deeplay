@@ -1088,10 +1088,19 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
             if ExtendedConstructorMeta._is_top_level["value"]:
                 self._user_config.set_for_tags(self.tags, name, value)
             else:
+                # If we are not currently constructing the top level module,
+                # this means that this is a derived configuration.
+                # Thus, we store the source of the derived configuration such
+                # that it can be cleared at the correct time.
+
+
                 current_constructing_module: DeeplayModule = (
                     ExtendedConstructorMeta._is_top_level["constructing_module"]
                 )
+                
                 # check if self is a child of the constructing module
+                # If it is, we only need to store the tags of the constructing module
+                # and the tags of the target module.
                 tags = [
                     tuple(name.split("."))
                     for name, module in current_constructing_module.named_modules(
@@ -1103,9 +1112,12 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
                 if tags:
                     self._user_config.set_for_tags(
-                        tags, name, value, source=current_constructing_module.tags
+                        self.tags, name, value, source=current_constructing_module.tags
                     )
                 else:
+                    # If self is not a child of the constructing module, we need to store
+                    # the modules themselves. We will try to attach the derived configuration
+                    # to the correct module when the module is attached to the correct hierarchy.
                     self._user_config.add_detached_configuration(
                         current_constructing_module, self, name, value
                     )
