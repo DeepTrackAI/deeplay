@@ -15,6 +15,12 @@ from functools import partial
 
 class ConfigItem:
 
+    @property
+    def source_depth(self):
+        if self.source is None:
+            return -1
+        return min(len(tag) for tag in self.source)
+
     def __init__(self, source: Optional[List[Tuple[str, ...]]], value: Any):
         self.source = source
         self.value = value
@@ -25,8 +31,17 @@ class ConfigItem:
         else:
             return ConfigItem([tags + tag for tag in self.source], self.value)
 
+    def __repr__(self):
+        return f"ConfigItem(source={self.source}, value={self.value})"
+
 
 class DetachedConfigItem:
+    @property
+    def source_depth(self):
+        if self.source is None:
+            return -1
+        return min(len(tag) for tag in self.source.tags)
+
     def __init__(
         self,
         source: "DeeplayModule",
@@ -37,6 +52,9 @@ class DetachedConfigItem:
 
     def prefix(self, tags: Tuple[str, ...]):
         return DetachedConfigItem(self.source, self.value)
+
+    def __repr__(self):
+        return f"DetachedConfigItem(value={self.value})"
 
 
 class ConfigItemList(List[Union[ConfigItem, DetachedConfigItem]]): ...
@@ -108,17 +126,36 @@ class Config(Dict[Tuple[str, ...], ConfigItemList]):
                 }
             )
         out = {}
-        # Take the last value None source value
-        # or the last value if no None source value is found
+        # Sort list by source, take the last item with the source closest to the root.
         if not keep_list:
             for key, itemlist in res.items():
+
                 if len(itemlist) == 0:
                     continue
+
+                if all(isinstance(item, DetachedConfigItem) for item in itemlist):
+                    out[key] = itemlist[-1].value
+                    continue
+
+                # itemlist = [
+                #    item
+                #    for item in itemlist
+                #    if not isinstance(item, DetachedConfigItem)
+                # ]
+
+                # filter out DetachedConfigItem
+
+                itemdepth = [
+                    item.source_depth
+                    for item in itemlist
+                ]
+                min_depth = min(itemdepth)
+                itemlist = [
+                    item
+                    for item, depth in zip(itemlist, itemdepth)
+                    if depth == min_depth
+                ]
                 out[key] = itemlist[-1].value
-                for item in reversed(itemlist):
-                    if item.source is None:
-                        out[key] = item.value
-                        break
         else:
             out = {**res}
 
@@ -156,7 +193,7 @@ class Config(Dict[Tuple[str, ...], ConfigItemList]):
             f"Tags must be a list of tuples, but found {tags}. "
             "Please check the tags being used."
         )
-        for itemlist in self.values():
+        for k, itemlist in self.items():
             for item in itemlist:
                 if (
                     item.source is not None
@@ -441,24 +478,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
             }
 
             for key, value in all_hooks.items():
-                all_hooks[key] = sorted(value, key=lambda x: x.timestamp)
-                # warn if two hooks have the same timestamp
-                if len(all_hooks[key]) > 1:
-                    for i in range(len(all_hooks[key]) - 1):
-                        if all_hooks[key][i].timestamp == all_hooks[key][
-                            i + 1
-                        ].timestamp and (
-                            all_hooks[key][i] is not all_hooks[key][i + 1]
-                        ):
-                            import warnings
-
-                            warnings.warn(
-                                f"Two hooks have the same timestamp: {all_hooks[key][i].func} and {all_hooks[key][i+1].func}.\n "
-                                f"{self}\n"
-                                "This may cause unexpected behavior.\n "
-                                "Please report this issue to the github repository: "
-                                "https://github.com/DeepTrackAI/deeplay"
-                            )
+                all_hooks[key] = sorted(value, key=lambda x: x.id)
             return all_hooks
         except AttributeError as e:
             raise RuntimeError("Module has not been initialized properly") from e
@@ -1093,11 +1113,10 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
                 # Thus, we store the source of the derived configuration such
                 # that it can be cleared at the correct time.
 
-
                 current_constructing_module: DeeplayModule = (
                     ExtendedConstructorMeta._is_top_level["constructing_module"]
                 )
-                
+
                 # check if self is a child of the constructing module
                 # If it is, we only need to store the tags of the constructing module
                 # and the tags of the target module.
@@ -1118,6 +1137,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
                     # If self is not a child of the constructing module, we need to store
                     # the modules themselves. We will try to attach the derived configuration
                     # to the correct module when the module is attached to the correct hierarchy.
+
                     self._user_config.add_detached_configuration(
                         current_constructing_module, self, name, value
                     )
@@ -1159,6 +1179,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
                             ]
 
         self._user_config.update(d)
+
         # self._user_config._detached_configurations += (
         #     receiver._user_config._detached_configurations
         # )
