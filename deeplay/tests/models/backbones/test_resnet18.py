@@ -69,7 +69,6 @@ class TestResnet18(unittest.TestCase):
         self.assertListEqual(
             block.blocks[0].blocks[1].order, ["layer", "normalization"]
         )
-        print("B", block.blocks[1].in_channels)
         self.assertEqual(block.blocks[0].blocks[0].layer.in_channels, 64)
         self.assertEqual(block.blocks[0].blocks[0].layer.out_channels, 128)
         self.assertEqual(block.blocks[0].blocks[1].layer.in_channels, 128)
