@@ -73,7 +73,11 @@ class VariationalAutoEncoder(Application):
             channels[0],
             channels,
             1,
+            out_activation=nn.Sigmoid,
         )
+        for block in decoder.blocks[:-1]:
+            block.upsample.configure(nn.ConvTranspose2d, kernel_size=3, stride=2, in_channels=block.in_channels, out_channels=block.out_channels)
+
         decoder.preprocess.configure(
             nn.Unflatten,
             dim=1,
