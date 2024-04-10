@@ -147,7 +147,7 @@ class Conv2dBlock(BaseBlock):
 
     def multi(self, n=1) -> Self:
         super().multi(n)
-        self.blocks[1:].configure(in_channels=self.out_channels)
+        self["blocks", 1:].configure(in_channels=self.out_channels)
         return self
 
     def shortcut(
@@ -175,8 +175,6 @@ class Conv2dBlock(BaseBlock):
             shortcut = Layer(nn.Identity)
         elif isinstance(shortcut, type):
             shortcut = Layer(shortcut)
-
-        shortcut = shortcut.new()
 
         return super().shortcut(merge=merge, shortcut=shortcut)
 
