@@ -24,15 +24,11 @@ The following quick start guide is intended for complete beginners to understand
 ## Installation
 
 Deeplay is installed using pip:
-
 ```bash
 pip install deeplay
 ```
-
 or
-
 ```bash
 python -m pip install deeplay
 ```
-
 This will automatically install the required dependencies, including PyTorch and PyTorch Lightning. If a specific version of PyTorch is desired, it can be installed separately.
