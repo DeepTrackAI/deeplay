@@ -23,7 +23,7 @@ The following quick start guide is intended for complete beginners to understand
 
 ## Installation
 
-Deeplay is installed using pip:
+You can install Deeplay using pip:
 ```bash
 pip install deeplay
 ```
@@ -32,3 +32,11 @@ or
 python -m pip install deeplay
 ```
 This will automatically install the required dependencies, including PyTorch and PyTorch Lightning. If a specific version of PyTorch is desired, it can be installed separately.
+
+## Getting Started
+
+Here you find a series of notebooks that give you an overview of the core features of Deeplay and how to use them:
+- **Understanding the Code Objects in Deeplay**
+- **Training Your First Model**
+- **Configuring Deeplay Objects**
+
