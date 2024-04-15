@@ -17,3 +17,4 @@ from .applications import *
 from .models import *
 from . import decorators, activelearning, initializers, callbacks, ops
 from .external import Layer
+from .ops import Cat  # For backwards compatibility
