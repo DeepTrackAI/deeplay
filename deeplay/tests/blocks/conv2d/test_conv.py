@@ -4,7 +4,7 @@ from itertools import product
 import torch
 import torch.nn as nn
 
-from deeplay.blocks.conv2d.conv import Conv2dBlock
+from deeplay.blocks.conv.conv2d import Conv2dBlock
 from deeplay.external.layer import Layer
 
 from deeplay.ops.attention.self import MultiheadSelfAttention

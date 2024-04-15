@@ -11,6 +11,9 @@ from deeplay import (
 )
 import itertools
 
+from deeplay.blocks.conv.conv2d import Conv2dBlock
+from deeplay.list import ReferringLayerList
+
 
 class Wrapper1(DeeplayModule):
     def __init__(self, n_layers):
@@ -455,3 +458,23 @@ class TestParallel(unittest.TestCase):
         self.assertTrue("x3" not in out)
         self.assertTrue("x4" not in out)
         self.assertEqual(out["x5"], 1.0)
+
+
+class TestReferringLayerList(unittest.TestCase):
+    def test_referring_layer_list_from_LayerList(self):
+
+        layerlist = LayerList(Conv2dBlock(1, 1), Conv2dBlock(1, 1))
+        referring = layerlist.layer
+
+        self.assertIsInstance(referring, ReferringLayerList)
+        self.assertEqual(len(referring), 2)
+        self.assertIs(referring[0], layerlist[0].layer)
+        self.assertIs(referring[1], layerlist[1].layer)
+
+    def test_referring_layer_list_from_LayerList_method(self):
+
+        layerlist = LayerList(Conv2dBlock(1, 1), Conv2dBlock(1, 1))
+        referring = layerlist.activated
+
+        self.assertIsInstance(referring, ReferringLayerList)
+        self.assertEqual(len(referring), 2)
