@@ -9,7 +9,8 @@ from ... import (
     LayerList,
 )
 from deeplay.components.cnn import ConvolutionalNeuralNetwork
-from deeplay.blocks.conv2d import Conv2dBlock
+from deeplay.blocks.conv import Conv2dBlock
+from deeplay.ops import Cat
 import torch.nn as nn
 import torch
 
@@ -322,16 +323,20 @@ class ConvolutionalEncoderDecoder2d(DeeplayModule):
     def blocks(self) -> LayerList[Layer]:
         """Return the blocks of the encoder and decoder. Equivalent to `.encoder.blocks + .decoder.blocks`."""
         return self.encoder.blocks + self.decoder.blocks
+    
+    @property 
+    def normalization(self) -> LayerList[Layer]:
+        """Return the normalization layers of the encoder and decoder. Equivalent to `.encoder.normalization + .decoder.normalization`."""
+        return self.encoder.normalization + self.decoder.normalization
 
     def __init__(
         self,
         in_channels: Optional[int],
         encoder_channels: Sequence[int],
-        bottleneck_channels: Sequence[int] = [],
+        bottleneck_channels: Optional[Union[Sequence[int], int]] = None,
         decoder_channels: Optional[Sequence[int]] = None,
         out_channels: int = None,
         out_activation: Optional[Layer] = None,
-        repeat_last_encoder_channel: Optional[bool] = None,
     ):
         if out_channels is None:
             raise ValueError("The `out_channels` parameter must be specified.")
@@ -339,28 +344,17 @@ class ConvolutionalEncoderDecoder2d(DeeplayModule):
         self.decoder_channels = (
             decoder_channels
             if decoder_channels is not None
-            else encoder_channels[1::-1]
+            else encoder_channels[::-1][1:]
         )
-
-        if (
-            len(encoder_channels) == len(self.decoder_channels)
-            and repeat_last_encoder_channel is None
-        ):
-            warnings.warn(
-                "Using the same length of `encoder_channels` and `decoder_channels` will result in a larger output size than input size. "
-                "Generally, the `decoder_channels` should be one element shorter than the `encoder_channels`.\n"
-                "Previous versions of Deeplay used to repeat the last encoder channel to match the input size.\n"
-                "To silence this warning, set `repeat_last_encoder_channel` to `True`.\n"
-                "To disable this behavior, set `repeat_last_encoder_channel` to `False`."
-            )
-            repeat_last_encoder_channel = True
+        if bottleneck_channels is None:
+            bottleneck_channels = [encoder_channels[-1]]
+        elif isinstance(bottleneck_channels, int):
+            bottleneck_channels = [bottleneck_channels]
 
         super().__init__()
 
         self.in_channels = in_channels
         self.encoder_channels = encoder_channels
-        if repeat_last_encoder_channel:
-            self.encoder_channels.append(self.encoder_channels[-1])
 
         self.hidden_channels = list(self.encoder_channels) + list(self.decoder_channels)
         self.out_channels = out_channels
@@ -379,6 +373,8 @@ class ConvolutionalEncoderDecoder2d(DeeplayModule):
                 bottleneck_channels[-1],
                 out_activation=Layer(nn.ReLU),
             )
+            self.bottleneck.blocks[0].pooled()
+            self.bottleneck.blocks[-1].upsampled()
         else:
             self.bottleneck = Layer(nn.Identity)
 
@@ -398,16 +394,6 @@ class ConvolutionalEncoderDecoder2d(DeeplayModule):
         return x
 
 
-class Cat(DeeplayModule):
-    def __init__(self, dim=1):
-        super().__init__()
-
-        self.dim = dim
-
-    def forward(self, *x):
-        return torch.cat(x, dim=self.dim)
-
-
 class UNet2d(ConvolutionalEncoderDecoder2d):
     in_channels: Optional[int]
     channels: Sequence[Optional[int]]
@@ -418,15 +404,19 @@ class UNet2d(ConvolutionalEncoderDecoder2d):
     def __init__(
         self,
         in_channels: Optional[int],
-        encoder_channels: List[int],
-        bottleneck_channels: List[int] = [],
+        encoder_channels: Optional[List[int]] = None,
+        bottleneck_channels: Optional[List[int]] = None,
         decoder_channels: Optional[List[int]] = None,
         out_channels: int = 1,
         out_activation: Union[Type[nn.Module], Layer] = nn.Identity,
         # pool: Optional[Union[Type[nn.Module], nn.Module, None]] = None,
         # upsample: Optional[Union[Type[nn.Module], nn.Module, None]] = None,
-        skip: DeeplayModule = Cat(),
+        skip: DeeplayModule = Cat(1),
+        channels: Optional[Sequence[int]] = None,
     ):
+        if channels is not None:
+            encoder_channels = channels
+
         out_activation = (
             Layer(out_activation)
             if not isinstance(out_activation, Layer)
@@ -444,7 +434,17 @@ class UNet2d(ConvolutionalEncoderDecoder2d):
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.skip = skip.new()
-        self.decoder.blocks.layer.configure(nn.LazyConv2d)
+
+        if isinstance(self.skip, Cat):
+            for idx, block in enumerate(self.decoder.blocks):
+                block.configure(
+                    in_channels=block.in_channels
+                    + self.encoder.blocks[
+                        len(self.encoder.blocks) - idx - 1
+                    ].out_channels
+                )
+        else:
+            self.decoder.blocks.layer.configure(nn.LazyConv2d)
 
     def forward(self, x):
         acts = []
@@ -452,6 +452,8 @@ class UNet2d(ConvolutionalEncoderDecoder2d):
             x = block(x)
             acts.append(x)
         x = self.encoder.postprocess(x)
+
+        x = self.bottleneck(x)
 
         x = self.decoder.preprocess(x)
         for act, block in zip(acts[::-1], self.decoder.blocks):

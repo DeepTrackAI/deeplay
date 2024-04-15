@@ -4,7 +4,7 @@ from typing import List, Optional, Literal, Any, Sequence, Type, overload, Union
 
 import torch.nn as nn
 
-from deeplay.blocks.conv2d.conv import Conv2dBlock
+from deeplay.blocks.conv.conv2d import Conv2dBlock
 from deeplay.external.layer import Layer
 from deeplay.list import LayerList
 from deeplay.module import DeeplayModule
@@ -213,12 +213,14 @@ class ConvolutionalNeuralNetwork(DeeplayModule):
         self,
         normalization: Layer = Layer(nn.BatchNorm2d),
         after_last_layer: bool = True,
+        mode="append",
+        after=None,
     ):
         for idx in range(len(self.blocks) - 1):
-            self.blocks[idx].normalized(normalization.new())
+            self.blocks[idx].normalized(normalization, mode=mode, after=after)
 
         if after_last_layer:
-            self.blocks[-1].normalized(normalization.new())
+            self.blocks[-1].normalized(normalization, mode=mode, after=after)
 
         return self
 
