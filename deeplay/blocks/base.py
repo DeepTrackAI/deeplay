@@ -5,7 +5,7 @@ import torch.nn as nn
 
 from deeplay.blocks.sequential import SequentialBlock
 from deeplay.external.layer import Layer
-from deeplay.module import ConfigItemList, DeeplayModule, DetachedConfigItem
+from deeplay.module import DeeplayModule
 from deeplay.ops.merge import Add
 from deeplay.list import Sequential
 from typing_extensions import Self
@@ -13,8 +13,27 @@ from typing_extensions import Self
 from deeplay.ops.merge import MergeOp
 
 
+class DeferredConfigurableLayer:
+
+    def __init__(self, parent: SequentialBlock, name: str, after: str):
+        self.parent = parent
+        self.name = name
+        self.after = after
+
+    def configure(self, *args, **kwargs):
+        if len(args) > 0 and isinstance(args[0], type):
+            args = Layer(*args, **kwargs)
+            self.parent.insert(args, after=self.after, name=self.name)
+        else:
+            self.parent.configure(self.name, *args, **kwargs)
+
+
 class BaseBlock(SequentialBlock):
     def __init__(self, *args, **kwargs):
+        # self.activation = DeferredConfigurableLayer(self, "activation", after="layer")
+        self.normalization = DeferredConfigurableLayer(
+            self, "normalization", after="activation"
+        )
         super(BaseBlock, self).__init__(*args, **kwargs)
 
     def multi(self, n=1) -> Self:
