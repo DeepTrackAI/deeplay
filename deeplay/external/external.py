@@ -99,8 +99,11 @@ class External(DeeplayModule):
                 == signature.parameters[key].VAR_POSITIONAL
             ):
                 kwargs.pop(key)
-
-        obj = self.classtype(*args, **kwargs)
+        
+        if self.classtype.__init__ is nn.Module.__init__:
+            obj = self.classtype()
+        else:
+            obj = self.classtype(*args, **kwargs)
 
         if not isinstance(obj, DeeplayModule):
             obj._root_module = self._root_module
