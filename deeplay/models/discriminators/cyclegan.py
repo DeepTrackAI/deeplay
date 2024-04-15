@@ -11,10 +11,9 @@ __all__ = ["CycleGANDiscriminator"]
 @ConvolutionalEncoder2d.register_style
 def cyclegan_discriminator(encoder: ConvolutionalEncoder2d):
     encoder[..., "layer"].configure(kernel_size=4, padding=1)
-    encoder.blocks[1:-1].normalized(Layer(nn.InstanceNorm2d))
-    encoder.blocks[1:-1].configure(order=["layer", "normalization", "activation"])
-    encoder.blocks[:-1].configure("activation", nn.LeakyReLU, negative_slope=0.2)
-    encoder.blocks[:-2].configure(stride=2)
+    encoder["blocks", 1:-1].all.normalized(nn.InstanceNorm2d, mode="insert", after="layer")
+    encoder["blocks", :-1].configure("activation", nn.LeakyReLU, negative_slope=0.2)
+    encoder["blocks", :-2].configure(stride=2)
 
 
 class CycleGANDiscriminator(ConvolutionalEncoder2d):

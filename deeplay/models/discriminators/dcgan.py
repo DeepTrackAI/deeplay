@@ -13,7 +13,8 @@ def dcgan_discriminator(encoder: ConvolutionalEncoder2d):
     encoder.blocks[-1].configure("layer", padding=0)
     encoder["blocks", :].all.remove("pool", allow_missing=True)
     encoder["blocks", 1:-1].all.normalized()
-    encoder[..., "activation#:-1"].configure(nn.LeakyReLU, negative_slope=0.2)
+    encoder["block", :-1].all.configure("actication", nn.LeakyReLU, negative_slope=0.2)
+    encoder.blocks[-1].activation.configure(nn.Sigmoid)
 
     init = Normal(
         targets=(
@@ -84,8 +85,10 @@ class DCGANDiscriminator(ConvolutionalEncoder2d):
         class_conditioned_model: bool = False,
         embedding_dim: int = 100,
         num_classes: int = 10,
+        input_channels=None,
     ):
-        in_channels = in_channels
+        if input_channels is not None:
+            in_channels = input_channels
         if class_conditioned_model:
             in_channels += 1
 

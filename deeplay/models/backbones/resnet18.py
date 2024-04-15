@@ -1,7 +1,7 @@
 import deeplay as dl
 import torch.nn as nn
 
-from deeplay.blocks.conv2d.conv import Conv2dBlock
+from deeplay.blocks.conv.conv2d import Conv2dBlock
 from deeplay.components.cnn.encdec import ConvolutionalEncoder2d
 
 import torchvision.models as models
