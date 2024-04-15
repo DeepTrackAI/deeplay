@@ -20,7 +20,7 @@ class Add(MergeOp):
 
 
 class Cat(MergeOp):
-    def __init__(self, dim=-1):
+    def __init__(self, dim=1):
         self.dim = dim
 
     def forward(self, *x):
