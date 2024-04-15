@@ -549,7 +549,9 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
         for name, module in self.named_modules():
             module._root_module = (value,)
-            self._user_config.try_attach_detached_configurations(module)
+            if isinstance(module, DeeplayModule):
+                module._user_config.try_attach_detached_configurations(module)
+            # self._user_config.try_attach_detached_configurations(module)
 
     @property
     def _user_config(self) -> Config:
