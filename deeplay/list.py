@@ -2,6 +2,7 @@ from typing import Any, overload, Iterator, List, Generic, TypeVar, Union, Tuple
 
 import torch
 from torch import nn
+import inspect
 
 from .module import DeeplayModule
 from .decorators import after_init
@@ -103,7 +104,7 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
     def __iter__(self) -> Iterator[T]:
         return super().__iter__()  # type: ignore
 
-    def __getattr__(self, name: str) -> "LayerList[T]":
+    def __getattr__(self, name: str) -> "ReferringLayerList[T]":
         try:
             return super().__getattr__(name)
         except AttributeError:
@@ -115,7 +116,11 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
             submodules = [
                 getattr(layer, name)
                 for layer in self
-                if hasattr(layer, name) and isinstance(getattr(layer, name), nn.Module)
+                if hasattr(layer, name)
+                and (
+                    isinstance(getattr(layer, name), nn.Module)
+                    or inspect.ismethod(getattr(layer, name))
+                )
             ]
 
             if len(submodules) > 0:
@@ -137,10 +142,38 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
             return ReferringLayerList(*[self[idx] for idx in indices])
 
 
-class ReferringLayerList(LayerList, Generic[T]):
+class ReferringLayerList(list, Generic[T]):
     def __init__(self, *layers: T):
+        super().__init__()
         for idx, layer in enumerate(layers):
-            nn.ModuleList.append(self, layer)
+            self.append(layer)
+
+    def __call__(self, *args, **kwargs):
+        return [layer(*args, **kwargs) for layer in self]
+
+    def __getattr__(self, name: str) -> "ReferringLayerList[T]":
+        try:
+            return super().__getattr__(name)
+        except AttributeError:
+            # check if name is integer string
+            if name[0] in ("0", "1", "2", "3", "4", "5", "6", "7", "8", "9"):
+                # is an invalid attribute name so must be an index
+                raise
+
+            submodules = [
+                getattr(layer, name)
+                for layer in self
+                if hasattr(layer, name)
+                and (
+                    isinstance(getattr(layer, name), nn.Module)
+                    or inspect.ismethod(getattr(layer, name))
+                )
+            ]
+
+            if len(submodules) > 0:
+                return ReferringLayerList(*submodules)
+            else:
+                raise
 
 
 class Sequential(LayerList, Generic[T]):
