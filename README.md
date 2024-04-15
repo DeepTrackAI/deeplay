@@ -36,7 +36,7 @@ This will automatically install the required dependencies, including PyTorch and
 ## Getting Started
 
 Here you find a series of notebooks that give you an overview of the core features of Deeplay and how to use them:
-- **Understanding the Code Objects in Deeplay**
-- **Training Your First Model**
-- **Configuring Deeplay Objects**
+- **[Understanding the Core Objects in Deeplay](https://github.com/DeepTrackAI/deeplay/blob/gv/doc1/tutorials/getting-started/GS101_core_objects.ipynb)**
+- **[Training Your First Model](https://github.com/DeepTrackAI/deeplay/blob/gv/doc1/tutorials/getting-started/GS111_first_model.ipynb)**
+- **[Configuring Deeplay Objects](https://github.com/DeepTrackAI/deeplay/blob/gv/doc1/tutorials/getting-started/GS121_configure.ipynb)**
 
