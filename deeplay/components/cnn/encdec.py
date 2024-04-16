@@ -321,13 +321,15 @@ class ConvolutionalEncoderDecoder2d(DeeplayModule):
 
     @property
     def blocks(self) -> LayerList[Layer]:
-        """Return the blocks of the encoder and decoder. Equivalent to `.encoder.blocks + .decoder.blocks`."""
-        return self.encoder.blocks + self.decoder.blocks
+        """Return the blocks of the encoder and decoder. Equivalent to `.encoder.blocks + .bottleneck.blocks + .decoder.blocks`."""
+        if isinstance(self.bottleneck, Layer):
+            return self.encoder.blocks + self.decoder.blocks
+        return self.encoder.blocks + self.bottleneck.blocks + self.decoder.blocks
     
     @property 
     def normalization(self) -> LayerList[Layer]:
-        """Return the normalization layers of the encoder and decoder. Equivalent to `.encoder.normalization + .decoder.normalization`."""
-        return self.encoder.normalization + self.decoder.normalization
+        """Return the normalization layers of the encoder and decoder. Equivalent to `.encoder.normalization + .bottleneck.normalization + .decoder.normalization`."""
+        return self.blocks.normalization
 
     def __init__(
         self,
