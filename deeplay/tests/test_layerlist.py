@@ -478,3 +478,32 @@ class TestReferringLayerList(unittest.TestCase):
 
         self.assertIsInstance(referring, ReferringLayerList)
         self.assertEqual(len(referring), 2)
+
+        referring(nn.ReLU)
+
+        self.assertIs(layerlist[0].activation.classtype, nn.ReLU)
+        self.assertIs(layerlist[1].activation.classtype, nn.ReLU)
+
+    def test_from_sliced_LayerList(self):
+
+        layerlist = LayerList(Conv2dBlock(1, 1), Conv2dBlock(1, 1), Conv2dBlock(1, 1))
+        referring = layerlist[0:2].layer
+
+        self.assertIsInstance(referring, ReferringLayerList)
+        self.assertEqual(len(referring), 2)
+        self.assertIs(referring[0], layerlist[0].layer)
+        self.assertIs(referring[1], layerlist[1].layer)
+
+    def test_from_sliced_LayerList_method(self):
+
+        layerlist = LayerList(Conv2dBlock(1, 1), Conv2dBlock(1, 1), Conv2dBlock(1, 1))
+        referring = layerlist[0:2].activated
+
+        self.assertIsInstance(referring, ReferringLayerList)
+        self.assertEqual(len(referring), 2)
+
+        referring(nn.ReLU)
+
+        self.assertIs(layerlist[0].activation.classtype, nn.ReLU)
+        self.assertIs(layerlist[1].activation.classtype, nn.ReLU)
+        self.assertFalse(hasattr(layerlist[2], "activation"))
