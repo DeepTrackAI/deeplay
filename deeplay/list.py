@@ -113,15 +113,21 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
                 # is an invalid attribute name so must be an index
                 raise
 
+            from deeplay.blocks.base import DeferredConfigurableLayer
+
             submodules = [
                 getattr(layer, name)
                 for layer in self
                 if hasattr(layer, name)
                 and (
-                    isinstance(getattr(layer, name), nn.Module)
+                    isinstance(
+                        getattr(layer, name), (nn.Module, DeferredConfigurableLayer)
+                    )
                     or inspect.ismethod(getattr(layer, name))
                 )
             ]
+
+            DeferredConfigurableLayer
 
             if len(submodules) > 0:
                 return ReferringLayerList(*submodules)
@@ -141,6 +147,9 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
             indices = list(range(len(self)))[index]
             return ReferringLayerList(*[self[idx] for idx in indices])
 
+    def __add__(self, other: "LayerList[T]") -> "ReferringLayerList[T]":
+        return ReferringLayerList(*self, *other)
+
 
 class ReferringLayerList(list, Generic[T]):
     def __init__(self, *layers: T):
@@ -152,28 +161,35 @@ class ReferringLayerList(list, Generic[T]):
         return [layer(*args, **kwargs) for layer in self]
 
     def __getattr__(self, name: str) -> "ReferringLayerList[T]":
-        try:
-            return super().__getattr__(name)
-        except AttributeError:
-            # check if name is integer string
-            if name[0] in ("0", "1", "2", "3", "4", "5", "6", "7", "8", "9"):
-                # is an invalid attribute name so must be an index
-                raise
 
-            submodules = [
-                getattr(layer, name)
-                for layer in self
-                if hasattr(layer, name)
-                and (
-                    isinstance(getattr(layer, name), nn.Module)
-                    or inspect.ismethod(getattr(layer, name))
-                )
-            ]
+        # check if name is integer string
+        if name[0] in ("0", "1", "2", "3", "4", "5", "6", "7", "8", "9"):
+            # is an invalid attribute name so must be an index
+            raise AttributeError(
+                f"LayerList has no attribute '{name}' in any of its layers."
+            )
 
-            if len(submodules) > 0:
-                return ReferringLayerList(*submodules)
-            else:
-                raise
+        from deeplay.blocks.base import DeferredConfigurableLayer
+
+        submodules = [
+            getattr(layer, name)
+            for layer in self
+            if hasattr(layer, name)
+            and (
+                isinstance(getattr(layer, name), (nn.Module, DeferredConfigurableLayer))
+                or inspect.ismethod(getattr(layer, name))
+            )
+        ]
+
+        if len(submodules) > 0:
+            return ReferringLayerList(*submodules)
+        else:
+            raise AttributeError(
+                f"LayerList has no attribute '{name}' in any of its layers."
+            )
+
+    def __add__(self, other: "ReferringLayerList[T]") -> "ReferringLayerList[T]":
+        return ReferringLayerList(*self, *other)
 
 
 class Sequential(LayerList, Generic[T]):

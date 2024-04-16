@@ -507,3 +507,16 @@ class TestReferringLayerList(unittest.TestCase):
         self.assertIs(layerlist[0].activation.classtype, nn.ReLU)
         self.assertIs(layerlist[1].activation.classtype, nn.ReLU)
         self.assertFalse(hasattr(layerlist[2], "activation"))
+
+    def test_add_two_referring_layer_lists(self):
+
+        layerlist_1 = LayerList(Conv2dBlock(1, 1), Conv2dBlock(1, 1))
+        layerlist_2 = LayerList(Conv2dBlock(1, 1), Conv2dBlock(1, 1))
+        referring = layerlist_1.layer + layerlist_2.layer
+
+        self.assertIsInstance(referring, ReferringLayerList)
+        self.assertEqual(len(referring), 4)
+        self.assertIs(referring[0], layerlist_1[0].layer)
+        self.assertIs(referring[1], layerlist_1[1].layer)
+        self.assertIs(referring[2], layerlist_2[0].layer)
+        self.assertIs(referring[3], layerlist_2[1].layer)

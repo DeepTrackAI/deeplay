@@ -65,6 +65,12 @@ class Conv2dBlock(BaseBlock):
             # Assume num_features is already correct
             return self
 
+        self._configure_normalization()
+
+        return self
+
+    def _configure_normalization(self):
+
         idx = self.order.index("normalization")
         # if layer or blocks before normalization
         if any(name in self.order[:idx] for name in ["layer", "blocks"]):
@@ -72,11 +78,6 @@ class Conv2dBlock(BaseBlock):
         else:
             channels = self.in_channels
 
-        self._configure_normalization(channels)
-
-        return self
-
-    def _configure_normalization(self, channels):
         type: Type[nn.Module] = self.normalization.classtype
 
         if type == nn.BatchNorm2d:

@@ -3,33 +3,13 @@ from deeplay import (
     DeeplayModule,
     Layer,
     LayerList,
-    RecurrentBlock,
     MultiLayerPerceptron,
-    LayerActivationNormalizationDropout,
 )
 
 import torch
 
-from deeplay.blocks.linear.linear import LinearBlock
 from deeplay.blocks.sequence.sequence1d import Sequence1dBlock
 from deeplay.components.rnn import RecurrentNeuralNetwork
-
-
-class RecurrentDropout(torch.nn.Module):
-    def __init__(self, p=0.0):
-        super(RecurrentDropout, self).__init__()
-        self.p = p
-        self.dropout = torch.nn.Dropout(p=self.p)
-
-    def forward(self, x):
-        if isinstance(x[0], torch.nn.utils.rnn.PackedSequence):
-            return (
-                torch.nn.utils.rnn.PackedSequence(
-                    self.dropout(x[0].data), x[0].batch_sizes
-                ),
-                x[1],
-            )
-        return self.dropout(x[0]), x[1]
 
 
 class RecurrentModel(RecurrentNeuralNetwork):

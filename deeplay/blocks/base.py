@@ -15,25 +15,30 @@ from deeplay.ops.merge import MergeOp
 
 class DeferredConfigurableLayer:
 
-    def __init__(self, parent: SequentialBlock, name: str, after: str):
+    def __init__(self, parent: SequentialBlock, name: str):
         self.parent = parent
         self.name = name
-        self.after = after
 
     def configure(self, *args, **kwargs):
         if len(args) > 0 and isinstance(args[0], type):
             args = Layer(*args, **kwargs)
-            self.parent.insert(args, after=self.after, name=self.name)
+            self.parent.append(args, name=self.name)
         else:
             self.parent.configure(self.name, *args, **kwargs)
 
+        if self.name == "normalization" and hasattr(
+            self.parent, "_configure_normalization"
+        ):
+            self.parent._configure_normalization()
+
 
 class BaseBlock(SequentialBlock):
+
+    normalization: Union[DeferredConfigurableLayer, nn.Module]
+
     def __init__(self, *args, **kwargs):
         # self.activation = DeferredConfigurableLayer(self, "activation", after="layer")
-        self.normalization = DeferredConfigurableLayer(
-            self, "normalization", after="activation"
-        )
+        self.normalization = DeferredConfigurableLayer(self, "normalization")
         super(BaseBlock, self).__init__(*args, **kwargs)
 
     def multi(self, n=1) -> Self:
