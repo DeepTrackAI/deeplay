@@ -172,9 +172,8 @@ class ConvolutionalNeuralNetwork(DeeplayModule):
                 kernel_size=3,
                 stride=1,
                 padding=1,
+                activation=activation.new(),
             )
-            if activation.classtype != nn.Identity:
-                block.activated(activation.new())
 
             self.blocks.append(block)
 
