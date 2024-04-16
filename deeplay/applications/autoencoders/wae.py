@@ -61,7 +61,9 @@ class WassersteinAutoEncoder(Application):
         )
         encoder.postprocess.configure(nn.Flatten)
         encoder.blocks[1:].layer.configure(stride=2)
-        encoder["blocks", :].all.normalized(nn.BatchNorm2d).remove("pool", allow_missing=True)
+        encoder["blocks", :].all.normalized(nn.BatchNorm2d).remove(
+            "pool", allow_missing=True
+        )
         return encoder
 
     def _get_default_decoder(self, channels, red_size):
