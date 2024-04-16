@@ -15,14 +15,15 @@ from deeplay.ops.merge import MergeOp
 
 class DeferredConfigurableLayer:
 
-    def __init__(self, parent: SequentialBlock, name: str):
+    def __init__(self, parent: "BaseBlock", name: str, mode="append"):
         self.parent = parent
         self.name = name
+        self.mode = mode
 
     def configure(self, *args, **kwargs):
         if len(args) > 0 and isinstance(args[0], type):
             args = Layer(*args, **kwargs)
-            self.parent.append(args, name=self.name)
+            self.parent.set(self.name, args, mode=self.mode)
         else:
             self.parent.configure(self.name, *args, **kwargs)
 
