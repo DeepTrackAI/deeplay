@@ -1,4 +1,4 @@
-from typing import Sequence, Type, Union
+from typing import Sequence, Type, Union, Optional, overload, List, Any
 
 from deeplay import (
     Layer,
@@ -103,7 +103,7 @@ class MPM(DeeplayModule):
                 key: MultiLayerPerceptron(
                     in_features=None,
                     hidden_features=[],
-                    out_features=hidden_features[1],
+                    out_features=hidden_features[0],
                     flatten_input=False,
                 ).set_input_map(key)
                 for key in ("x", "edge_attr")
