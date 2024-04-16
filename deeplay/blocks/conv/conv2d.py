@@ -10,10 +10,12 @@ from deeplay.module import DeeplayModule
 from deeplay.ops.logs import FromLogs
 from deeplay.ops.merge import Add, MergeOp
 from deeplay.ops.shape import Permute
-
+from deeplay.blocks.base import DeferredConfigurableLayer
 
 class Conv2dBlock(BaseBlock):
     """Convolutional block with optional normalization and activation."""
+
+    pool: Union[DeferredConfigurableLayer, nn.Module]
 
     def __init__(
         self,
@@ -30,6 +32,7 @@ class Conv2dBlock(BaseBlock):
         self.kernel_size = kernel_size
         self.stride = stride
         self.padding = padding
+        self.pool = DeferredConfigurableLayer(self, "pool", mode="prepend")
 
         if in_channels is None:
             layer = Layer(
@@ -98,7 +101,7 @@ class Conv2dBlock(BaseBlock):
 
     def upsampled(
         self,
-        upsample: Layer = Layer(nn.ConvTranspose2d, kernel_size=4, stride=2, padding=1),
+        upsample: Layer = Layer(nn.ConvTranspose2d, kernel_size=2, stride=2, padding=0),
         mode="append",
         after=None,
     ) -> Self:
@@ -112,7 +115,7 @@ class Conv2dBlock(BaseBlock):
     def transposed(
         self,
         transpose: Layer = Layer(
-            nn.ConvTranspose2d, kernel_size=4, stride=2, padding=1
+            nn.ConvTranspose2d, kernel_size=2, stride=2, padding=0
         ),
         mode="prepend",
         after=None,
