@@ -145,10 +145,7 @@ class Config(Dict[Tuple[str, ...], ConfigItemList]):
 
                 # filter out DetachedConfigItem
 
-                itemdepth = [
-                    item.source_depth
-                    for item in itemlist
-                ]
+                itemdepth = [item.source_depth for item in itemlist]
                 min_depth = min(itemdepth)
                 itemlist = [
                     item
@@ -757,7 +754,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
                 )
         return self
 
-    def create(self):
+    def create(self) -> "Self":
         """
         Creates and returns a new instance of the module, fully initialized
         with the current configuration.
@@ -931,6 +928,11 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
                     if not isinstance(item, torch.Tensor):
                         if isinstance(item, np.ndarray):
                             batch[i] = torch.from_numpy(item).to(device)
+                            if batch[i].dtype in [torch.float64, torch.float32, torch.float16, torch.float]:
+                                if hasattr(self, "dtype"):
+                                    batch[i] = batch[i].to(self.dtype)
+                                else:
+                                    batch[i] = batch[i].float()
                         else:
                             batch[i] = torch.stack(item).to(device)
                     else:
