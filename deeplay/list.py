@@ -4,7 +4,7 @@ import torch
 from torch import nn
 import inspect
 
-from .module import DeeplayModule
+from .module import DeeplayModule, Selection
 from .decorators import after_init
 
 T = TypeVar("T", bound=nn.Module)
@@ -28,15 +28,17 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
         for idx, layer in enumerate(layers):
             super().append(layer)
             if isinstance(layer, DeeplayModule) and not layer._has_built:
-                self._give_user_configuration(layer, self._get_abs_string_index(idx))
-                layer.__construct__()
+                should_rebuild = self._give_user_configuration(layer, self._get_abs_string_index(idx))
+                if should_rebuild:
+                    layer.__construct__()
 
     @after_init
     def append(self, module: DeeplayModule) -> "LayerList[T]":
         super(LayerList, self).append(module)
         if isinstance(module, DeeplayModule) and not module._has_built:
-            self._give_user_configuration(module, self._get_abs_string_index(-1))
-            module.__construct__()
+            should_rebuild = self._give_user_configuration(module, self._get_abs_string_index(-1))
+            if should_rebuild:
+                module.__construct__()
         return self
 
     @after_init
@@ -47,8 +49,9 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
     def insert(self, index: int, module: DeeplayModule) -> "LayerList[T]":
         super().insert(index, module)
         if isinstance(module, DeeplayModule) and not module._has_built:
-            self._give_user_configuration(module, self._get_abs_string_index(index))
-            module.__construct__()
+            should_rebuild = self._give_user_configuration(module, self._get_abs_string_index(index))
+            if should_rebuild: 
+                module.__construct__()
         return self
 
     @after_init
@@ -56,10 +59,11 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
         super().extend(modules)
         for idx, module in enumerate(modules):
             if isinstance(module, DeeplayModule) and not module._has_built:
-                self._give_user_configuration(
+                should_rebuild = self._give_user_configuration(
                     module, self._get_abs_string_index(idx + len(self) - len(modules))
                 )
-                module.__construct__()
+                if should_rebuild:
+                    module.__construct__()
         return self
 
     @after_init
@@ -140,9 +144,14 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
     @overload
     def __getitem__(self, index: slice) -> "LayerList[T]": ...
 
-    def __getitem__(self, index: Union[int, slice]) -> "Union[T, LayerList[T]]":
+    @overload
+    def __getitem__(self, index: Tuple) -> Selection: ...
+
+    def __getitem__(self, index: Union[int, slice, tuple]) -> "Union[T, LayerList[T], Selection, ReferringLayerList]":
         if isinstance(index, int):
             return getattr(self, self._get_abs_string_index(index))
+        elif isinstance(index, tuple):
+            return DeeplayModule.__getitem__(self, index)
         else:
             indices = list(range(len(self)))[index]
             return ReferringLayerList(*[self[idx] for idx in indices])

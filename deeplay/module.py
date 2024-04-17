@@ -1,4 +1,5 @@
 import inspect
+from logging import config
 from typing import Any, Dict, Tuple, List, Set, Literal, Optional, Callable, Union
 from typing_extensions import Self
 
@@ -1147,13 +1148,14 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
                     )
         self.__construct__()
 
-    def _give_user_configuration(self, receiver: "DeeplayModule", name):
+    def _give_user_configuration(self, receiver: "DeeplayModule", name) -> bool:
         if receiver._user_config is self._user_config:
             if receiver.root_module is not receiver:
                 receiver.set_root_module(self.root_module)
-            return
+                return True
+            return False
         if receiver.root_module is self.root_module:
-            return
+            return False
 
         mytags = self.tags
         receivertags = receiver.tags
@@ -1182,12 +1184,36 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
                                 for tag in mytags
                             ]
 
+        config_before = self._user_config.take(receivertags, take_subconfig=True)
+        is_empty = len(config_before) == 0
         self._user_config.update(d)
+        # config_after = self._user_config.take(receivertags, take_subconfig=True)
 
+        # any_change = False
+        # if list(config_before.keys()) != list(config_after.keys()):
+        #     any_change = True
+        # else:
+        #     for key in config_before:
+        #         bef_value = config_before[key]
+        #         aft_value = config_after[key]
+        #         if isinstance(bef_value, ConfigItem) and isinstance(aft_value, ConfigItem):
+        #             if bef_value.value != aft_value.value:
+        #                 any_change = True
+        #                 break
+        #         else:
+        #             ...
+                # if config_before[key].value != config_after[key].value:
+                #     any_change = True
+                #     break
+
+        
+
+    
         # self._user_config._detached_configurations += (
         #     receiver._user_config._detached_configurations
         # )
         receiver.set_root_module(self.root_module)
+        return not is_empty
 
     def __setattr__(self, name, value):
         if name == "_user_config" and hasattr(self, "_user_config"):
@@ -1200,9 +1226,9 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         if self.is_constructing:
             if isinstance(value, DeeplayModule):
                 # if not value._has_built:
-                self._give_user_configuration(value, name)
+                needs_rebuild = self._give_user_configuration(value, name)
 
-                if not value._has_built:
+                if needs_rebuild and not value._has_built:
                     value.__construct__()
                     # # root module should always be update to
                     # # ensure that logs are stored in the correct place
