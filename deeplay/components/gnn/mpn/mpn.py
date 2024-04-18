@@ -58,9 +58,6 @@ class MessagePassingNeuralNetwork(DeeplayModule):
         self.hidden_features = hidden_features
         self.out_features = out_features
 
-        if len(hidden_features) == 0:
-            raise ValueError("hidden_features must contain at least one element")
-
         if any(h <= 0 for h in hidden_features):
             raise ValueError(
                 f"all hidden_channels must be positive, got {hidden_features}"
