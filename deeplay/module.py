@@ -1509,7 +1509,7 @@ class Selection(DeeplayModule):
 
         return Selection(self.model[0], new_selections)
 
-    def hasattr(self, attr: str, include_layer_classtype: bool = True) -> "Selection":
+    def hasattr(self, attr: str, strict=True, include_layer_classtype: bool = True) -> "Selection":
         """Filter the selection based on whether the modules have a certain attribute.
 
         Note, for layers, the attribute is checked in the layer's classtype
@@ -1522,6 +1522,8 @@ class Selection(DeeplayModule):
         ----------
         attr : str
             The attribute to check for.
+        strict : bool, optional
+            Whether to only accept real attributes and methods. This excludes properties. By default True
         include_layer_classtype : bool, optional
             Whether to check the attribute in the layer's classtype, by default True
 
@@ -1532,14 +1534,20 @@ class Selection(DeeplayModule):
         """
         from deeplay.external import Layer
 
-        return self.filter(
-            lambda _, module: hasattr(module, attr)
-            or (
-                include_layer_classtype
-                and isinstance(module, Layer)
-                and hasattr(module.classtype, attr)
-            )
-        )
+        def _filter_fn(name: str, module: nn.Module):
+            if not hasattr(module, attr):
+                if include_layer_classtype and isinstance(module, Layer):
+                    return hasattr(module.classtype, attr)
+                return False
+            
+
+            if strict:
+                from deeplay.list import ReferringLayerList
+                if isinstance(getattr(module, attr), ReferringLayerList):
+                    return False
+            return True
+ 
+        return self.filter(_filter_fn)
 
     def isinstance(
         self, cls: type, include_layer_classtype: bool = True
