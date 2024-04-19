@@ -7,7 +7,11 @@ import deeplay as dl
 from deeplay import (
     DeeplayModule,
     Sequential,
+    Layer,
+    LayerActivation,
 )  # Import your actual module here
+
+import torch.nn as nn
 
 
 # A simple subclass for testing
@@ -432,6 +436,31 @@ class TestLayer(unittest.TestCase):
         out = model(inp)
         self.assertEqual(out["y"].shape, (10, 20))
         self.assertTrue((inp["x"] == out["x"]).all())
+
+    def test_inp_out_mapping_with_selectors(self):
+        module = LayerActivation(
+            layer=Layer(nn.Linear, 2, 10), activation=Layer(nn.ReLU)
+        )
+
+        module[..., "layer"].set_input_map("x")
+        module[..., "layer"].set_output_map("x")
+        module[..., "activation"].set_input_map("x")
+        module[..., "activation"].set_output_map("act")
+
+        self.assertEqual(module.layer.input_args, ("x",))
+        self.assertEqual(module.layer.output_args, {"x": 0})
+        self.assertEqual(module.activation.input_args, ("x",))
+        self.assertEqual(module.activation.output_args, {"act": 0})
+
+        module[..., "layer"].all.set_input_map("x_all")
+        module[..., "layer"].all.set_output_map("x_all")
+        module[..., "activation"].all.set_input_map("x_all")
+        module[..., "activation"].all.set_output_map("act_all", other_act=0)
+
+        self.assertEqual(module.layer.input_args, ("x_all",))
+        self.assertEqual(module.layer.output_args, {"x_all": 0})
+        self.assertEqual(module.activation.input_args, ("x_all",))
+        self.assertEqual(module.activation.output_args, {"act_all": 0, "other_act": 0})
 
 
 if __name__ == "__main__":
