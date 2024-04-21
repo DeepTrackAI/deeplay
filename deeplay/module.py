@@ -1634,6 +1634,14 @@ class Selection(DeeplayModule):
         """Applies `SequentialBlock.set_dropout` to all modules in the selection."""
         return self.all.set_dropout(*args, **kwargs)
 
+    def set_input_map(self, *args, **kwargs):
+        """Applies `DeeplayModule.set_input_map` to all modules in the selection."""
+        return self.all.set_input_map(*args, **kwargs)
+
+    def set_output_map(self, *args, **kwargs):
+        """Applies `DeeplayModule.set_output_map` to all modules in the selection."""
+        return self.all.set_output_map(*args, **kwargs)
+
 
 class _MethodForwarder:
 
