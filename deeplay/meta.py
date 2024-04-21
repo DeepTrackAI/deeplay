@@ -4,7 +4,11 @@ T = TypeVar("T")
 
 
 class ExtendedConstructorMeta(type):
-    _is_top_level = {"value": True, "current_root_module": None}
+    _is_top_level = {
+        "value": True,
+        "current_root_module": None,
+        "constructing_module": None,
+    }
 
     def __new__(cls, name, bases, attrs):
         return super().__new__(cls, name, bases, attrs)
@@ -38,15 +42,18 @@ def not_top_level(cls: ExtendedConstructorMeta, obj):
         def __init__(self, obj):
             self.original_is_top_level = cls._is_top_level["value"]
             self.original_current_root_module = cls._is_top_level["current_root_module"]
+            self.original_constructing_module = cls._is_top_level["constructing_module"]
             self.obj = obj
 
         def __enter__(self):
             if self.original_is_top_level:
                 cls._is_top_level["value"] = False
                 cls._is_top_level["current_root_module"] = self.obj
+            cls._is_top_level["constructing_module"] = self.obj
 
         def __exit__(self, *args):
             cls._is_top_level["value"] = self.original_is_top_level
             cls._is_top_level["current_root_module"] = self.original_current_root_module
+            cls._is_top_level["constructing_module"] = self.original_constructing_module
 
     return ContextManager(obj)

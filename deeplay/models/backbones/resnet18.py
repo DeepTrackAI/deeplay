@@ -1,81 +1,70 @@
 import deeplay as dl
 import torch.nn as nn
 
+from deeplay.blocks.conv.conv2d import Conv2dBlock
+from deeplay.components.cnn.encdec import ConvolutionalEncoder2d
 
-class BackboneResnet18(dl.DeeplayModule):
+import torchvision.models as models
+
+from deeplay.external.layer import Layer
+
+
+@Conv2dBlock.register_style
+def resnet(block: Conv2dBlock, stride: int = 1):
+    block.multi(2)
+    block.blocks[0].style("residual", order="lnaln|a")
+    block.blocks[1].style("residual", order="lnaln|a")
+    if stride > 1:
+        block.blocks[0].strided(stride)
+        block.blocks[0].shortcut_start.configure("layer", stride=stride)
+        block.blocks[0].shortcut_start.normalized()
+
+    block[...].isinstance(Conv2dBlock).all.remove("pool", allow_missing=True)
+
+
+@Conv2dBlock.register_style
+def resnet18_input(block: Conv2dBlock):
+    block.layer.configure(kernel_size=7, stride=2, padding=3, bias=False)
+    block.normalized(mode="insert", after="layer")
+    block.activated(Layer(nn.ReLU, inplace=True), mode="insert", after="normalization")
+    block.pooled(
+        Layer(
+            nn.MaxPool2d,
+            kernel_size=3,
+            stride=2,
+            padding=1,
+            ceil_mode=False,
+            dilation=1,
+        ),
+        mode="append",
+    )
+
+
+@ConvolutionalEncoder2d.register_style
+def resnet18(encoder: ConvolutionalEncoder2d):
+    encoder.blocks[0].style("resnet18_input")
+    encoder.blocks[1].style("resnet", stride=1)
+    encoder["blocks", 2:].all.style("resnet", stride=2)
+    encoder.initialize(dl.initializers.Kaiming(targets=(nn.Conv2d,)))
+    encoder.initialize(dl.initializers.Constant(targets=(nn.BatchNorm2d,)))
+    encoder.pool = Layer(nn.AdaptiveAvgPool2d, (1, 1))
+
+
+class BackboneResnet18(ConvolutionalEncoder2d):
+
+    pool: Layer
 
     def __init__(self, in_channels: int = 3, pool_output: bool = False):
-        super().__init__()
-        self.in_channels = in_channels
-        self.pool_output = pool_output
-
-        input_block = dl.blocks.sequential.SequentialBlock(
-            layer=dl.Layer(
-                nn.Conv2d,
-                in_channels=self.in_channels,
-                out_channels=64,
-                kernel_size=7,
-                stride=2,
-                padding=3,
-                bias=False,
-            ),
-            normalization=dl.Layer(nn.BatchNorm2d, num_features=64),
-            activation=dl.Layer(nn.ReLU, inplace=True),
-            pool=dl.Layer(nn.MaxPool2d, kernel_size=3, stride=2, padding=1),
+        super().__init__(
+            in_channels=in_channels,
+            hidden_channels=[64, 64, 128, 256],
+            out_channels=512,
         )
-
-        shortcuts = [
-            dl.blocks.sequential.SequentialBlock(
-                layer=dl.Layer(nn.Conv2d, 64, 128, kernel_size=1, stride=2, bias=False),
-                normalization=dl.Layer(nn.BatchNorm2d, num_features=128),
-                order=["layer", "normalization"],
-            ),
-            dl.blocks.sequential.SequentialBlock(
-                layer=dl.Layer(
-                    nn.Conv2d, 128, 256, kernel_size=1, stride=2, bias=False
-                ),
-                normalization=dl.Layer(nn.BatchNorm2d, num_features=256),
-                order=["layer", "normalization"],
-            ),
-            dl.blocks.sequential.SequentialBlock(
-                layer=dl.Layer(
-                    nn.Conv2d, 256, 512, kernel_size=1, stride=2, bias=False
-                ),
-                normalization=dl.Layer(nn.BatchNorm2d, num_features=512),
-                order=["layer", "normalization"],
-            ),
-        ]
-
-        blocks = [
-            input_block,
-            dl.blocks.Conv2dResidual(64, 64),
-            dl.blocks.Conv2dResidual(64, 64),
-            dl.blocks.Conv2dResidual(64, 128, shortcut=shortcuts[0]).configure(
-                "in_layer", stride=2
-            ),
-            dl.blocks.Conv2dResidual(128, 128),
-            dl.blocks.Conv2dResidual(128, 256, shortcut=shortcuts[1]).configure(
-                "in_layer", stride=2
-            ),
-            dl.blocks.Conv2dResidual(256, 256),
-            dl.blocks.Conv2dResidual(256, 512, shortcut=shortcuts[2]).configure(
-                "in_layer", stride=2
-            ),
-            dl.blocks.Conv2dResidual(512, 512),
-        ]
-
-        if pool_output:
-            blocks.append(
-                dl.Layer(nn.AdaptiveAvgPool2d, (1, 1)),
-            )
-
-        self.blocks = dl.Sequential(*blocks)
-
-        self.initialize(dl.initializers.Kaiming(targets=(nn.Conv2d,)))
-        self.initialize(dl.initializers.Constant(targets=(nn.BatchNorm2d,)))
+        self.pool_output = pool_output
+        self.style("resnet18")
 
     def forward(self, x):
-        x = self.blocks(x)
+        x = super().forward(x)
         if self.pool_output:
-            x = x.view(x.size(0), -1)
+            x = self.pool(x).squeeze()
         return x

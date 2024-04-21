@@ -54,8 +54,7 @@ class TestModule(DeeplayModule):
 # print("after:", module.encoder.p)
 
 
-class DummyClass:
-    ...
+class DummyClass: ...
 
 
 class TestDecorators(unittest.TestCase):
@@ -72,7 +71,6 @@ class TestDecorators(unittest.TestCase):
             module.run_function_after_build(mock)
 
         module.build()
-
         for mock in before_build_mocks:
             mock.assert_called_once_with(module)
 

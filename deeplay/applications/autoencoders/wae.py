@@ -60,16 +60,10 @@ class WassersteinAutoEncoder(Application):
             channels[-1],
         )
         encoder.postprocess.configure(nn.Flatten)
-        encoder.blocks[1:].layer.configure(
-            nn.Conv2d,
-            kernel_size=3,
-            stride=2,
-            padding=1,
+        encoder.blocks[1:].layer.configure(stride=2)
+        encoder["blocks", :].all.normalized(nn.BatchNorm2d).remove(
+            "pool", allow_missing=True
         )
-        encoder.blocks.normalization.configure(
-            nn.BatchNorm2d,
-        )
-        encoder.blocks.pool.configure(nn.Identity)
         return encoder
 
     def _get_default_decoder(self, channels, red_size):
@@ -77,20 +71,21 @@ class WassersteinAutoEncoder(Application):
             channels[0],
             channels[1:],
             1,
+            out_activation=nn.Sigmoid,
         )
         decoder.preprocess.configure(
             nn.Unflatten,
             dim=1,
             unflattened_size=(channels[0], red_size[0], red_size[1]),
         )
-        decoder.blocks.layer.configure(
+        decoder[..., "layer"].all.configure(
             nn.ConvTranspose2d,
             kernel_size=3,
             stride=2,
             padding=1,
             output_padding=1,
         )
-        decoder.blocks[:-1].normalization.configure(
+        decoder["blocks", :-1].all.normalized(
             nn.BatchNorm2d,
         )
         decoder.blocks[-1].layer.configure(
@@ -99,7 +94,7 @@ class WassersteinAutoEncoder(Application):
             stride=1,
             padding=1,
         )
-        decoder.blocks.upsample.configure(nn.Identity)
+        decoder["blocks", :].all.remove("upsample", allow_missing=True)
         return decoder
 
     def encode(self, x):

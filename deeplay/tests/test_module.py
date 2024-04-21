@@ -93,7 +93,7 @@ class TestDeeplayModule(unittest.TestCase):
         module = TestModule(param1=50)
         module.configure(param1=60)
         config = module.get_user_configuration()
-        self.assertEqual(config[("param1",)], 60)
+        self.assertEqual(config[("param1",)][0].value, 60)
 
     def test_invalid_configure(self):
         # Testing configure method with invalid attribute
@@ -405,13 +405,31 @@ class TestLayer(unittest.TestCase):
 
         self.assertEqual(model.foo.num_features, 20)
 
-    def test_configure_in_init(self):
+    def test_configure_in_init_attached(self):
         class TestClass(dl.DeeplayModule):
             def __init__(self, model=None):
                 super().__init__()
 
                 model = dl.MultiLayerPerceptron(None, [64], 10)
-                model.output.normalization.configure(nn.BatchNorm1d)
+
+                self.model = model
+                model.output.normalized(nn.BatchNorm1d)
+
+        testclass = TestClass()
+
+        self.assertEqual(testclass.model.output.normalization.classtype, nn.BatchNorm1d)
+
+        testclass.build()
+
+        self.assertIsInstance(testclass.model.output.normalization, nn.BatchNorm1d)
+
+    def test_configure_in_init_detached(self):
+        class TestClass(dl.DeeplayModule):
+            def __init__(self, model=None):
+                super().__init__()
+
+                model = dl.MultiLayerPerceptron(None, [64], 10)
+                model.output.normalized(nn.BatchNorm1d)
                 self.model = model
 
         testclass = TestClass()

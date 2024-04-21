@@ -1,26 +1,17 @@
 from typing import List, Optional, Literal, Any, Sequence, Type, overload, Union
 
+from deeplay.blocks.sequence.sequence1d import Sequence1dBlock
+
 from .. import DeeplayModule, Layer, LayerList, RecurrentBlock
 
 import torch.nn as nn
 
-class RecurrentDropout(nn.Module):
-    def __init__(self, p=0.0):
-        super(RecurrentDropout, self).__init__()
-        self.p = p
-        self.dropout = nn.Dropout(p=self.p)
-
-    def forward(self, x):
-        if isinstance(x[0],nn.utils.rnn.PackedSequence):
-            return nn.utils.rnn.PackedSequence(self.dropout(x[0].data),x[0].batch_sizes),x[1]
-        return self.dropout(x[0]),x[1]
-
 
 class RecurrentNeuralNetwork(DeeplayModule):
-    in_features: Optional[int]
-    hidden_features: Sequence[Optional[int]]
+    in_features: int
+    hidden_features: Sequence[int]
     out_features: int
-    blocks: LayerList[RecurrentBlock]
+    blocks: LayerList[Sequence1dBlock]
 
     @property
     def input(self):
@@ -51,7 +42,7 @@ class RecurrentNeuralNetwork(DeeplayModule):
     def normalization(self) -> LayerList[Layer]:
         """Return the normalizations of the network. Equivalent to `.blocks.normalization`."""
         return self.blocks.normalization
-    
+
     @property
     def dropout(self) -> LayerList[Layer]:
         """Return the dropout of the network. Equivalent to `.blocks.dropout`."""
@@ -59,9 +50,11 @@ class RecurrentNeuralNetwork(DeeplayModule):
 
     def __init__(
         self,
-        in_features: Optional[int],
-        hidden_features: Sequence[Optional[int]],
+        in_features: int,
+        hidden_features: List[int],
         out_features: int,
+        batch_first: bool = False,
+        return_cell_state: bool = False,
     ):
         super().__init__()
 
@@ -84,25 +77,25 @@ class RecurrentNeuralNetwork(DeeplayModule):
                 f"all hidden_channels must be positive, got {hidden_features}"
             )
 
-        f_out = in_features
-
         self.blocks = LayerList()
         for c_in, c_out in zip(
             [in_features, *hidden_features], [*hidden_features, out_features]
         ):
-            """Torch automatically overwrites dropout==0 for RNN with num_layers=1. To allow for hidden layers of different size, we include dropout layers separately. """
-            self.blocks.append(
-                RecurrentBlock(
-                    Layer(nn.RNN, c_in, c_out), 
-                    Layer(nn.Identity, num_features=f_out),
-                    Layer(nn.Identity, num_features=f_out),
-                    Layer(RecurrentDropout,0.0)
-                )
-            )
+
+            self.blocks.append(Sequence1dBlock(c_in, c_out, batch_first=batch_first))
+
+        if return_cell_state:
+            self.blocks[-1].configure(return_cell_state=True)
+
+    def bidirectional(self) -> "RecurrentNeuralNetwork":
+        """Make the network bidirectional."""
+        for block in self.blocks:
+            block.bidirectional()
+        return self
 
     def forward(self, x):
         for block in self.blocks:
-            x, _ = block(x)
+            x = block(x)
         return x
 
     @overload
@@ -113,8 +106,7 @@ class RecurrentNeuralNetwork(DeeplayModule):
         hidden_features: Optional[List[int]] = None,
         out_features: Optional[int] = None,
         out_activation: Union[Type[nn.Module], nn.Module, None] = None,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @overload
     def configure(
@@ -126,7 +118,6 @@ class RecurrentNeuralNetwork(DeeplayModule):
         activation: Optional[Type[nn.Module]] = None,
         normalization: Optional[Type[nn.Module]] = None,
         **kwargs: Any,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     configure = DeeplayModule.configure

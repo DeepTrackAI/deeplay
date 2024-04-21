@@ -2,8 +2,9 @@ from typing import Any, overload, Iterator, List, Generic, TypeVar, Union, Tuple
 
 import torch
 from torch import nn
+import inspect
 
-from .module import DeeplayModule
+from .module import DeeplayModule, Selection
 from .decorators import after_init
 
 T = TypeVar("T", bound=nn.Module)
@@ -27,15 +28,17 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
         for idx, layer in enumerate(layers):
             super().append(layer)
             if isinstance(layer, DeeplayModule) and not layer._has_built:
-                self._give_user_configuration(layer, self._get_abs_string_index(idx))
-                layer.__construct__()
+                should_rebuild = self._give_user_configuration(layer, self._get_abs_string_index(idx))
+                if should_rebuild:
+                    layer.__construct__()
 
     @after_init
     def append(self, module: DeeplayModule) -> "LayerList[T]":
         super(LayerList, self).append(module)
         if isinstance(module, DeeplayModule) and not module._has_built:
-            self._give_user_configuration(module, self._get_abs_string_index(-1))
-            module.__construct__()
+            should_rebuild = self._give_user_configuration(module, self._get_abs_string_index(-1))
+            if should_rebuild:
+                module.__construct__()
         return self
 
     @after_init
@@ -46,20 +49,21 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
     def insert(self, index: int, module: DeeplayModule) -> "LayerList[T]":
         super().insert(index, module)
         if isinstance(module, DeeplayModule) and not module._has_built:
-            self._give_user_configuration(module, self._get_abs_string_index(index))
-            module.__construct__()
+            should_rebuild = self._give_user_configuration(module, self._get_abs_string_index(index))
+            if should_rebuild: 
+                module.__construct__()
         return self
-
 
     @after_init
     def extend(self, modules: List[DeeplayModule]) -> "LayerList[T]":
         super().extend(modules)
         for idx, module in enumerate(modules):
             if isinstance(module, DeeplayModule) and not module._has_built:
-                self._give_user_configuration(
+                should_rebuild = self._give_user_configuration(
                     module, self._get_abs_string_index(idx + len(self) - len(modules))
                 )
-                module.__construct__()
+                if should_rebuild:
+                    module.__construct__()
         return self
 
     @after_init
@@ -70,12 +74,10 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
     @overload
     def configure(
         self, *args: Union[int, slice, List[int], slice], **kwargs: Any
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @overload
-    def configure(self, name: str, *args: Any, **kwargs: Any) -> None:
-        ...
+    def configure(self, name: str, *args: Any, **kwargs: Any) -> None: ...
 
     def configure(self, *args, **kwargs):
         if len(args) > 0:
@@ -106,7 +108,7 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
     def __iter__(self) -> Iterator[T]:
         return super().__iter__()  # type: ignore
 
-    def __getattr__(self, name: str) -> "LayerList[T]":
+    def __getattr__(self, name: str) -> "ReferringLayerList[T]":
         try:
             return super().__getattr__(name)
         except AttributeError:
@@ -115,36 +117,88 @@ class LayerList(DeeplayModule, nn.ModuleList, Generic[T]):
                 # is an invalid attribute name so must be an index
                 raise
 
+            from deeplay.blocks.base import DeferredConfigurableLayer
+
             submodules = [
                 getattr(layer, name)
                 for layer in self
-                if hasattr(layer, name) and isinstance(getattr(layer, name), nn.Module)
+                if hasattr(layer, name)
+                and (
+                    isinstance(
+                        getattr(layer, name), (nn.Module, DeferredConfigurableLayer)
+                    )
+                    or inspect.ismethod(getattr(layer, name))
+                )
             ]
+
+            DeferredConfigurableLayer
+
             if len(submodules) > 0:
                 return ReferringLayerList(*submodules)
             else:
                 raise
 
     @overload
-    def __getitem__(self, index: int) -> "T":
-        ...
+    def __getitem__(self, index: int) -> "T": ...
 
     @overload
-    def __getitem__(self, index: slice) -> "LayerList[T]":
-        ...
+    def __getitem__(self, index: slice) -> "LayerList[T]": ...
 
-    def __getitem__(self, index: Union[int, slice]) -> "Union[T, LayerList[T]]":
+    @overload
+    def __getitem__(self, index: Tuple) -> Selection: ...
+
+    def __getitem__(self, index: Union[int, slice, tuple]) -> "Union[T, LayerList[T], Selection, ReferringLayerList]":
         if isinstance(index, int):
             return getattr(self, self._get_abs_string_index(index))
+        elif isinstance(index, tuple):
+            return DeeplayModule.__getitem__(self, index)
         else:
             indices = list(range(len(self)))[index]
             return ReferringLayerList(*[self[idx] for idx in indices])
 
+    def __add__(self, other: "LayerList[T]") -> "ReferringLayerList[T]":
+        return ReferringLayerList(*self, *other)
 
-class ReferringLayerList(LayerList, Generic[T]):
+
+class ReferringLayerList(list, Generic[T]):
     def __init__(self, *layers: T):
+        super().__init__()
         for idx, layer in enumerate(layers):
-            nn.ModuleList.append(self, layer)
+            self.append(layer)
+
+    def __call__(self, *args, **kwargs):
+        return [layer(*args, **kwargs) for layer in self]
+
+    def __getattr__(self, name: str) -> "ReferringLayerList[T]":
+
+        # check if name is integer string
+        if name[0] in ("0", "1", "2", "3", "4", "5", "6", "7", "8", "9"):
+            # is an invalid attribute name so must be an index
+            raise AttributeError(
+                f"LayerList has no attribute '{name}' in any of its layers."
+            )
+
+        from deeplay.blocks.base import DeferredConfigurableLayer
+
+        submodules = [
+            getattr(layer, name)
+            for layer in self
+            if hasattr(layer, name)
+            and (
+                isinstance(getattr(layer, name), (nn.Module, DeferredConfigurableLayer))
+                or inspect.ismethod(getattr(layer, name))
+            )
+        ]
+
+        if len(submodules) > 0:
+            return ReferringLayerList(*submodules)
+        else:
+            raise AttributeError(
+                f"LayerList has no attribute '{name}' in any of its layers."
+            )
+
+    def __add__(self, other: "ReferringLayerList[T]") -> "ReferringLayerList[T]":
+        return ReferringLayerList(*self, *other)
 
 
 class Sequential(LayerList, Generic[T]):

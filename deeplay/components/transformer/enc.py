@@ -12,6 +12,8 @@ import torch.nn as nn
 import itertools
 from functools import reduce
 
+__all__ = ["TransformerEncoderLayer"]
+
 
 class Add(DeeplayModule):
     """Addition module.
