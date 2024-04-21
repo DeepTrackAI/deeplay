@@ -39,4 +39,7 @@ Here you find a series of notebooks that give you an overview of the core featur
 - **[Understanding the Core Objects in Deeplay](https://github.com/DeepTrackAI/deeplay/blob/gv/doc1/tutorials/getting-started/GS101_core_objects.ipynb)**
 - **[Training Your First Model](https://github.com/DeepTrackAI/deeplay/blob/gv/doc1/tutorials/getting-started/GS111_first_model.ipynb)**
 - **[Configuring Deeplay Objects](https://github.com/DeepTrackAI/deeplay/blob/gv/doc1/tutorials/getting-started/GS121_configure.ipynb)**
+- **[Using the Main Deeplay Methods](https://github.com/DeepTrackAI/deeplay/blob/gv/doc1/tutorials/getting-started/GS131_methods.ipynb)**
+- **[Using the Main Deeplay Applications](https://github.com/DeepTrackAI/deeplay/blob/gv/doc1/tutorials/getting-started/GS141_applications.ipynb)**
+- **[Using the Main Deeplay Models](https://github.com/DeepTrackAI/deeplay/blob/gv/doc1/tutorials/getting-started/GS151_models.ipynb)**
 
