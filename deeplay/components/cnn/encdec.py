@@ -1,18 +1,21 @@
+from __future__ import annotations
+from os import remove
 from typing import List, Optional, Literal, Any, Sequence, Type, overload, Union
+import warnings
 
 from ... import (
     DeeplayModule,
     Layer,
     LayerList,
-    Sequential,
-    PoolLayerActivationNormalization,
-    LayerActivationNormalizationUpsample,
 )
+from deeplay.components.cnn import ConvolutionalNeuralNetwork
+from deeplay.blocks.conv import Conv2dBlock
+from deeplay.ops import Cat
 import torch.nn as nn
 import torch
 
 
-class ConvolutionalEncoder2d(DeeplayModule):
+class ConvolutionalEncoder2d(ConvolutionalNeuralNetwork):
     """Convolutional Encoder module in 2D.
 
     Parameters
@@ -66,120 +69,71 @@ class ConvolutionalEncoder2d(DeeplayModule):
     """
 
     in_channels: Optional[int]
-    channels: Sequence[Optional[int]]
+    hidden_channels: Sequence[Optional[int]]
     out_channels: int
-    blocks: LayerList[PoolLayerActivationNormalization]
+    blocks: LayerList[Conv2dBlock]
 
     @property
-    def input(self):
-        """Return the input layer of the network. Equivalent to `.blocks[0]`."""
-        return self.blocks[0]
+    def channel(self) -> Sequence[int]:
+        import warnings
 
-    @property
-    def hidden(self):
-        """Return the hidden layers of the network. Equivalent to `.blocks[:-1]`"""
-        return self.blocks[:-1]
-
-    @property
-    def output(self):
-        """Return the last layer of the network. Equivalent to `.blocks[-1]`."""
-        return self.blocks[-1]
-
-    @property
-    def layer(self) -> LayerList[Layer]:
-        """Return the layers of the network. Equivalent to `.blocks.layer`."""
-        return self.blocks.layer
-
-    @property
-    def activation(self) -> LayerList[Layer]:
-        """Return the activations of the network. Equivalent to `.blocks.activation`."""
-        return self.blocks.activation
-
-    @property
-    def normalization(self) -> LayerList[Layer]:
-        """Return the normalizations of the network. Equivalent to `.blocks.normalization`."""
-        return self.blocks.normalization
-
-    @property
-    def pool(self) -> LayerList[Layer]:
-        """Return the pooling of the network. Equivalent to `.blocks.normalization`."""
-        return self.blocks.pool
+        warnings.warn(
+            "The `channel` property is deprecated. Use `hidden_channels` instead.",
+            DeprecationWarning,
+        )
+        return self.hidden_channels
 
     def __init__(
         self,
         in_channels: Optional[int],
-        channels: Sequence[int],
+        hidden_channels: Sequence[int],
         out_channels: int,
         out_activation: Optional[Union[Type[nn.Module], nn.Module, None]] = None,
-        pool: Optional[Union[Type[nn.Module], nn.Module, None]] = None,
-        postprocess: Optional[Union[Type[nn.Module], nn.Module, None]] = None,
+        pool: Optional[Union[Type[nn.Module], nn.Module, None]] = Layer(
+            nn.MaxPool2d, kernel_size=2, stride=2
+        ),
+        postprocess: Layer = Layer(nn.Identity),
+        channels: Optional[Sequence[int]] = None,
     ):
-        super().__init__()
+        if channels is not None:
+            import warnings
 
-        self.in_channels = in_channels
-        self.channels = channels
-        self.out_channels = out_channels
-
-        if out_channels <= 0:
-            raise ValueError(f"out_channels must be positive, got {out_channels}")
-
-        if in_channels is not None and in_channels <= 0:
-            raise ValueError(f"in_channels must be positive, got {in_channels}")
-
-        if any(h <= 0 for h in self.channels):
-            raise ValueError(
-                f"all hidden_channels must be positive, got {self.channels}"
+            hidden_channels = channels
+            warnings.warn(
+                "The `channels` parameter is deprecated. Use `hidden_channels` instead.",
+                DeprecationWarning,
             )
 
-        if out_activation is None:
-            out_activation = Layer(nn.ReLU)
-        elif isinstance(out_activation, type) and issubclass(out_activation, nn.Module):
-            out_activation = Layer(out_activation)
-
-        self.blocks = LayerList()
-
-        for i, c_out in enumerate(self.channels + [self.out_channels]):
-            c_in = self.in_channels if i == 0 else self.channels[i - 1]
-
-            if i == 0:
-                pool_layer = Layer(nn.Identity)
-            else:
-                if pool is None:
-                    pool_layer = Layer(nn.MaxPool2d, kernel_size=2)
-                elif isinstance(pool, type) and issubclass(pool, nn.Module):
-                    pool_layer = Layer(pool)
-                elif isinstance(pool, DeeplayModule):
-                    pool_layer = pool.new()
-                else:
-                    pool_layer = pool
-
-            if c_in:
-                layer = Layer(nn.Conv2d, c_in, c_out, 3, 1, 1)
-            else:
-                layer = Layer(nn.LazyConv2d, c_out, 3, 1, 1)
-
-            if i == len(self.channels):
-                activation = out_activation
-            else:
-                activation = Layer(nn.ReLU)
-            normalization = Layer(nn.Identity, num_features=c_out)
-
-            block = PoolLayerActivationNormalization(
-                pool=pool_layer,
-                layer=layer,
-                activation=activation,
-                normalization=normalization,
-            )
-
-            self.blocks.append(block)
-
-        self.postprocess = Layer(nn.Identity)
+        super().__init__(
+            in_channels=in_channels,
+            hidden_channels=hidden_channels,
+            out_channels=out_channels,
+            out_activation=out_activation,
+            pool=pool,
+        )
+        self.postprocess = postprocess.new()
 
     def forward(self, x):
         for block in self.blocks:
             x = block(x)
         x = self.postprocess(x)
         return x
+
+    def strided(
+        self,
+        stride: int = 2,
+        apply_to_first_layer: bool = False,
+        apply_to_last_layer: bool = True,
+    ):
+
+        if apply_to_first_layer:
+            self.blocks[0].strided(stride, remove_pool=True)
+
+        for block in self.blocks[1:]:
+            block.strided(stride, remove_pool=True)
+
+        if apply_to_last_layer:
+            self.blocks[-1].strided(stride, remove_pool=True)
 
     @overload
     def configure(
@@ -189,8 +143,7 @@ class ConvolutionalEncoder2d(DeeplayModule):
         channels: Optional[List[int]] = None,
         out_channels: Optional[int] = None,
         out_activation: Union[Type[nn.Module], nn.Module, None] = None,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @overload
     def configure(
@@ -203,8 +156,7 @@ class ConvolutionalEncoder2d(DeeplayModule):
         normalization: Optional[Type[nn.Module]] = None,
         postprocess: Optional[Type[nn.Module]] = None,
         **kwargs: Any,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @overload
     def configure(
@@ -218,13 +170,12 @@ class ConvolutionalEncoder2d(DeeplayModule):
         normalization: Optional[Type[nn.Module]] = None,
         postprocess: Optional[Type[nn.Module]] = None,
         **kwargs: Any,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     configure = DeeplayModule.configure
 
 
-class ConvolutionalDecoder2d(DeeplayModule):
+class ConvolutionalDecoder2d(ConvolutionalNeuralNetwork):
     """Convolutional Decoder module in 2D.
 
     Parameters
@@ -281,114 +232,30 @@ class ConvolutionalDecoder2d(DeeplayModule):
     in_channels: Optional[int]
     channels: Sequence[Optional[int]]
     out_channels: int
-    blocks: LayerList[LayerActivationNormalizationUpsample]
-
-    @property
-    def input(self):
-        """Return the input layer of the network. Equivalent to `.blocks[0]`."""
-        return self.blocks[0]
-
-    @property
-    def hidden(self):
-        """Return the hidden layers of the network. Equivalent to `.blocks[:-1]`"""
-        return self.blocks[:-1]
-
-    @property
-    def output(self):
-        """Return the last layer of the network. Equivalent to `.blocks[-1]`."""
-        return self.blocks[-1]
-
-    @property
-    def layer(self) -> LayerList[Layer]:
-        """Return the layers of the network. Equivalent to `.blocks.layer`."""
-        return self.blocks.layer
-
-    @property
-    def activation(self) -> LayerList[Layer]:
-        """Return the activations of the network. Equivalent to `.blocks.activation`."""
-        return self.blocks.activation
-
-    @property
-    def normalization(self) -> LayerList[Layer]:
-        """Return the normalizations of the network. Equivalent to `.blocks.normalization`."""
-        return self.blocks.normalization
-
-    @property
-    def upsample(self) -> LayerList[Layer]:
-        """Return the upsampling of the network. Equivalent to `.blocks.normalization`."""
-        return self.blocks.upsample
+    blocks: LayerList[Conv2dBlock]
 
     def __init__(
         self,
         in_channels: Optional[int],
-        channels: Sequence[int],
+        hidden_channels: Sequence[int],
         out_channels: int,
         out_activation: Optional[Union[Type[nn.Module], nn.Module, None]] = None,
-        upsample: Optional[Union[Type[nn.Module], nn.Module, None]] = None,
-        preprocess: Optional[Union[Type[nn.Module], nn.Module, None]] = None,
+        preprocess: Union[Type[nn.Module], nn.Module] = None,
     ):
-        super().__init__()
+        super().__init__(
+            in_channels=in_channels,
+            hidden_channels=hidden_channels,
+            out_channels=out_channels,
+            out_activation=out_activation,
+        )
 
         self.in_channels = in_channels
-        self.channels = channels
+        self.hidden_channels = hidden_channels
         self.out_channels = out_channels
+        self.preprocess = preprocess if preprocess is not None else Layer(nn.Identity)
 
-        if out_channels <= 0:
-            raise ValueError(f"out_channels must be positive, got {out_channels}")
-
-        if in_channels is not None and in_channels <= 0:
-            raise ValueError(f"in_channels must be positive, got {in_channels}")
-
-        if any(h <= 0 for h in self.channels):
-            raise ValueError(
-                f"all hidden_channels must be positive, got {self.channels}"
-            )
-
-        if out_activation is None:
-            out_activation = Layer(nn.Sigmoid)
-        elif isinstance(out_activation, type) and issubclass(out_activation, nn.Module):
-            out_activation = Layer(out_activation)
-
-        self.preprocess = Layer(nn.Identity)
-
-        self.blocks = LayerList()
-
-        for i, c_out in enumerate(self.channels + [self.out_channels]):
-            c_in = self.in_channels if i == 0 else self.channels[i - 1]
-
-            layer = Layer(nn.Conv2d, c_in, c_out, 3, 1, 1)
-            if i == len(self.channels):
-                activation = out_activation
-            else:
-                activation = Layer(nn.ReLU)
-            normalization = Layer(nn.Identity, num_features=c_out)
-
-            if i == len(self.channels):
-                upsample_layer = Layer(nn.Identity)
-            else:
-                if upsample is None:
-                    upsample_layer = Layer(
-                        nn.ConvTranspose2d,
-                        c_out,
-                        c_out,
-                        kernel_size=2,
-                        stride=2,
-                    )
-                elif isinstance(upsample, type) and issubclass(upsample, nn.Module):
-                    upsample_layer = Layer(upsample)
-                elif isinstance(upsample, DeeplayModule):
-                    upsample_layer = upsample.new()
-                else:
-                    upsample_layer = upsample
-
-            block = LayerActivationNormalizationUpsample(
-                layer=layer,
-                activation=activation,
-                normalization=normalization,
-                upsample=upsample_layer,
-            )
-
-            self.blocks.append(block)
+        for block in self.blocks[:-1]:
+            block.upsampled()
 
     def forward(self, x):
         x = self.preprocess(x)
@@ -401,11 +268,10 @@ class ConvolutionalDecoder2d(DeeplayModule):
         self,
         /,
         in_channels: Optional[int] = None,
-        channels: Optional[List[int]] = None,
+        hidden_channels: Optional[List[int]] = None,
         out_channels: Optional[int] = None,
         out_activation: Union[Type[nn.Module], nn.Module, None] = None,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @overload
     def configure(
@@ -418,8 +284,7 @@ class ConvolutionalDecoder2d(DeeplayModule):
         upsample: Optional[Type[nn.Module]] = None,
         preprocess: Optional[Type[nn.Module]] = None,
         **kwargs: Any,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @overload
     def configure(
@@ -433,10 +298,9 @@ class ConvolutionalDecoder2d(DeeplayModule):
         upsample: Optional[Type[nn.Module]] = None,
         preprocess: Optional[Type[nn.Module]] = None,
         **kwargs: Any,
-    ) -> None:
-        ...
+    ) -> None: ...
 
-    configure = DeeplayModule.configure
+    configure = ConvolutionalNeuralNetwork.configure
 
 
 class ConvolutionalEncoderDecoder2d(DeeplayModule):
@@ -455,62 +319,81 @@ class ConvolutionalEncoderDecoder2d(DeeplayModule):
         """Return the upsampling layers of the decoder. Equivalent to `.decoder.upsample`."""
         return self.decoder.upsample
 
+    @property
+    def blocks(self) -> LayerList[Layer]:
+        """Return the blocks of the encoder and decoder. Equivalent to `.encoder.blocks + .bottleneck.blocks + .decoder.blocks`."""
+        if isinstance(self.bottleneck, Layer):
+            return self.encoder.blocks + self.decoder.blocks
+        return self.encoder.blocks + self.bottleneck.blocks + self.decoder.blocks
+    
+    @property 
+    def normalization(self) -> LayerList[Layer]:
+        """Return the normalization layers of the encoder and decoder. Equivalent to `.encoder.normalization + .bottleneck.normalization + .decoder.normalization`."""
+        return self.blocks.normalization
+
     def __init__(
         self,
         in_channels: Optional[int],
         encoder_channels: Sequence[int],
-        decoder_channels: Sequence[int],
-        out_channels=int,
-        out_activation: Optional[Type[nn.Module]] = nn.Sigmoid,
-        pool: Union[Type[nn.Module], nn.Module, None] = None,
-        upsample: Union[Type[nn.Module], nn.Module, None] = None,
+        bottleneck_channels: Optional[Union[Sequence[int], int]] = None,
+        decoder_channels: Optional[Sequence[int]] = None,
+        out_channels: int = None,
+        out_activation: Optional[Layer] = None,
     ):
+        if out_channels is None:
+            raise ValueError("The `out_channels` parameter must be specified.")
+
+        self.decoder_channels = (
+            decoder_channels
+            if decoder_channels is not None
+            else encoder_channels[::-1][1:]
+        )
+        if bottleneck_channels is None:
+            bottleneck_channels = [encoder_channels[-1]]
+        elif isinstance(bottleneck_channels, int):
+            bottleneck_channels = [bottleneck_channels]
+
         super().__init__()
+
         self.in_channels = in_channels
         self.encoder_channels = encoder_channels
-        self.decoder_channels = decoder_channels
-        self.channels = encoder_channels + decoder_channels
+
+        self.hidden_channels = list(self.encoder_channels) + list(self.decoder_channels)
         self.out_channels = out_channels
-        self.out_activation = out_activation
-
-        if out_channels <= 0:
-            raise ValueError(f"out_channels must be positive, got {out_channels}")
-
-        if in_channels is not None and in_channels <= 0:
-            raise ValueError(f"in_channels must be positive, got {in_channels}")
-
-        if any(h <= 0 for h in self.channels):
-            raise ValueError(
-                f"all hidden_channels must be positive, got {self.channels}"
-            )
 
         self.encoder = ConvolutionalEncoder2d(
-            self.in_channels, self.encoder_channels, self.encoder_channels[-1]
+            self.in_channels,
+            self.encoder_channels[:-1],
+            self.encoder_channels[-1],
+            out_activation=Layer(nn.ReLU),
         )
+
+        if len(bottleneck_channels) > 0:
+            self.bottleneck = ConvolutionalNeuralNetwork(
+                self.encoder_channels[-1],
+                bottleneck_channels[:-1],
+                bottleneck_channels[-1],
+                out_activation=Layer(nn.ReLU),
+            )
+            self.bottleneck.blocks[0].pooled()
+            self.bottleneck.blocks[-1].upsampled()
+        else:
+            self.bottleneck = Layer(nn.Identity)
 
         self.decoder = ConvolutionalDecoder2d(
-            self.encoder_channels[-1],
+            (encoder_channels + bottleneck_channels)[-1],
             self.decoder_channels,
             self.out_channels,
-            self.out_activation,
+            out_activation=(
+                Layer(nn.Identity) if out_activation is None else out_activation
+            ),
         )
-
-        self.blocks = self.encoder.blocks + self.decoder.blocks
 
     def forward(self, x):
         x = self.encoder(x)
+        x = self.bottleneck(x)
         x = self.decoder(x)
         return x
-
-
-class Cat(DeeplayModule):
-    def __init__(self, dim=1):
-        super().__init__()
-
-        self.dim = dim
-
-    def forward(self, *x):
-        return torch.cat(x, dim=self.dim)
 
 
 class UNet2d(ConvolutionalEncoderDecoder2d):
@@ -523,26 +406,47 @@ class UNet2d(ConvolutionalEncoderDecoder2d):
     def __init__(
         self,
         in_channels: Optional[int],
-        channels: Sequence[int],
-        out_channels=int,
-        out_activation: Optional[Type[nn.Module]] = nn.Identity,
-        pool: Optional[Union[Type[nn.Module], nn.Module, None]] = None,
-        upsample: Optional[Union[Type[nn.Module], nn.Module, None]] = None,
-        skip: Optional[Type[nn.Module]] = Cat(),
+        encoder_channels: Optional[List[int]] = None,
+        bottleneck_channels: Optional[List[int]] = None,
+        decoder_channels: Optional[List[int]] = None,
+        out_channels: int = 1,
+        out_activation: Union[Type[nn.Module], Layer] = nn.Identity,
+        # pool: Optional[Union[Type[nn.Module], nn.Module, None]] = None,
+        # upsample: Optional[Union[Type[nn.Module], nn.Module, None]] = None,
+        skip: DeeplayModule = Cat(1),
+        channels: Optional[Sequence[int]] = None,
     ):
+        if channels is not None:
+            encoder_channels = channels
+
+        out_activation = (
+            Layer(out_activation)
+            if not isinstance(out_activation, Layer)
+            else out_activation
+        )
+        out_activation = out_activation.new()
         super().__init__(
             in_channels=in_channels,
-            encoder_channels=channels,
-            decoder_channels=channels[::-1],
+            encoder_channels=encoder_channels,
+            bottleneck_channels=bottleneck_channels,
+            decoder_channels=decoder_channels,
             out_channels=out_channels,
             out_activation=out_activation,
-            pool=pool,
-            upsample=upsample,
         )
         self.in_channels = in_channels
         self.out_channels = out_channels
-        self.skip = skip
-        self.decoder.blocks.layer.configure(nn.LazyConv2d)
+        self.skip = skip.new()
+
+        if isinstance(self.skip, Cat):
+            for idx, block in enumerate(self.decoder.blocks):
+                block.configure(
+                    in_channels=block.in_channels
+                    + self.encoder.blocks[
+                        len(self.encoder.blocks) - idx - 1
+                    ].out_channels
+                )
+        else:
+            self.decoder.blocks.layer.configure(nn.LazyConv2d)
 
     def forward(self, x):
         acts = []
@@ -550,6 +454,9 @@ class UNet2d(ConvolutionalEncoderDecoder2d):
             x = block(x)
             acts.append(x)
         x = self.encoder.postprocess(x)
+
+        x = self.bottleneck(x)
+
         x = self.decoder.preprocess(x)
         for act, block in zip(acts[::-1], self.decoder.blocks):
             x = self.skip(act, x)
@@ -561,5 +468,4 @@ class UNet2d(ConvolutionalEncoderDecoder2d):
         self,
         skip: Optional[Type[nn.Module]] = None,
         **kwargs: Any,
-    ) -> None:
-        ...
+    ) -> None: ...

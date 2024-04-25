@@ -92,7 +92,7 @@ class LodeSTAR(Application):
             [32, 32, 64, 64, 64, 64, 64, 64, 64],
             self.num_outputs + 1,
         )
-        cnn.blocks[2].pool.configure(nn.MaxPool2d, kernel_size=2)
+        cnn.blocks[2].pooled()
 
         return cnn
 

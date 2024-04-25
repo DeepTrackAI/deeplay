@@ -1,6 +1,8 @@
 from typing import List, Optional, Literal, Any, Sequence, Type, overload, Union
 
-from .. import DeeplayModule, Layer, LayerList, LayerActivationNormalizationDropout
+from deeplay.blocks.linear.linear import LinearBlock
+
+from .. import DeeplayModule, Layer, LayerList
 
 import torch.nn as nn
 
@@ -56,7 +58,7 @@ class MultiLayerPerceptron(DeeplayModule):
     in_features: Optional[int]
     hidden_features: Sequence[Optional[int]]
     out_features: int
-    blocks: LayerList[LayerActivationNormalizationDropout]
+    blocks: LayerList[LinearBlock]
 
     @property
     def input(self):
@@ -121,10 +123,16 @@ class MultiLayerPerceptron(DeeplayModule):
                 f"all hidden_channels must be positive, got {hidden_features}"
             )
 
+        # TODO: Extract this logic to a helper function
         if out_activation is None:
             out_activation = Layer(nn.Identity)
         elif isinstance(out_activation, type) and issubclass(out_activation, nn.Module):
             out_activation = Layer(out_activation)
+        elif isinstance(out_activation, nn.Module) and not isinstance(
+            out_activation, Layer
+        ):
+            prev = out_activation
+            out_activation = Layer(lambda: prev)
 
         f_out = in_features
 
@@ -134,21 +142,13 @@ class MultiLayerPerceptron(DeeplayModule):
         ):
 
             self.blocks.append(
-                LayerActivationNormalizationDropout(
-                    (
-                        Layer(nn.Linear, f_in, f_out)
-                        if f_in
-                        else Layer(nn.LazyLinear, f_out)
-                    ),
-                    Layer(nn.ReLU) if i < len(self.hidden_features) else out_activation,
-                    # We can give num_features as an argument to nn.Identity
-                    # because it is ignored. This means that users do not have
-                    # to specify the number of features for nn.Identity.
-                    Layer(nn.Identity, num_features=f_out),
-                    (
-                        Layer(nn.Dropout, p=0)
-                        if i < len(self.hidden_features)
-                        else Layer(nn.Identity)
+                LinearBlock(
+                    f_in,
+                    f_out,
+                    activation=(
+                        out_activation.new()
+                        if i == len(hidden_features)
+                        else Layer(nn.ReLU)
                     ),
                 )
             )

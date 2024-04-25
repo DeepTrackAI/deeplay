@@ -157,6 +157,7 @@ class Application(DeeplayModule, L.LightningModule):
             Dict[str, tm.Metric],
         ],
         batch_size: int = 32,
+        reset_metrics: bool = True,
     ):
         """Test the model on the given data.
 
@@ -199,13 +200,19 @@ class Application(DeeplayModule, L.LightningModule):
         else:
             dict_metrics = {k: v for k, v in metrics.items()}
 
+        if reset_metrics:
+            for value in dict_metrics.values():
+                value.reset()
+
         for x, y in tqdm.tqdm(test_dataloader):
             y_hat = self(x.to(device))
             for metric in dict_metrics.values():
                 metric.to(device)
                 metric.update(y_hat.to(device), y.to(device))
 
-        return {name: dict_metrics[name].compute() for name in dict_metrics}
+        out = {name: dict_metrics[name].compute() for name in dict_metrics}
+
+        return out
 
     def __call__(self, *args, **kwargs):
         args = [self._maybe_to_channel_first(arg) for arg in args]
@@ -393,6 +400,8 @@ class Application(DeeplayModule, L.LightningModule):
 
         if isinstance(data, np.ndarray):
             data = torch.from_numpy(data)
+            if data.dtype in [torch.float16, torch.float, torch.float32, torch.float64]:
+                data = data.to(self.dtype)
             return self._maybe_to_channel_first(data)
 
         if isinstance(data, torch.Tensor):

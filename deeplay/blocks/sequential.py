@@ -20,11 +20,12 @@ class SequentialBlock(Block):
 
         for name in order:
             if not name in kwargs:
-                warnings.warn(
-                    f"Block {self.__class__.__name__} does not have a module called `{name}`. "
-                    "You can provide it using `configure({name}=module)` or "
-                    "by passing it as a positional argument to the constructor."
-                )
+                ...
+                # warnings.warn(
+                #     f"Block {self.__class__.__name__} does not have a module called `{name}`. "
+                #     "You can provide it using `configure({name}=module)` or "
+                #     "by passing it as a positional argument to the constructor."
+                # )
             else:
                 setattr(self, name, kwargs[name])
                 self.order.append(name)

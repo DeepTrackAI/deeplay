@@ -88,6 +88,10 @@ class LogHistory(L.Callback):
         rows = len(keys) // max_width + 1
         width = min(len(keys), max_width)
 
+        if len(keys) == 4:
+            rows = 2
+            width = 2
+
         fig, axes = plt.subplots(rows, width, figsize=(15, 5 * rows))
 
         if len(keys) == 1:

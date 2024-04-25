@@ -12,6 +12,9 @@ _kaiming_default_targets = (
     nn.ConvTranspose1d,
     nn.ConvTranspose2d,
     nn.ConvTranspose3d,
+    nn.BatchNorm1d,
+    nn.BatchNorm2d,
+    nn.BatchNorm3d,
 )
 
 

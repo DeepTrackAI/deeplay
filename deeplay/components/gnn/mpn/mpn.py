@@ -1,7 +1,7 @@
 from typing import List, Optional, Literal, Any, Sequence, Type, overload, Union
 
 from deeplay import DeeplayModule, Layer, LayerList
-from deeplay.components.cnn import Cat
+from deeplay.ops import Cat
 
 from ..tpu import TransformPropagateUpdate
 

@@ -99,8 +99,11 @@ class External(DeeplayModule):
                 == signature.parameters[key].VAR_POSITIONAL
             ):
                 kwargs.pop(key)
-
-        obj = self.classtype(*args, **kwargs)
+        
+        if self.classtype.__init__ is nn.Module.__init__:
+            obj = self.classtype()
+        else:
+            obj = self.classtype(*args, **kwargs)
 
         if not isinstance(obj, DeeplayModule):
             obj._root_module = self._root_module
@@ -125,7 +128,11 @@ class External(DeeplayModule):
         if "self" in argspec.args:
             argspec.args.remove("self")
 
-        if not argspec.args and issubclass(classtype, nn.RNNBase):
+        if (
+            not argspec.args
+            and inspect.isclass(classtype)
+            and issubclass(classtype, nn.RNNBase)
+        ):
             # This is a hack to get around torch RNN classes
             parent_init = classtype.__mro__[1].__init__
             argspec = inspect.getfullargspec(parent_init)
@@ -136,7 +143,10 @@ class External(DeeplayModule):
 
     def get_signature(self):
         classtype = self.classtype
-        if issubclass(classtype, DeeplayModule):
+
+        if not inspect.isclass(classtype):
+            return inspect.signature(classtype)
+        elif issubclass(classtype, DeeplayModule):
             return classtype.get_signature()
         elif issubclass(classtype, nn.RNNBase):
             signature = inspect.signature(classtype.__mro__[1])

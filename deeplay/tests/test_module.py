@@ -7,7 +7,11 @@ import deeplay as dl
 from deeplay import (
     DeeplayModule,
     Sequential,
+    Layer,
+    LayerActivation,
 )  # Import your actual module here
+
+import torch.nn as nn
 
 
 # A simple subclass for testing
@@ -93,7 +97,7 @@ class TestDeeplayModule(unittest.TestCase):
         module = TestModule(param1=50)
         module.configure(param1=60)
         config = module.get_user_configuration()
-        self.assertEqual(config[("param1",)], 60)
+        self.assertEqual(config[("param1",)][0].value, 60)
 
     def test_invalid_configure(self):
         # Testing configure method with invalid attribute
@@ -405,13 +409,31 @@ class TestLayer(unittest.TestCase):
 
         self.assertEqual(model.foo.num_features, 20)
 
-    def test_configure_in_init(self):
+    def test_configure_in_init_attached(self):
         class TestClass(dl.DeeplayModule):
             def __init__(self, model=None):
                 super().__init__()
 
                 model = dl.MultiLayerPerceptron(None, [64], 10)
-                model.output.normalization.configure(nn.BatchNorm1d)
+
+                self.model = model
+                model.output.normalized(nn.BatchNorm1d)
+
+        testclass = TestClass()
+
+        self.assertEqual(testclass.model.output.normalization.classtype, nn.BatchNorm1d)
+
+        testclass.build()
+
+        self.assertIsInstance(testclass.model.output.normalization, nn.BatchNorm1d)
+
+    def test_configure_in_init_detached(self):
+        class TestClass(dl.DeeplayModule):
+            def __init__(self, model=None):
+                super().__init__()
+
+                model = dl.MultiLayerPerceptron(None, [64], 10)
+                model.output.normalized(nn.BatchNorm1d)
                 self.model = model
 
         testclass = TestClass()
@@ -432,6 +454,31 @@ class TestLayer(unittest.TestCase):
         out = model(inp)
         self.assertEqual(out["y"].shape, (10, 20))
         self.assertTrue((inp["x"] == out["x"]).all())
+
+    def test_inp_out_mapping_with_selectors(self):
+        module = LayerActivation(
+            layer=Layer(nn.Linear, 2, 10), activation=Layer(nn.ReLU)
+        )
+
+        module[..., "layer"].set_input_map("x")
+        module[..., "layer"].set_output_map("x")
+        module[..., "activation"].set_input_map("x")
+        module[..., "activation"].set_output_map("act")
+
+        self.assertEqual(module.layer.input_args, ("x",))
+        self.assertEqual(module.layer.output_args, {"x": 0})
+        self.assertEqual(module.activation.input_args, ("x",))
+        self.assertEqual(module.activation.output_args, {"act": 0})
+
+        module[..., "layer"].all.set_input_map("x_all")
+        module[..., "layer"].all.set_output_map("x_all")
+        module[..., "activation"].all.set_input_map("x_all")
+        module[..., "activation"].all.set_output_map("act_all", other_act=0)
+
+        self.assertEqual(module.layer.input_args, ("x_all",))
+        self.assertEqual(module.layer.output_args, {"x_all": 0})
+        self.assertEqual(module.activation.input_args, ("x_all",))
+        self.assertEqual(module.activation.output_args, {"act_all": 0, "other_act": 0})
 
 
 if __name__ == "__main__":

@@ -184,7 +184,7 @@ class TestOptimizers(unittest.TestCase):
     def test_optimizer_configure_in_regressor(self):
         net = dl.UNet2d(
             in_channels=1,
-            channels=[16, 32, 64, 128],
+            encoder_channels=[16, 32, 64, 128],
             out_channels=3,
         )
 
