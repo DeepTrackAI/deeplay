@@ -14,6 +14,17 @@ class Sum(DeeplayModule):
         return _sum.scatter_add_(0, indices, edge_attr)
 
 
+class WeightedSum(DeeplayModule):
+    """Sums the edge features of each receiver node with weights."""
+
+    def forward(self, x, edge_index, edge_attr, weights):
+        _sum = torch.zeros(
+            x.size(0), edge_attr.size(1), dtype=edge_attr.dtype, device=edge_attr.device
+        )
+        indices = edge_index[1].unsqueeze(1).expand_as(edge_attr)
+        return _sum.scatter_add_(0, indices, edge_attr * weights)
+
+
 class Mean(DeeplayModule):
     """Averages the edge features of each receiver node."""
 
