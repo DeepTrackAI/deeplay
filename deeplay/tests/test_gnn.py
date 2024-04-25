@@ -9,11 +9,13 @@ from deeplay import (
     GraphToGlobalMPM,
     GraphToNodeMPM,
     GraphToEdgeMPM,
+    GraphToEdgeMAGIK,
     MessagePassingNeuralNetwork,
     ResidualMessagePassingNeuralNetwork,
     MultiLayerPerceptron,
     dense_laplacian_normalization,
     Sum,
+    WeightedSum,
     Mean,
     Prod,
     Min,
@@ -675,6 +677,63 @@ class TestModelGraphToEdgeMPM(unittest.TestCase):
         inp["x"] = torch.randn(10, 16)
         inp["edge_index"] = torch.randint(0, 10, (2, 20))
         inp["edge_attr"] = torch.randn(20, 8)
+
+        out = model(inp)
+
+        self.assertEqual(out.shape, (20, 1))
+
+
+class TestModelGraphToEdgeMAGIK(unittest.TestCase):
+    def test_gtoempm_defaults(self):
+        model = GraphToEdgeMAGIK([64, 64], 1)
+        model = model.create()
+
+        # node and edge encoders are defined as Linear layers by default
+        self.assertEqual(len(model.encoder[0].blocks), 1)
+        self.assertEqual(len(model.encoder[1].blocks), 1)
+
+        self.assertEqual(model.encoder[0].blocks[0].layer.in_features, 0)
+        self.assertEqual(model.encoder[0].blocks[0].layer.out_features, 64)
+        self.assertEqual(model.encoder[1].blocks[0].layer.in_features, 0)
+        self.assertEqual(model.encoder[1].blocks[0].layer.out_features, 64)
+
+        self.assertIsInstance(model.backbone, MessagePassingNeuralNetwork)
+
+        backbone_blocks = model.backbone.blocks
+
+        self.assertEqual(len(backbone_blocks), 3)
+
+        self.assertEqual(backbone_blocks[0].sigma, 0.12)
+        self.assertEqual(backbone_blocks[0].beta, 4.0)
+
+        for block in backbone_blocks[1:]:
+
+            self.assertEqual(block.transform.layer.in_features, 0)
+            self.assertEqual(block.transform.layer.out_features, 64)
+            self.assertIsInstance(block.transform.activation, nn.ReLU)
+
+            self.assertIsInstance(block.propagate, WeightedSum)
+
+            self.assertEqual(block.update.layer.in_features, 0)
+            self.assertEqual(block.update.layer.out_features, 64)
+            self.assertIsInstance(block.update.activation, nn.ReLU)
+
+        self.assertEqual(model.selector.keys, ("edge_attr",))
+        self.assertIsInstance(model.pool, nn.Identity)
+
+        self.assertIsInstance(model.head, MultiLayerPerceptron)
+        self.assertEqual(model.head.blocks[0].layer.in_features, 64)
+        self.assertEqual(model.head.blocks[0].layer.out_features, 64 // 2)
+        self.assertEqual(model.head.blocks[1].layer.in_features, 64 // 2)
+        self.assertEqual(model.head.blocks[1].layer.out_features, 64 // 4)
+        self.assertEqual(model.head.blocks[2].layer.in_features, 64 // 4)
+        self.assertEqual(model.head.blocks[2].layer.out_features, 1)
+
+        inp = {}
+        inp["x"] = torch.randn(10, 16)
+        inp["edge_index"] = torch.randint(0, 10, (2, 20))
+        inp["edge_attr"] = torch.randn(20, 8)
+        inp["distance"] = torch.randn(20, 1)
 
         out = model(inp)
 
