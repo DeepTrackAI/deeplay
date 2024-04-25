@@ -1,7 +1,7 @@
 from typing import List, Optional, Literal, Any, Sequence, Type, overload, Union
 
 from deeplay import DeeplayModule, Layer, LayerList, LayerSkip
-from deeplay.components.cnn import Cat
+from deeplay.ops import Cat
 
 from deeplay.components.dict import AddDict
 
