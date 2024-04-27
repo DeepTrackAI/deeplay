@@ -81,10 +81,10 @@ class GraphConvolutionalNeuralNetwork(DeeplayModule):
             out_activation = Layer(out_activation)
 
         self.normalize = Layer(sparse_laplacian_normalization)
-        self.normalize.set_input_map("x", "A")
-        self.normalize.set_output_map("A")
+        self.normalize.set_input_map("x", "edge_index")
+        self.normalize.set_output_map("edge_index")
 
-        class propagation(DeeplayModule):
+        class Propagate(DeeplayModule):
             def forward(self, x, A):
                 if A.is_sparse:
                     return torch.spmm(A, x)
@@ -114,8 +114,8 @@ class GraphConvolutionalNeuralNetwork(DeeplayModule):
             transform.set_input_map("x")
             transform.set_output_map("x")
 
-            propagate = Layer(propagation)
-            propagate.set_input_map("x", "A")
+            propagate = Layer(Propagate)
+            propagate.set_input_map("x", "edge_index")
             propagate.set_output_map("x")
 
             update = Layer(nn.ReLU) if i < len(self.hidden_features) else out_activation
@@ -143,8 +143,7 @@ class GraphConvolutionalNeuralNetwork(DeeplayModule):
         hidden_features: Optional[List[int]] = None,
         out_features: Optional[int] = None,
         out_activation: Union[Type[nn.Module], nn.Module, None] = None,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @overload
     def configure(
@@ -155,8 +154,7 @@ class GraphConvolutionalNeuralNetwork(DeeplayModule):
         propagate: Optional[Type[nn.Module]] = None,
         update: Optional[Type[nn.Module]] = None,
         **kwargs: Any,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @overload
     def configure(
@@ -168,7 +166,6 @@ class GraphConvolutionalNeuralNetwork(DeeplayModule):
         propagate: Optional[Type[nn.Module]] = None,
         update: Optional[Type[nn.Module]] = None,
         **kwargs: Any,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     configure = DeeplayModule.configure

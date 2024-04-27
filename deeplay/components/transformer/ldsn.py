@@ -34,8 +34,8 @@ class LayerDropoutSkipNormalization(SequentialBlock):
     def forward(self, x):
         y = x
         for name in self.order:
-            if name == "skip" and isinstance(y, Tensor):
-                y = (x, y)
+            if name == "skip":
+                y = self.skip(y, x)
             y = getattr(self, name)(y)
         return y
 
