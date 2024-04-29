@@ -106,9 +106,10 @@ class Conv2dBlock(BaseBlock):
         after=None,
     ) -> Self:
         upsample = upsample.new()
-        upsample.configure(
-            in_channels=self.out_channels, out_channels=self.out_channels
-        )
+        if "in_features" in upsample.configurables:
+            upsample.configure(in_features=self.out_channels)
+        if "out_features" in upsample.configurables:
+            upsample.configure(out_features=self.out_channels)
         self.set("upsample", upsample, mode=mode, after=after)
         return self
 
