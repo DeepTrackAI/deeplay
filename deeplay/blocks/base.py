@@ -44,6 +44,7 @@ class BaseBlock(SequentialBlock):
 
     def multi(self, n=1) -> Self:
 
+        # Remove configurations before making new blocks
         tags = self.tags
         for key, vlist in self._user_config.items():
             if key[:-1] in tags:
