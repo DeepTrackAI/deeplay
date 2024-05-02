@@ -1,4 +1,4 @@
-from .. import DeeplayModule, LayerList, LayerActivation, Layer
+from deeplay import DeeplayModule, LayerList, LayerActivation, Layer
 import unittest
 import torch.nn as nn
 
