@@ -7,8 +7,8 @@ import torch
 import torch.nn as nn
 from skimage import morphology
 
-from ....components import ConvolutionalNeuralNetwork
-from ...application import Application
+from deeplay.components import ConvolutionalNeuralNetwork
+from deeplay.applications import Application
 from .transforms import RandomRotation2d, RandomTranslation2d, Transforms
 
 

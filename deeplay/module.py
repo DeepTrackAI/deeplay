@@ -929,7 +929,12 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
                     if not isinstance(item, torch.Tensor):
                         if isinstance(item, np.ndarray):
                             batch[i] = torch.from_numpy(item).to(device)
-                            if batch[i].dtype in [torch.float64, torch.float32, torch.float16, torch.float]:
+                            if batch[i].dtype in [
+                                torch.float64,
+                                torch.float32,
+                                torch.float16,
+                                torch.float,
+                            ]:
                                 if hasattr(self, "dtype"):
                                     batch[i] = batch[i].to(self.dtype)
                                 else:
@@ -1158,7 +1163,13 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
             return False
 
         mytags = self.tags
-        receivertags = receiver.tags
+        try:
+            receivertags = receiver.tags
+        except RuntimeError:
+            raise ValueError(
+                f"Receiver named ({mytags}) . {name}  is not a child of the root module of the sender."
+            )
+
         # sort longest tag first
         receivertags.sort(key=lambda x: len(x), reverse=True)
 
@@ -1202,13 +1213,10 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         #                 break
         #         else:
         #             ...
-                # if config_before[key].value != config_after[key].value:
-                #     any_change = True
-                #     break
+        # if config_before[key].value != config_after[key].value:
+        #     any_change = True
+        #     break
 
-        
-
-    
         # self._user_config._detached_configurations += (
         #     receiver._user_config._detached_configurations
         # )
@@ -1509,7 +1517,9 @@ class Selection(DeeplayModule):
 
         return Selection(self.model[0], new_selections)
 
-    def hasattr(self, attr: str, strict=True, include_layer_classtype: bool = True) -> "Selection":
+    def hasattr(
+        self, attr: str, strict=True, include_layer_classtype: bool = True
+    ) -> "Selection":
         """Filter the selection based on whether the modules have a certain attribute.
 
         Note, for layers, the attribute is checked in the layer's classtype
@@ -1539,14 +1549,14 @@ class Selection(DeeplayModule):
                 if include_layer_classtype and isinstance(module, Layer):
                     return hasattr(module.classtype, attr)
                 return False
-            
 
             if strict:
                 from deeplay.list import ReferringLayerList
+
                 if isinstance(getattr(module, attr), ReferringLayerList):
                     return False
             return True
- 
+
         return self.filter(_filter_fn)
 
     def isinstance(

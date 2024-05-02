@@ -12,7 +12,7 @@ import torch.nn as nn
 
 import warnings
 
-from ..module import DeeplayModule
+from deeplay import DeeplayModule
 from deeplay.external import Layer
 
 

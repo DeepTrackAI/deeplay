@@ -212,7 +212,7 @@ class ConvolutionalNeuralNetwork(DeeplayModule):
         self,
         normalization: Layer = Layer(nn.BatchNorm2d),
         after_last_layer: bool = True,
-        mode="append",
+        mode: Literal["append", "prepend", "insert"] = "append",
         after=None,
     ):
         for idx in range(len(self.blocks) - 1):

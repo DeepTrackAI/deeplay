@@ -1,8 +1,8 @@
 from __future__ import annotations
 from typing import Any, Callable, Optional, TypeVar, overload
 import inspect
-from ..module import DeeplayModule
-from ..meta import ExtendedConstructorMeta, not_top_level
+from deeplay.module import DeeplayModule
+from deeplay.meta import ExtendedConstructorMeta, not_top_level
 from weakref import WeakKeyDictionary
 
 import torch.nn as nn
@@ -99,7 +99,7 @@ class External(DeeplayModule):
                 == signature.parameters[key].VAR_POSITIONAL
             ):
                 kwargs.pop(key)
-        
+
         if self.classtype.__init__ is nn.Module.__init__:
             obj = self.classtype()
         else:
