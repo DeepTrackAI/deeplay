@@ -12,6 +12,7 @@ from deeplay.ops.merge import Add, MergeOp
 from deeplay.ops.shape import Permute
 from deeplay.blocks.base import DeferredConfigurableLayer
 
+
 class Conv2dBlock(BaseBlock):
     """Convolutional block with optional normalization and activation."""
 
@@ -106,10 +107,10 @@ class Conv2dBlock(BaseBlock):
         after=None,
     ) -> Self:
         upsample = upsample.new()
-        if "in_features" in upsample.configurables:
-            upsample.configure(in_features=self.out_channels)
-        if "out_features" in upsample.configurables:
-            upsample.configure(out_features=self.out_channels)
+        if "in_channels" in upsample.configurables:
+            upsample.configure(in_channels=self.out_channels)
+        if "out_channels" in upsample.configurables:
+            upsample.configure(out_channels=self.out_channels)
         self.set("upsample", upsample, mode=mode, after=after)
         return self
 
