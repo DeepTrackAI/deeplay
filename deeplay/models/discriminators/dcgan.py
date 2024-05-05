@@ -13,7 +13,7 @@ def dcgan_discriminator(encoder: ConvolutionalEncoder2d):
     encoder.blocks[-1].configure("layer", padding=0)
     encoder["blocks", :].all.remove("pool", allow_missing=True)
     encoder["blocks", 1:-1].all.normalized()
-    encoder["block", :-1].all.configure("actication", nn.LeakyReLU, negative_slope=0.2)
+    encoder["blocks", :-1].all.configure("activation", nn.LeakyReLU, negative_slope=0.2)
     encoder.blocks[-1].activation.configure(nn.Sigmoid)
 
     init = Normal(
