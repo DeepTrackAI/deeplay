@@ -27,7 +27,9 @@ def cyclegan_resnet_encoder(encoder: ConvolutionalEncoder2d):
 
 @ConvolutionalDecoder2d.register_style
 def cyclegan_resnet_decoder(decoder: ConvolutionalDecoder2d):
-    decoder.normalized(Layer(nn.InstanceNorm2d))
+    decoder["blocks", :-1].all.normalized(
+        nn.InstanceNorm2d, mode="insert", after="layer"
+    )
     decoder.blocks.configure(order=["layer", "normalization", "activation"])
     decoder.blocks[:-1].configure(
         "layer", nn.ConvTranspose2d, stride=2, output_padding=1
