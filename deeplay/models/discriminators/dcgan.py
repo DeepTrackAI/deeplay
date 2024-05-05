@@ -20,6 +20,7 @@ def dcgan_discriminator(encoder: ConvolutionalEncoder2d):
         targets=(
             nn.Conv2d,
             nn.BatchNorm2d,
+            nn.Embedding,
             nn.Linear,
         ),
         mean=0,
