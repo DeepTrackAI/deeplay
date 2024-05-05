@@ -86,11 +86,11 @@ class DCGANGenerator(ConvolutionalDecoder2d):
         class_conditioned_model: bool = False,
         embedding_dim: int = 100,
         num_classes: int = 10,
-        output_channels=None
+        output_channels=None,
     ):
         if output_channels is not None:
             out_channels = output_channels
-            
+
         self.latent_dim = latent_dim
         self.output_channels = out_channels
         self.class_conditioned_model = class_conditioned_model
@@ -104,10 +104,10 @@ class DCGANGenerator(ConvolutionalDecoder2d):
         super().__init__(
             in_channels=in_channels,
             hidden_channels=[
+                features_dim * 16,
                 features_dim * 8,
                 features_dim * 4,
                 features_dim * 2,
-                features_dim * 1,
             ],
             out_channels=out_channels,
             out_activation=Layer(nn.Tanh),
