@@ -69,7 +69,7 @@ class CycleGANResnetGenerator(ConvolutionalEncoderDecoder2d):
 
     Examples
     --------
-    >>> generator = CycleGANGenerator(in_channels=1, out_channels=3)
+    >>> generator = CycleGANResnetGenerator(in_channels=1, out_channels=3)
     >>> generator.build()
     >>> x = torch.randn(1, 1, 256, 256)
     >>> y = generator(x)
