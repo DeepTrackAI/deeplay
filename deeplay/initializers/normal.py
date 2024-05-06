@@ -28,8 +28,5 @@ class Normal(Initializer):
         self.mean = mean
         self.std = std
 
-    def initialize_bias(self, tensor):
-        tensor.data.fill_(self.mean)
-
-    def initialize_weight(self, tensor):
-        tensor.data.normal_(self.mean, self.std)
+    def initialize_tensor(self, tensor, name):
+        tensor.data.normal_(mean=self.mean, std=self.std)
