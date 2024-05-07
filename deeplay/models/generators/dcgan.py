@@ -13,17 +13,17 @@ def dcgan_generator(generator: ConvolutionalDecoder2d):
         "layer", nn.ConvTranspose2d, kernel_size=4, stride=2, padding=1
     ).remove("upsample", allow_missing=True)
     generator.blocks[0].layer.configure(stride=1, padding=0)
-    init = Normal(
+
+    initializer = Normal(
         targets=(
             nn.ConvTranspose2d,
             nn.BatchNorm2d,
             nn.Embedding,
-            nn.Linear,
         ),
         mean=0,
         std=0.02,
     )
-    generator.initialize(init)
+    generator.initialize(initializer, tensors="weight")
 
 
 class DCGANGenerator(ConvolutionalDecoder2d):
