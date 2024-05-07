@@ -16,7 +16,7 @@ def dcgan_discriminator(encoder: ConvolutionalEncoder2d):
     encoder["blocks", :-1].all.configure("activation", nn.LeakyReLU, negative_slope=0.2)
     encoder.blocks[-1].activation.configure(nn.Sigmoid)
 
-    init = Normal(
+    initializer = Normal(
         targets=(
             nn.Conv2d,
             nn.BatchNorm2d,
@@ -26,7 +26,7 @@ def dcgan_discriminator(encoder: ConvolutionalEncoder2d):
         mean=0,
         std=0.02,
     )
-    encoder.initialize(init)
+    encoder.initialize(initializer, tensors="weight")
 
 
 class DCGANDiscriminator(ConvolutionalEncoder2d):
