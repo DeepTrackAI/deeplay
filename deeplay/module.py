@@ -934,7 +934,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
                 for i, item in enumerate(batch):
                     if not isinstance(item, torch.Tensor):
                         if isinstance(item, np.ndarray):
-                            batch[i] = torch.from_numpy(item).to(device)
+                            batch[i] = torch.from_numpy(item)
                             if batch[i].dtype in [
                                 torch.float64,
                                 torch.float32,
@@ -946,9 +946,11 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
                                 else:
                                     batch[i] = batch[i].float()
                         else:
-                            batch[i] = torch.stack(item).to(device)
+                            batch[i] = torch.stack(item)
                     else:
-                        batch[i] = item.to(device)
+                        batch[i] = item
+
+                    batch[i].to(device)
 
                 # ensure that all inputs are tuples
                 res = self.forward(*batch)
