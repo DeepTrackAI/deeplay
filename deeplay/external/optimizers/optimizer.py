@@ -1,7 +1,7 @@
 from typing import Callable, Dict, List, Tuple, Union, Iterable, Type
 
-from ..external import External
-from ...decorators import before_build
+from deeplay.external import External
+from deeplay.decorators import before_build
 
 import torch
 

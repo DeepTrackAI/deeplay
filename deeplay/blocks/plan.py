@@ -10,7 +10,7 @@ from typing import (
 import torch.nn as nn
 
 from .sequential import SequentialBlock
-from ..external import Layer
+from deeplay.external import Layer
 
 
 class PoolLayerActivationNormalization(SequentialBlock):
@@ -39,8 +39,7 @@ class PoolLayerActivationNormalization(SequentialBlock):
         )
 
     @overload
-    def configure(self, **kwargs: nn.Module) -> None:
-        ...
+    def configure(self, **kwargs: nn.Module) -> None: ...
 
     @overload
     def configure(
@@ -49,28 +48,22 @@ class PoolLayerActivationNormalization(SequentialBlock):
         layer: Optional[nn.Module],
         activation: Optional[nn.Module],
         **kwargs: nn.Module,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @overload
-    def configure(self, name: Literal["layer"], *args, **kwargs) -> None:
-        ...
+    def configure(self, name: Literal["layer"], *args, **kwargs) -> None: ...
 
     @overload
-    def configure(self, name: Literal["activation"], *args, **kwargs) -> None:
-        ...
+    def configure(self, name: Literal["activation"], *args, **kwargs) -> None: ...
 
     @overload
-    def configure(self, name: Literal["normalization"], *args, **kwargs) -> None:
-        ...
+    def configure(self, name: Literal["normalization"], *args, **kwargs) -> None: ...
 
     @overload
-    def configure(self, name: Literal["pool"], *args, **kwargs) -> None:
-        ...
+    def configure(self, name: Literal["pool"], *args, **kwargs) -> None: ...
 
     @overload
-    def configure(self, name: str, *args, **kwargs: Any) -> None:
-        ...
+    def configure(self, name: str, *args, **kwargs: Any) -> None: ...
 
     def configure(self, *args, **kwargs):  # type: ignore
         super().configure(*args, **kwargs)

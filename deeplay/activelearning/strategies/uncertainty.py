@@ -1,3 +1,4 @@
+from typing import Optional
 from deeplay.activelearning.strategies.strategy import Strategy
 from deeplay.activelearning.data import ActiveLearningDataset
 from deeplay.activelearning.criterion import ActiveLearningCriterion
@@ -15,7 +16,7 @@ class UncertaintyStrategy(Strategy):
         classifier: DeeplayModule,
         criterion: ActiveLearningCriterion,
         train_pool: ActiveLearningDataset,
-        val_pool: ActiveLearningDataset = None,
+        val_pool: Optional[ActiveLearningDataset] = None,
         test: torch.utils.data.Dataset = None,
         batch_size: int = 32,
         val_batch_size: int = None,

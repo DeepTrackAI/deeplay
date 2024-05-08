@@ -2,7 +2,7 @@ from typing import List, Optional, Literal, Any, Sequence, Type, overload, Union
 
 from deeplay.blocks.sequence.sequence1d import Sequence1dBlock
 
-from .. import DeeplayModule, Layer, LayerList, RecurrentBlock
+from deeplay import DeeplayModule, Layer, LayerList, RecurrentBlock
 
 import torch.nn as nn
 

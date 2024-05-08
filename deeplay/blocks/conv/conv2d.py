@@ -12,6 +12,7 @@ from deeplay.ops.merge import Add, MergeOp
 from deeplay.ops.shape import Permute
 from deeplay.blocks.base import DeferredConfigurableLayer
 
+
 class Conv2dBlock(BaseBlock):
     """Convolutional block with optional normalization and activation."""
 
@@ -106,9 +107,10 @@ class Conv2dBlock(BaseBlock):
         after=None,
     ) -> Self:
         upsample = upsample.new()
-        upsample.configure(
-            in_channels=self.out_channels, out_channels=self.out_channels
-        )
+        if "in_channels" in upsample.configurables:
+            upsample.configure(in_channels=self.out_channels)
+        if "out_channels" in upsample.configurables:
+            upsample.configure(out_channels=self.out_channels)
         self.set("upsample", upsample, mode=mode, after=after)
         return self
 
@@ -194,10 +196,27 @@ class Conv2dBlock(BaseBlock):
 def residual(
     block: Conv2dBlock,
     order: str = "lanlan|",
-    activation=nn.ReLU,
-    normalization=nn.BatchNorm2d,
-    dropout=0.1,
+    activation: Union[Type[nn.Module], Layer] = nn.ReLU,
+    normalization: Union[Type[nn.Module], Layer] = nn.BatchNorm2d,
+    dropout: float = 0.1,
 ):
+    """Make a residual block with the given order of layers.
+
+    Parameters
+    ----------
+    order : str
+        The order of layers in the residual block. The shorthand is a string of 'l', 'a', 'n', 'd' and '|'.
+        'l' stands for layer, 'a' stands for activation, 'n' stands for normalization, 'd' stands for dropout,
+        and '|' stands for the skip connection. The order of the characters in the string determines the order
+        of the layers in the residual block. The characters after the '|' determine the order of the layers after
+        the skip connection.
+    activation : Union[Type[nn.Module], Layer]
+        The activation function to use in the residual block.
+    normalization : Union[Type[nn.Module], Layer]
+        The normalization layer to use in the residual block.
+    dropout : float
+        The dropout rate to use in the residual block.
+    """
     order = order.lower()
     if "|" not in order:
         order += "|"
@@ -324,7 +343,7 @@ def spatial_cross_attention(
 
 
 @Conv2dBlock.register_style
-def spatial_tranformer(
+def spatial_transformer(
     block: Conv2dBlock,
     to_channel_last: bool = False,
     normalization: Union[Layer, Type[nn.Module]] = nn.LayerNorm,

@@ -1,7 +1,7 @@
 from typing import Optional, Sequence
 
-from ..application import Application
-from ...external import Optimizer, Adam
+from deeplay.applications import Application
+from deeplay.external import Optimizer, Adam
 
 
 import torch

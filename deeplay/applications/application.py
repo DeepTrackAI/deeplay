@@ -18,6 +18,7 @@ import lightning as L
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+import torch.utils.data
 import torch.nn as nn
 import torchmetrics as tm
 import tqdm
@@ -155,7 +156,8 @@ class Application(DeeplayModule, L.LightningModule):
             Tuple[str, tm.Metric],
             Sequence[Union[tm.Metric, Tuple[str, tm.Metric]]],
             Dict[str, tm.Metric],
-        ],
+            None,
+        ] = None,
         batch_size: int = 32,
         reset_metrics: bool = True,
     ):
@@ -185,6 +187,9 @@ class Application(DeeplayModule, L.LightningModule):
         )
 
         dict_metrics: Dict[str, tm.Metric]
+        if metrics is None:
+            return self.trainer.test(self, test_dataloader)[0]
+
         if isinstance(metrics, tm.Metric):
             dict_metrics = {metrics._get_name(): metrics}
         elif isinstance(metrics, tuple):

@@ -56,6 +56,9 @@ class ActiveLearningDataset(torch.utils.data.Dataset):
     def get_unannotated_data(self):
         return torch.utils.data.Subset(self.dataset, np.where(~self.annotated)[0])
 
+    def get_num_annotated(self):
+        return np.sum(self.annotated)
+
 
 class JointDataset(torch.utils.data.Dataset):
 
