@@ -37,23 +37,23 @@ This will automatically install the required dependencies, including PyTorch and
 
 Here you find a series of notebooks that give you an overview of the core features of Deeplay and how to use them:
 
-- **[Understanding the Core Objects in Deeplay](https://github.com/DeepTrackAI/deeplay/blob/develop/tutorials/getting-started/GS101_core_objects.ipynb)**
+- GS101 **[Understanding the Core Objects in Deeplay](https://github.com/DeepTrackAI/deeplay/blob/develop/tutorials/getting-started/GS101_core_objects.ipynb)**
 
   Layers, Blocks, Components, Models, Applications
 
-- **[Training Your First Model](https://github.com/DeepTrackAI/deeplay/blob/develop/tutorials/getting-started/GS111_first_model.ipynb)**
+- GS111 **[Training Your First Model](https://github.com/DeepTrackAI/deeplay/blob/develop/tutorials/getting-started/GS111_first_model.ipynb)**
 
   Creating, training, saving and using a deep learning model with Deeplay
 
-- **[Working with Deeplay Modules](https://github.com/DeepTrackAI/deeplay/blob/develop/tutorials/getting-started/GS121_modules.ipynb)**
+- GS121 **[Working with Deeplay Modules](https://github.com/DeepTrackAI/deeplay/blob/develop/tutorials/getting-started/GS121_modules.ipynb)**
 
   Differences between Deeplay and PyTorch modules. How to create, build, and configure Deeplay modules.
 
-- **[Using the Main Deeplay Methods](https://github.com/DeepTrackAI/deeplay/blob/develop/tutorials/getting-started/GS131_methods.ipynb)**
+- GS131 **[Using the Main Deeplay Methods](https://github.com/DeepTrackAI/deeplay/blob/develop/tutorials/getting-started/GS131_methods.ipynb)**
 
   `Application.fit()`, `Application.test()`, `DeeplayModule.predict()`, `Trainer.fit()`
 
-- **[Using the Main Deeplay Applications](https://github.com/DeepTrackAI/deeplay/blob/develop/tutorials/getting-started/GS141_applications.ipynb)**
+- GS141 **[Using the Main Deeplay Applications](https://github.com/DeepTrackAI/deeplay/blob/develop/tutorials/getting-started/GS141_applications.ipynb)**
 
-- **[Using the Main Deeplay Models](https://github.com/DeepTrackAI/deeplay/blob/develop/tutorials/getting-started/GS151_models.ipynb)**
+- GS151 **[Using the Main Deeplay Models](https://github.com/DeepTrackAI/deeplay/blob/develop/tutorials/getting-started/GS151_models.ipynb)**
 
