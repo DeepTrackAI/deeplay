@@ -20,3 +20,6 @@ dist/
 
 # Mac
 *.DS_Store
+
+# Tutorial files
+tutorials/getting-started/model.pth
