@@ -53,13 +53,22 @@ Here you find a series of notebooks that give you an overview of the core featur
 
   `Application.fit()`, `Application.test()`, `DeeplayModule.predict()`, `Trainer.fit()`.
 
-- GS141 **[Using the Main Deeplay Applications](https://github.com/DeepTrackAI/deeplay/blob/develop/tutorials/getting-started/GS141_applications.ipynb)**
+- GS141 **[Using Deeplay Applications](https://github.com/DeepTrackAI/deeplay/blob/develop/tutorials/getting-started/GS141_applications.ipynb)**
 
   Main Deeplay applications. Controlling loss functions, optimizers, and metrics. Training history. Callback.
 
-- GS151 **[Using the Main Deeplay Models](https://github.com/DeepTrackAI/deeplay/blob/develop/tutorials/getting-started/GS151_models.ipynb)**
+- GS151 **[Using Deeplay Models](https://github.com/DeepTrackAI/deeplay/blob/develop/tutorials/getting-started/GS151_models.ipynb)**
 
-  Main Deeplay models. Maing a model and initializing its weights.
+  Main Deeplay models. Making a model. Weight initialization.
+
+- GS161 **[Using Deeplay Components](https://github.com/DeepTrackAI/deeplay/blob/develop/tutorials/getting-started/GS161_components.ipynb)**
+
+  Main Deeplay components.
+
+- GS171 **[Using Deeplay Blocks](https://github.com/DeepTrackAI/deeplay/blob/develop/tutorials/getting-started/GS171_blocks.ipynb)**
+
+  Main Deeplay blocks.
+
 
 ## Getting Started
 
