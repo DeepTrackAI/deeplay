@@ -51,6 +51,8 @@ Here you find a series of notebooks that give you an overview of the core featur
 
 - **[Using the Main Deeplay Methods](https://github.com/DeepTrackAI/deeplay/blob/develop/tutorials/getting-started/GS131_methods.ipynb)**
 
+  `Application.fit()`, `Application.`, `DeeplayModule.predict()`, `Trainer.fit()`
+
 - **[Using the Main Deeplay Applications](https://github.com/DeepTrackAI/deeplay/blob/develop/tutorials/getting-started/GS141_applications.ipynb)**
 
 - **[Using the Main Deeplay Models](https://github.com/DeepTrackAI/deeplay/blob/develop/tutorials/getting-started/GS151_models.ipynb)**
