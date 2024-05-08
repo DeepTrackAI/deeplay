@@ -12,5 +12,5 @@ class Transform(CombineLayerActivation):
         - edge features (edgefeat)
         A is the adjacency matrix of the graph.
         """
-        x, A, edgefeat = x
-        return x[A[0]], x[A[1]], edgefeat
+        x, edge_index, edge_attr = x
+        return x[edge_index[0]], x[edge_index[1]], edge_attr

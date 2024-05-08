@@ -1,7 +1,9 @@
 from typing import List, Optional, Literal, Any, Sequence, Type, overload, Union
 
-from deeplay import DeeplayModule, Layer, LayerList
+from deeplay import DeeplayModule, Layer, LayerList, LayerSkip
 from deeplay.ops import Cat
+
+from deeplay.components.dict import AddDict
 
 from ..tpu import TransformPropagateUpdate
 
@@ -12,7 +14,7 @@ from .update import Update
 import torch.nn as nn
 
 
-class MessagePassingNeuralNetwork(DeeplayModule):
+class ResidualMessagePassingNeuralNetwork(DeeplayModule):
     hidden_features: Sequence[Optional[int]]
     out_features: int
     blocks: LayerList[TransformPropagateUpdate]
@@ -20,32 +22,32 @@ class MessagePassingNeuralNetwork(DeeplayModule):
     @property
     def input(self):
         """Return the input layer of the network. Equivalent to `.blocks[0]`."""
-        return self.blocks[0]
+        return self.blocks[0].layer
 
     @property
     def hidden(self):
         """Return the hidden layers of the network. Equivalent to `.blocks[:-1]`"""
-        return self.blocks[:-1]
+        return self.blocks[:-1].layer
 
     @property
     def output(self):
         """Return the last layer of the network. Equivalent to `.blocks[-1]`."""
-        return self.blocks[-1]
+        return self.blocks[-1].layer
 
     @property
     def transform(self) -> LayerList[Layer]:
         """Return the transform layers of the network. Equivalent to `.blocks.transform`."""
-        return self.blocks.transform
+        return self.blocks.layer.transform
 
     @property
     def propagate(self) -> LayerList[Layer]:
         """Return the propagate layers of the network. Equivalent to `.blocks.propagate`."""
-        return self.blocks.propagate
+        return self.blocks.layer.propagate
 
     @property
     def update(self) -> LayerList[Layer]:
         """Return the update layers of the network. Equivalent to `.blocks.update`."""
-        return self.blocks.update
+        return self.blocks.layer.update
 
     def __init__(
         self,
@@ -107,7 +109,8 @@ class MessagePassingNeuralNetwork(DeeplayModule):
                 propagate=propagate,
                 update=update,
             )
-            self.blocks.append(block)
+            residual_block = LayerSkip(layer=block, skip=AddDict("x", "edge_attr"))
+            self.blocks.append(residual_block)
 
     def forward(self, x):
         for block in self.blocks:

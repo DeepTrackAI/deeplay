@@ -5,6 +5,8 @@ from typing_extensions import Self
 
 import torch
 import torch.nn as nn
+from torch_geometric.data import Data
+
 import copy
 import inspect
 import numpy as np
@@ -292,12 +294,14 @@ def _create_forward_with_input_dict(
     output_args: Optional[Dict[str, int]],
 ):
     def forward_with_input_dict(self, x, overwrite_output: bool = True):
-        assert isinstance(
-            x, dict
-        ), "Input must be a dictionary, but found {}. Please check if the module require an input/output mapping.".format(
-            type(x)
-        )
-        x = x.copy()
+        if isinstance(x, dict):
+            x = x.copy()
+        elif isinstance(x, Data):
+            x = x.clone()
+        else:
+            raise ValueError(
+                f"Input must be a dictionary or torch-geometric Data object, but found {type(x)}. Please check if the module require an input/output mapping."
+            )
 
         outputs = old_forward(
             self,
@@ -319,9 +323,11 @@ def _create_forward_with_input_dict(
 
         if overwrite_output:
             x.update(
-                map(
-                    lambda key, value: (key, outputs[value]),
-                    *zip(*output_args.items()),
+                dict(
+                    map(
+                        lambda key, value: (key, outputs[value]),
+                        *zip(*output_args.items()),
+                    )
                 )
             )
             return x
