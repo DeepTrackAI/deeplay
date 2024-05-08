@@ -77,7 +77,11 @@ Here you find a series of notebooks that give you an overview of the core featur
 
   Styles.
 
-## Getting Started
+## Advanced Topics
+
+- AT201 **[Using Mappings as Inputs](https://github.com/DeepTrackAI/deeplay/blob/develop/tutorials/advanced-topics/AT201_mappings.ipynb)**
+
+## Developer Tutorials
 
 Here you find a series of notebooks tailored for Deeplay's developers:
 
