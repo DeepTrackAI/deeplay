@@ -45,7 +45,9 @@ Here you find a series of notebooks that give you an overview of the core featur
 
   Creating, training, saving and using a deep learning model with Deeplay
 
-- **[Configuring Deeplay Objects](https://github.com/DeepTrackAI/deeplay/blob/develop/tutorials/getting-started/GS121_configure.ipynb)**
+- **[Working with Deeplay Modules](https://github.com/DeepTrackAI/deeplay/blob/develop/tutorials/getting-started/GS121_modules.ipynb)**
+
+  Differences between Deeplay and PyTorch modules. How to create, build, and configure Deeplay modules.
 
 - **[Using the Main Deeplay Methods](https://github.com/DeepTrackAI/deeplay/blob/develop/tutorials/getting-started/GS131_methods.ipynb)**
 
