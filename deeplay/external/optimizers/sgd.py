@@ -1,6 +1,6 @@
 from typing import Callable, Dict, List, Tuple, Union, Iterable
 
-from ..external import External
+from deeplay.external import External
 from .optimizer import Optimizer
 
 import torch
@@ -23,6 +23,4 @@ class SGD(Optimizer):
         maximize=False,
         foreach=None,
         differentiable=False
-    ):
-        ...
-
+    ): ...

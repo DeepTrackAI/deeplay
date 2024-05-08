@@ -1,9 +1,8 @@
 from typing import Optional, Sequence, Callable, List
 
-from ...components import ConvolutionalEncoder2d, ConvolutionalDecoder2d
-from ..application import Application
-from ...external import External, Optimizer, Adam
-from ... import Layer
+from deeplay.components import ConvolutionalEncoder2d, ConvolutionalDecoder2d
+from deeplay.applications import Application
+from deeplay.external import External, Optimizer, Adam, Layer
 
 import torch
 import torch.nn as nn

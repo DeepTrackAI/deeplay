@@ -9,7 +9,7 @@ from typing import (
 
 import torch.nn as nn
 
-from ..module import DeeplayModule
+from deeplay import DeeplayModule
 from .sequential import SequentialBlock
 
 
@@ -34,20 +34,16 @@ class LayerActivation(SequentialBlock):
         layer: Optional[DeeplayModule] = None,
         activation: Optional[DeeplayModule] = None,
         **kwargs: DeeplayModule,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @overload
-    def configure(self, name: Literal["layer"], *args, **kwargs) -> None:
-        ...
+    def configure(self, name: Literal["layer"], *args, **kwargs) -> None: ...
 
     @overload
-    def configure(self, name: Literal["activation"], *args, **kwargs) -> None:
-        ...
+    def configure(self, name: Literal["activation"], *args, **kwargs) -> None: ...
 
     @overload
-    def configure(self, name: str, *args, **kwargs: Any) -> None:
-        ...
+    def configure(self, name: str, *args, **kwargs: Any) -> None: ...
 
     def configure(self, *args, **kwargs):  # type: ignore
         super().configure(*args, **kwargs)

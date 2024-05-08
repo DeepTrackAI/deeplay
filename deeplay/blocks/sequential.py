@@ -5,7 +5,7 @@ from torch import nn
 from .block import Block
 
 from typing import List, Optional, Union, overload, Any, Literal
-from ..module import DeeplayModule
+from deeplay import DeeplayModule
 from deeplay.external import Layer, External
 
 

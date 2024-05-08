@@ -15,8 +15,8 @@ import torch
 import torch.nn as nn
 
 from .block import Block
-from ..external import Layer
-from ..module import DeeplayModule
+from deeplay.external import Layer
+from deeplay import DeeplayModule
 
 
 class BaseResidual(Block):

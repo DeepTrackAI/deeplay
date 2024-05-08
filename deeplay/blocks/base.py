@@ -43,6 +43,13 @@ class BaseBlock(SequentialBlock):
         super(BaseBlock, self).__init__(*args, **kwargs)
 
     def multi(self, n=1) -> Self:
+
+        # Remove configurations before making new blocks
+        tags = self.tags
+        for key, vlist in self._user_config.items():
+            if key[:-1] in tags:
+                vlist.clear()
+
         def make_new_self():
             args, kwargs = self.get_init_args()
             args = list(args) + list(self._args)

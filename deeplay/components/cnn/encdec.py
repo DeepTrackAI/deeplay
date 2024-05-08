@@ -3,7 +3,7 @@ from os import remove
 from typing import List, Optional, Literal, Any, Sequence, Type, overload, Union
 import warnings
 
-from ... import (
+from deeplay import (
     DeeplayModule,
     Layer,
     LayerList,
@@ -135,6 +135,8 @@ class ConvolutionalEncoder2d(ConvolutionalNeuralNetwork):
         if apply_to_last_layer:
             self.blocks[-1].strided(stride, remove_pool=True)
 
+        return self
+
     @overload
     def configure(
         self,
@@ -263,6 +265,18 @@ class ConvolutionalDecoder2d(ConvolutionalNeuralNetwork):
             x = block(x)
         return x
 
+    def upsampled(
+        self,
+        upsample: Layer = Layer(nn.ConvTranspose2d, kernel_size=2, stride=2, padding=0),
+        apply_to_last_layer: bool = False,
+        mode="append",
+        after=None,
+    ):
+        for block in self.blocks[:-1]:
+            block.upsampled(upsample, mode=mode, after=after)
+        if apply_to_last_layer:
+            self.blocks[-1].upsampled(upsample, mode=mode, after=after)
+
     @overload
     def configure(
         self,
@@ -325,8 +339,8 @@ class ConvolutionalEncoderDecoder2d(DeeplayModule):
         if isinstance(self.bottleneck, Layer):
             return self.encoder.blocks + self.decoder.blocks
         return self.encoder.blocks + self.bottleneck.blocks + self.decoder.blocks
-    
-    @property 
+
+    @property
     def normalization(self) -> LayerList[Layer]:
         """Return the normalization layers of the encoder and decoder. Equivalent to `.encoder.normalization + .bottleneck.normalization + .decoder.normalization`."""
         return self.blocks.normalization

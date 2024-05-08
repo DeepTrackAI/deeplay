@@ -969,8 +969,9 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
             return output_containers[0]
         return tuple(output_containers)
 
-    def available_styles(self):
-        return list(self._style_map.keys())
+    @classmethod
+    def available_styles(cls):
+        return list(cls._style_map.keys())
 
     def style(self, style: str, *args, **kwargs) -> Self:
         if style not in self._style_map:
@@ -1173,7 +1174,13 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
             return False
 
         mytags = self.tags
-        receivertags = receiver.tags
+        try:
+            receivertags = receiver.tags
+        except RuntimeError:
+            raise ValueError(
+                f"Receiver named ({mytags}) . {name}  is not a child of the root module of the sender."
+            )
+
         # sort longest tag first
         receivertags.sort(key=lambda x: len(x), reverse=True)
 
