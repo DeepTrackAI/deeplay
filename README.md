@@ -55,9 +55,11 @@ Here you find a series of notebooks that give you an overview of the core featur
 
 - GS141 **[Using the Main Deeplay Applications](https://github.com/DeepTrackAI/deeplay/blob/develop/tutorials/getting-started/GS141_applications.ipynb)**
 
-  List of the main Deeplay Applications. Controlling loss functions, optimizers, and metrics. Training history. Callback.
+  Main Deeplay applications. Controlling loss functions, optimizers, and metrics. Training history. Callback.
 
 - GS151 **[Using the Main Deeplay Models](https://github.com/DeepTrackAI/deeplay/blob/develop/tutorials/getting-started/GS151_models.ipynb)**
+
+  Main Deeplay models. Maing a model and initializing its weights.
 
 ## Getting Started
 
