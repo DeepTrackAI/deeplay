@@ -57,3 +57,7 @@ Here you find a series of notebooks that give you an overview of the core featur
 
 - GS151 **[Using the Main Deeplay Models](https://github.com/DeepTrackAI/deeplay/blob/develop/tutorials/getting-started/GS151_models.ipynb)**
 
+## Getting Started
+
+Here you find a series of notebooks tailored for Deeplay's developers:
+
