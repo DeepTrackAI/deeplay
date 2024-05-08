@@ -67,8 +67,11 @@ Here you find a series of notebooks that give you an overview of the core featur
 
 - GS171 **[Using Deeplay Blocks](https://github.com/DeepTrackAI/deeplay/blob/develop/tutorials/getting-started/GS171_blocks.ipynb)**
 
-  Main Deeplay blocks.
+  Main Deeplay blocks. Adding, ordering, and removing layers. Operations.
 
+- GC181 **[Configuring Deeplay Objects](https://github.com/DeepTrackAI/deeplay/blob/develop/tutorials/getting-started/GS181_configure.ipynb)**
+
+  `DeeplayModule.configure()` and selectors.
 
 ## Getting Started
 
