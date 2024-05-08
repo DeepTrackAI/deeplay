@@ -73,6 +73,10 @@ Here you find a series of notebooks that give you an overview of the core featur
 
   `DeeplayModule.configure()` and selectors.
 
+- GC191 **[Using Styles](https://github.com/DeepTrackAI/deeplay/blob/develop/tutorials/getting-started/GS191_styles.ipynb)**
+
+  Styles.
+
 ## Getting Started
 
 Here you find a series of notebooks tailored for Deeplay's developers:
