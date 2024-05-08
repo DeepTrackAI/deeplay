@@ -39,11 +39,11 @@ Here you find a series of notebooks that give you an overview of the core featur
 
 - GS101 **[Understanding the Core Objects in Deeplay](https://github.com/DeepTrackAI/deeplay/blob/develop/tutorials/getting-started/GS101_core_objects.ipynb)**
 
-  Layers, Blocks, Components, Models, Applications
+  Layers, Blocks, Components, Models, Applications.
 
 - GS111 **[Training Your First Model](https://github.com/DeepTrackAI/deeplay/blob/develop/tutorials/getting-started/GS111_first_model.ipynb)**
 
-  Creating, training, saving and using a deep learning model with Deeplay
+  Creating, training, saving and using a deep learning model with Deeplay.
 
 - GS121 **[Working with Deeplay Modules](https://github.com/DeepTrackAI/deeplay/blob/develop/tutorials/getting-started/GS121_modules.ipynb)**
 
@@ -51,7 +51,7 @@ Here you find a series of notebooks that give you an overview of the core featur
 
 - GS131 **[Using the Main Deeplay Methods](https://github.com/DeepTrackAI/deeplay/blob/develop/tutorials/getting-started/GS131_methods.ipynb)**
 
-  `Application.fit()`, `Application.test()`, `DeeplayModule.predict()`, `Trainer.fit()`
+  `Application.fit()`, `Application.test()`, `DeeplayModule.predict()`, `Trainer.fit()`.
 
 - GS141 **[Using the Main Deeplay Applications](https://github.com/DeepTrackAI/deeplay/blob/develop/tutorials/getting-started/GS141_applications.ipynb)**
 
