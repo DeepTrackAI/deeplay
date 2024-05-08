@@ -3,6 +3,7 @@ from deeplay.applications import Application
 from deeplay.activelearning.data import ActiveLearningDataset
 
 import torch
+import copy
 
 
 class Strategy(Application):
@@ -11,7 +12,7 @@ class Strategy(Application):
         self,
         train_pool: ActiveLearningDataset,
         val_pool: Optional[ActiveLearningDataset] = None,
-        test: Optional[torch.utils.data.Dataset] = None,
+        test_data: Optional[torch.utils.data.Dataset] = None,
         batch_size: int = 32,
         val_batch_size: Optional[int] = None,
         test_batch_size: Optional[int] = None,
@@ -20,7 +21,7 @@ class Strategy(Application):
         super().__init__(**kwargs)
         self.train_pool = train_pool
         self.val_pool = val_pool
-        self.test = test
+        self.test_data = test_data
         self.initial_model_state: Optional[Dict[str, Any]] = None
         self.batch_size = batch_size
         self.val_batch_size = (
@@ -34,7 +35,7 @@ class Strategy(Application):
         # Save the initial model state before training
         # such that we can reset the model to its initial state
         # if needed.
-        self.initial_model_state = self.state_dict()
+        self.initial_model_state = copy.deepcopy(self.state_dict())
         self.train()
 
         return super().on_train_start()
@@ -91,19 +92,19 @@ class Strategy(Application):
             data, batch_size=self.batch_size, shuffle=True
         )
 
-    def val_dataloader(self):
-        if self.val_pool is None:
-            return []
-        data = self.train_pool.get_unannotated_data()
-        return torch.utils.data.DataLoader(
-            data, batch_size=self.val_batch_size, shuffle=False
-        )
+    # def val_dataloader(self):
+    #     if self.val_pool is None:
+    #         return []
+    #     data = self.train_pool.get_unannotated_data()
+    #     return torch.utils.data.DataLoader(
+    #         data, batch_size=self.val_batch_size, shuffle=False
+    #     )
 
     def test_dataloader(self):
-        if self.test is None:
+        if self.test_data is None:
             return []
         return torch.utils.data.DataLoader(
-            self.test, batch_size=self.test_batch_size, shuffle=False
+            self.test_data, batch_size=self.test_batch_size, shuffle=False
         )
 
     def test_step(self, batch, batch_idx):

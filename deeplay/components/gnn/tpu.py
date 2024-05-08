@@ -10,8 +10,8 @@ from typing import (
 import torch.nn as nn
 
 
-from ...module import DeeplayModule
-from ...blocks.sequential import SequentialBlock
+from deeplay import DeeplayModule
+from deeplay.blocks.sequential import SequentialBlock
 
 
 class TransformPropagateUpdate(SequentialBlock):
@@ -44,24 +44,19 @@ class TransformPropagateUpdate(SequentialBlock):
         propagate: Optional[DeeplayModule] = None,
         update: Optional[DeeplayModule] = None,
         **kwargs: DeeplayModule,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @overload
-    def configure(self, name: Literal["transform"], *args, **kwargs) -> None:
-        ...
+    def configure(self, name: Literal["transform"], *args, **kwargs) -> None: ...
 
     @overload
-    def configure(self, name: Literal["propagate"], *args, **kwargs) -> None:
-        ...
+    def configure(self, name: Literal["propagate"], *args, **kwargs) -> None: ...
 
     @overload
-    def configure(self, name: Literal["update"], *args, **kwargs) -> None:
-        ...
+    def configure(self, name: Literal["update"], *args, **kwargs) -> None: ...
 
     @overload
-    def configure(self, name: str, *args, **kwargs: Any) -> None:
-        ...
+    def configure(self, name: str, *args, **kwargs: Any) -> None: ...
 
     def configure(self, *args, **kwargs):  # type: ignore
         super().configure(*args, **kwargs)
