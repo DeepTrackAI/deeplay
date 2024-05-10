@@ -135,9 +135,10 @@ class DCGANDiscriminator(ConvolutionalEncoder2d):
             )
 
         if self.class_conditioned_model:
-            assert (
-                y is not None
-            ), "Class label y must be provided for class-conditional discriminator"
+            if y is None:
+                raise ValueError(
+                    "Class label y must be provided for class-conditional discriminator"
+                )
 
             y = self.label_embedding(y)
             y = y.view(-1, 1, 64, 64)
