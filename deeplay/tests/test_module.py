@@ -494,6 +494,7 @@ class TestLayer(unittest.TestCase):
                 x = np.random.rand(10, 1).astype(input_type)
                 module.to(model_type)
                 y = module.predict(x)
+                # self.assertEqual(y.dtype, model_type)
 
 
 if __name__ == "__main__":
