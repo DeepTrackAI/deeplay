@@ -340,7 +340,7 @@ def _create_forward_with_input_dict(
 class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     """
     A base class for creating configurable, extensible modules with dynamic initialization
-    and argument management. This class is designed to be subclassed for specific functional
+    and argument management. This class is designed to be subclassed for specific functifonal
     implementations. It extends `nn.Module` and utilizes a custom meta-class, `ExtendedConstructorMeta`,
     for enhanced construction logic.
 
@@ -569,6 +569,10 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     @property
     def device(self) -> torch.device:
         return next(self.parameters()).device
+
+    @property
+    def dtype(self) -> torch.dtype:
+        return next(self.parameters()).dtype
 
     def __pre_init__(self, *args, _args=(), **kwargs):
         super().__init__()
@@ -935,22 +939,18 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
                     if not isinstance(item, torch.Tensor):
                         if isinstance(item, np.ndarray):
                             batch[i] = torch.from_numpy(item)
-                            if batch[i].dtype in [
-                                torch.float64,
-                                torch.float32,
-                                torch.float16,
-                                torch.float,
-                            ]:
-                                if hasattr(self, "dtype"):
-                                    batch[i] = batch[i].to(self.dtype)
-                                else:
-                                    batch[i] = batch[i].float()
                         else:
                             batch[i] = torch.stack(item)
                     else:
                         batch[i] = item
 
-                    batch[i].to(device)
+                    if batch[i].dtype.is_floating_point:
+                        if hasattr(self, "dtype"):
+                            batch[i] = batch[i].to(self.dtype)
+                        else:
+                            batch[i] = batch[i].float()
+
+                    batch[i] = batch[i].to(device)
 
                 # ensure that all inputs are tuples
                 res = self.forward(*batch)
