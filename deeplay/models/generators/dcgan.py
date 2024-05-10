@@ -60,11 +60,11 @@ class DCGANGenerator(ConvolutionalDecoder2d):
 
     Examples
     --------
-    >>> generator = DCGAN_Generator(latent_dim=100, output_channels=1, class_conditioned_model=False)
+    >>> generator = DCGANGenerator(latent_dim=100, output_channels=1, class_conditioned_model=False)
     >>> generator.build()
     >>> batch_size = 16
     >>> input = torch.randn([batch_size, 100, 1, 1])
-    >>> output = generator(input)
+    >>> output = generator(x=input, y=None)
 
     Return Values
     -------------
@@ -81,7 +81,7 @@ class DCGANGenerator(ConvolutionalDecoder2d):
     def __init__(
         self,
         latent_dim: int = 100,
-        features_dim: int = 128,
+        features_dim: int = 64,
         out_channels: int = 1,
         class_conditioned_model: bool = False,
         embedding_dim: int = 100,
@@ -122,9 +122,10 @@ class DCGANGenerator(ConvolutionalDecoder2d):
 
     def forward(self, x, y=None):
         if self.class_conditioned_model:
-            assert (
-                y is not None
-            ), "Class label y must be provided for class-conditional generator"
+            if y is None:
+                raise ValueError(
+                    "Class label y must be provided for class-conditional generator"
+                )
 
             y = self.label_embedding(y)
             y = y.view(-1, self.embedding_dim, 1, 1)
