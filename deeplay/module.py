@@ -340,7 +340,7 @@ def _create_forward_with_input_dict(
 class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     """
     A base class for creating configurable, extensible modules with dynamic initialization
-    and argument management. This class is designed to be subclassed for specific functifonal
+    and argument management. This class is designed to be subclassed for specific functional
     implementations. It extends `nn.Module` and utilizes a custom meta-class, `ExtendedConstructorMeta`,
     for enhanced construction logic.
 
