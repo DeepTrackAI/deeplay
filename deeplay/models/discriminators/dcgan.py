@@ -13,19 +13,20 @@ def dcgan_discriminator(encoder: ConvolutionalEncoder2d):
     encoder.blocks[-1].configure("layer", padding=0)
     encoder["blocks", :].all.remove("pool", allow_missing=True)
     encoder["blocks", 1:-1].all.normalized()
-    encoder["block", :-1].all.configure("actication", nn.LeakyReLU, negative_slope=0.2)
+    encoder["blocks", :-1].all.configure("activation", nn.LeakyReLU, negative_slope=0.2)
     encoder.blocks[-1].activation.configure(nn.Sigmoid)
 
-    init = Normal(
+    initializer = Normal(
         targets=(
             nn.Conv2d,
             nn.BatchNorm2d,
+            nn.Embedding,
             nn.Linear,
         ),
         mean=0,
         std=0.02,
     )
-    encoder.initialize(init)
+    encoder.initialize(initializer, tensors="weight")
 
 
 class DCGANDiscriminator(ConvolutionalEncoder2d):
@@ -134,9 +135,10 @@ class DCGANDiscriminator(ConvolutionalEncoder2d):
             )
 
         if self.class_conditioned_model:
-            assert (
-                y is not None
-            ), "Class label y must be provided for class-conditional discriminator"
+            if y is None:
+                raise ValueError(
+                    "Class label y must be provided for class-conditional discriminator"
+                )
 
             y = self.label_embedding(y)
             y = y.view(-1, 1, 64, 64)
