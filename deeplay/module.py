@@ -1023,16 +1023,20 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         """
         self.logs[name] = tensor
 
-    def initialize(self, initializer):
+    def initialize(
+        self, initializer, tensors: Union[str, Tuple[str, ...]] = ("weight", "bias")
+    ):
+        if isinstance(tensors, str):
+            tensors = (tensors,)
         for module in self.modules():
             if isinstance(module, DeeplayModule):
-                module._initialize_after_build(initializer)
+                module._initialize_after_build(initializer, tensors)
             else:
-                initializer.initialize(module)
+                initializer.initialize(module, tensors)
 
     @after_build
-    def _initialize_after_build(self, initializer):
-        initializer.initialize(self)
+    def _initialize_after_build(self, initializer, tensors: Tuple[str, ...]):
+        initializer.initialize(self, tensors)
 
     @after_build
     def _validate_after_build(self):

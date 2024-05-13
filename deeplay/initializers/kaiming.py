@@ -24,13 +24,20 @@ class Kaiming(Initializer):
         targets: Tuple[Type[nn.Module], ...] = _kaiming_default_targets,
         mode: str = "fan_out",
         nonlinearity: str = "relu",
+        fill_bias: bool = True,
+        bias: float = 0.0,
     ):
         super().__init__(targets)
         self.mode = mode
         self.nonlinearity = nonlinearity
+        self.fill_bias = fill_bias
+        self.bias = bias
 
-    def initialize_weight(self, tensor):
-        nn.init.kaiming_normal_(tensor, mode=self.mode, nonlinearity=self.nonlinearity)
+    def initialize_tensor(self, tensor, name):
 
-    def initialize_bias(self, tensor):
-        tensor.data.fill_(0.0)
+        if name == "bias" and self.fill_bias:
+            tensor.data.fill_(self.bias)
+        else:
+            nn.init.kaiming_normal_(
+                tensor, mode=self.mode, nonlinearity=self.nonlinearity
+            )
