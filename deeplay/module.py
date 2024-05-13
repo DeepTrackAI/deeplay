@@ -570,6 +570,10 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     def device(self) -> torch.device:
         return next(self.parameters()).device
 
+    @property
+    def dtype(self) -> torch.dtype:
+        return next(self.parameters()).dtype
+
     def __pre_init__(self, *args, _args=(), **kwargs):
         super().__init__()
         # Stored as tuple to avoid it being included in modules
@@ -934,21 +938,19 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
                 for i, item in enumerate(batch):
                     if not isinstance(item, torch.Tensor):
                         if isinstance(item, np.ndarray):
-                            batch[i] = torch.from_numpy(item).to(device)
-                            if batch[i].dtype in [
-                                torch.float64,
-                                torch.float32,
-                                torch.float16,
-                                torch.float,
-                            ]:
-                                if hasattr(self, "dtype"):
-                                    batch[i] = batch[i].to(self.dtype)
-                                else:
-                                    batch[i] = batch[i].float()
+                            batch[i] = torch.from_numpy(item)
                         else:
-                            batch[i] = torch.stack(item).to(device)
+                            batch[i] = torch.stack(item)
                     else:
-                        batch[i] = item.to(device)
+                        batch[i] = item
+
+                    if batch[i].dtype.is_floating_point:
+                        if hasattr(self, "dtype"):
+                            batch[i] = batch[i].to(self.dtype)
+                        else:
+                            batch[i] = batch[i].float()
+
+                    batch[i] = batch[i].to(device)
 
                 # ensure that all inputs are tuples
                 res = self.forward(*batch)
