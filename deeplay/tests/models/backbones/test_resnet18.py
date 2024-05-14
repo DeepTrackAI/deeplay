@@ -13,11 +13,16 @@ class TestResnet18(unittest.TestCase):
         model = BackboneResnet18(in_channels=3)
         model.build()
 
+    def test_re_init(self):
+        model = BackboneResnet18(in_channels=3)
+        model.__construct__()
+        model.build()
+
     def test_num_params(self):
         model = BackboneResnet18(in_channels=1)
         model.build()
         num_params = sum(p.numel() for p in model.parameters())
-        
+
         self.assertEqual(num_params, 11174976)
 
     def test_style_resnet18_input(self):
