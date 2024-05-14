@@ -54,8 +54,6 @@ class BaseBlock(SequentialBlock):
                     or key[-1] == "order"
                 ):
                     vlist.clear()
-                else:
-                    print(type(vlist[0].value))
 
         def make_new_self():
             args, kwargs = self.get_init_args()
