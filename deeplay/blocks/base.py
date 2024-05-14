@@ -47,8 +47,9 @@ class BaseBlock(SequentialBlock):
         # Remove configurations before making new blocks
         tags = self.tags
         for key, vlist in self._user_config.items():
-            if key[:-1] in tags:
-                vlist.clear()
+            if key[:-1] in tags and vlist:
+                if any(isinstance(v.value, DeeplayModule) for v in vlist):
+                    vlist.clear()
 
         def make_new_self():
             args, kwargs = self.get_init_args()
