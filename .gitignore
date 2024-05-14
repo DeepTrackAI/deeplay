@@ -21,4 +21,5 @@ dist/
 # Mac
 *.DS_Store
 
-package.json
+# Tutorial files
+tutorials/getting-started/model.pth
