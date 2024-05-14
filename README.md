@@ -85,3 +85,4 @@ Here you find a series of notebooks that give you an overview of the core featur
 
 Here you find a series of notebooks tailored for Deeplay's developers:
 
+- DT101 **[Deeplay File Structure](https://github.com/DeepTrackAI/deeplay/blob/develop/tutorials/developers/DT101_files.ipynb)**
