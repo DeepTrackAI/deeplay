@@ -61,7 +61,7 @@ class BaseBlock(SequentialBlock):
             args = [args.new() if isinstance(args, Layer) else args for args in args]
             for key, value in kwargs.items():
                 if isinstance(value, Layer):
-                    kwargs[key] = value.new()
+                    kwargs[key] = value.new(detach=True)
             return type(self)(*args, **kwargs)
 
         blocks = Sequential([make_new_self() for _ in range(n)])
