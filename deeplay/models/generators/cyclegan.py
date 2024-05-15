@@ -21,19 +21,23 @@ def cyclegan_resnet_encoder(encoder: ConvolutionalEncoder2d):
     encoder.strided(2)
     encoder.normalized(Layer(nn.InstanceNorm2d))
     encoder.blocks.configure(order=["layer", "normalization", "activation"])
-    encoder.blocks[0].prepend(Layer(nn.ReflectionPad2d, 3))
-    encoder.blocks[0].configure("layer", kernel_size=7, stride=1, padding=0)
+    encoder.blocks[0].configure(
+        "layer", kernel_size=7, stride=1, padding=3, padding_mode="reflect"
+    )
 
 
 @ConvolutionalDecoder2d.register_style
 def cyclegan_resnet_decoder(decoder: ConvolutionalDecoder2d):
-    decoder.normalized(Layer(nn.InstanceNorm2d))
+    decoder["blocks", :-1].all.normalized(
+        nn.InstanceNorm2d, mode="insert", after="layer"
+    )
     decoder.blocks.configure(order=["layer", "normalization", "activation"])
     decoder.blocks[:-1].configure(
         "layer", nn.ConvTranspose2d, stride=2, output_padding=1
     )
-    decoder.blocks[-1].configure(kernel_size=7, stride=1, padding=0)
-    decoder.blocks[-1].prepend(Layer(nn.ReflectionPad2d, 3))
+    decoder.blocks[-1].configure(
+        "layer", kernel_size=7, stride=1, padding=3, padding_mode="reflect"
+    )
 
 
 @ConvolutionalNeuralNetwork.register_style
@@ -67,7 +71,7 @@ class CycleGANResnetGenerator(ConvolutionalEncoderDecoder2d):
 
     Examples
     --------
-    >>> generator = CycleGANGenerator(in_channels=1, out_channels=3)
+    >>> generator = CycleGANResnetGenerator(in_channels=1, out_channels=3)
     >>> generator.build()
     >>> x = torch.randn(1, 1, 256, 256)
     >>> y = generator(x)

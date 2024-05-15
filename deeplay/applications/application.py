@@ -187,7 +187,6 @@ class Application(DeeplayModule, L.LightningModule):
         )
 
         dict_metrics: Dict[str, tm.Metric]
-
         if metrics is None:
             return self.trainer.test(self, test_dataloader)[0]
 

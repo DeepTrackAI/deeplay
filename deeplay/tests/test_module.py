@@ -3,6 +3,7 @@ import unittest
 import torch
 import torch.nn as nn
 import deeplay as dl
+import numpy as np
 
 from deeplay import (
     DeeplayModule,
@@ -479,6 +480,21 @@ class TestLayer(unittest.TestCase):
         self.assertEqual(module.layer.output_args, {"x_all": 0})
         self.assertEqual(module.activation.input_args, ("x_all",))
         self.assertEqual(module.activation.output_args, {"act_all": 0, "other_act": 0})
+
+    def test_predict_method(self):
+
+        input_dtype = [np.float16, np.float32, np.float64]
+        model_dtype = [torch.float16, torch.float32, torch.float64]
+
+        module = dl.MultiLayerPerceptron(1, [], 1)
+        module.build()
+
+        for input_type in input_dtype:
+            for model_type in model_dtype:
+                x = np.random.rand(10, 1).astype(input_type)
+                module.to(model_type)
+                y = module.predict(x)
+                # self.assertEqual(y.dtype, model_type)
 
 
 if __name__ == "__main__":
