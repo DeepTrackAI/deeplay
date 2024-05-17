@@ -13,17 +13,17 @@ def dcgan_generator(generator: ConvolutionalDecoder2d):
         "layer", nn.ConvTranspose2d, kernel_size=4, stride=2, padding=1
     ).remove("upsample", allow_missing=True)
     generator.blocks[0].layer.configure(stride=1, padding=0)
-    init = Normal(
+
+    initializer = Normal(
         targets=(
             nn.ConvTranspose2d,
             nn.BatchNorm2d,
             nn.Embedding,
-            nn.Linear,
         ),
         mean=0,
         std=0.02,
     )
-    generator.initialize(init)
+    generator.initialize(initializer, tensors="weight")
 
 
 class DCGANGenerator(ConvolutionalDecoder2d):
@@ -60,11 +60,11 @@ class DCGANGenerator(ConvolutionalDecoder2d):
 
     Examples
     --------
-    >>> generator = DCGAN_Generator(latent_dim=100, output_channels=1, class_conditioned_model=False)
+    >>> generator = DCGANGenerator(latent_dim=100, output_channels=1, class_conditioned_model=False)
     >>> generator.build()
     >>> batch_size = 16
     >>> input = torch.randn([batch_size, 100, 1, 1])
-    >>> output = generator(input)
+    >>> output = generator(x=input, y=None)
 
     Return Values
     -------------
@@ -81,16 +81,16 @@ class DCGANGenerator(ConvolutionalDecoder2d):
     def __init__(
         self,
         latent_dim: int = 100,
-        features_dim: int = 128,
+        features_dim: int = 64,
         out_channels: int = 1,
         class_conditioned_model: bool = False,
         embedding_dim: int = 100,
         num_classes: int = 10,
-        output_channels=None
+        output_channels=None,
     ):
         if output_channels is not None:
             out_channels = output_channels
-            
+
         self.latent_dim = latent_dim
         self.output_channels = out_channels
         self.class_conditioned_model = class_conditioned_model
@@ -104,10 +104,10 @@ class DCGANGenerator(ConvolutionalDecoder2d):
         super().__init__(
             in_channels=in_channels,
             hidden_channels=[
+                features_dim * 16,
                 features_dim * 8,
                 features_dim * 4,
                 features_dim * 2,
-                features_dim * 1,
             ],
             out_channels=out_channels,
             out_activation=Layer(nn.Tanh),
@@ -122,9 +122,10 @@ class DCGANGenerator(ConvolutionalDecoder2d):
 
     def forward(self, x, y=None):
         if self.class_conditioned_model:
-            assert (
-                y is not None
-            ), "Class label y must be provided for class-conditional generator"
+            if y is None:
+                raise ValueError(
+                    "Class label y must be provided for class-conditional generator"
+                )
 
             y = self.label_embedding(y)
             y = y.view(-1, self.embedding_dim, 1, 1)

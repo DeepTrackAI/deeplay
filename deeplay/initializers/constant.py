@@ -21,8 +21,5 @@ class Constant(Initializer):
         self.weight = weight
         self.bias = bias
 
-    def initialize_weight(self, tensor):
+    def initialize_tensor(self, tensor, name):
         tensor.data.fill_(self.weight)
-
-    def initialize_bias(self, tensor):
-        tensor.data.fill_(self.bias)

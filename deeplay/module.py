@@ -5,6 +5,8 @@ from typing_extensions import Self
 
 import torch
 import torch.nn as nn
+from torch_geometric.data import Data
+
 import copy
 import inspect
 import numpy as np
@@ -292,12 +294,14 @@ def _create_forward_with_input_dict(
     output_args: Optional[Dict[str, int]],
 ):
     def forward_with_input_dict(self, x, overwrite_output: bool = True):
-        assert isinstance(
-            x, dict
-        ), "Input must be a dictionary, but found {}. Please check if the module require an input/output mapping.".format(
-            type(x)
-        )
-        x = x.copy()
+        if isinstance(x, dict):
+            x = x.copy()
+        elif isinstance(x, Data):
+            x = x.clone()
+        else:
+            raise ValueError(
+                f"Input must be a dictionary or torch-geometric Data object, but found {type(x)}. Please check if the module require an input/output mapping."
+            )
 
         outputs = old_forward(
             self,
@@ -319,9 +323,11 @@ def _create_forward_with_input_dict(
 
         if overwrite_output:
             x.update(
-                map(
-                    lambda key, value: (key, outputs[value]),
-                    *zip(*output_args.items()),
+                dict(
+                    map(
+                        lambda key, value: (key, outputs[value]),
+                        *zip(*output_args.items()),
+                    )
                 )
             )
             return x
@@ -563,6 +569,10 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     @property
     def device(self) -> torch.device:
         return next(self.parameters()).device
+
+    @property
+    def dtype(self) -> torch.dtype:
+        return next(self.parameters()).dtype
 
     def __pre_init__(self, *args, _args=(), **kwargs):
         super().__init__()
@@ -928,21 +938,19 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
                 for i, item in enumerate(batch):
                     if not isinstance(item, torch.Tensor):
                         if isinstance(item, np.ndarray):
-                            batch[i] = torch.from_numpy(item).to(device)
-                            if batch[i].dtype in [
-                                torch.float64,
-                                torch.float32,
-                                torch.float16,
-                                torch.float,
-                            ]:
-                                if hasattr(self, "dtype"):
-                                    batch[i] = batch[i].to(self.dtype)
-                                else:
-                                    batch[i] = batch[i].float()
+                            batch[i] = torch.from_numpy(item)
                         else:
-                            batch[i] = torch.stack(item).to(device)
+                            batch[i] = torch.stack(item)
                     else:
-                        batch[i] = item.to(device)
+                        batch[i] = item
+
+                    if batch[i].dtype.is_floating_point:
+                        if hasattr(self, "dtype"):
+                            batch[i] = batch[i].to(self.dtype)
+                        else:
+                            batch[i] = batch[i].float()
+
+                    batch[i] = batch[i].to(device)
 
                 # ensure that all inputs are tuples
                 res = self.forward(*batch)
@@ -1017,16 +1025,20 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         """
         self.logs[name] = tensor
 
-    def initialize(self, initializer):
+    def initialize(
+        self, initializer, tensors: Union[str, Tuple[str, ...]] = ("weight", "bias")
+    ):
+        if isinstance(tensors, str):
+            tensors = (tensors,)
         for module in self.modules():
             if isinstance(module, DeeplayModule):
-                module._initialize_after_build(initializer)
+                module._initialize_after_build(initializer, tensors)
             else:
-                initializer.initialize(module)
+                initializer.initialize(module, tensors)
 
     @after_build
-    def _initialize_after_build(self, initializer):
-        initializer.initialize(self)
+    def _initialize_after_build(self, initializer, tensors: Tuple[str, ...]):
+        initializer.initialize(self, tensors)
 
     @after_build
     def _validate_after_build(self):

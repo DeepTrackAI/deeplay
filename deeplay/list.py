@@ -2,6 +2,8 @@ from typing import Any, overload, Iterator, List, Generic, TypeVar, Union, Tuple
 
 import torch
 from torch import nn
+from torch_geometric.data import Data
+
 import inspect
 
 from .module import DeeplayModule, Selection
@@ -243,7 +245,15 @@ class Parallel(LayerList, Generic[T]):
             )
 
         if isinstance(x, dict):
-            updates = [layer(x, overwrite_output=False) for layer in self]
-            return {**x, **{k: v for update in updates for k, v in update.items()}}
+            x = x.copy()
+            return self._forward_with_dict(x)
+        elif isinstance(x, Data):
+            x = x.clone()
+            return self._forward_with_dict(x)
+        else:
+            return [layer(x) for layer in self]
 
-        return [layer(x) for layer in self]
+    def _forward_with_dict(self, x):
+        updates = [layer(x, overwrite_output=False) for layer in self]
+        x.update({key: value for update in updates for key, value in update.items()})
+        return x
