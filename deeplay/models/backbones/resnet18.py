@@ -16,7 +16,6 @@ def resnet(block: Conv2dBlock, stride: int = 1):
     block.blocks[1].style("residual", order="lnaln|a")
     if stride > 1:
         block.blocks[0].strided(stride)
-        block.blocks[0].shortcut_start.configure("layer", stride=stride)
         block.blocks[0].shortcut_start.normalized()
 
     block[...].isinstance(Conv2dBlock).all.remove("pool", allow_missing=True)
@@ -44,7 +43,7 @@ def resnet18_input(block: Conv2dBlock):
 def resnet18(encoder: ConvolutionalEncoder2d):
     encoder.blocks[0].style("resnet18_input")
     encoder.blocks[1].style("resnet", stride=1)
-    encoder["blocks", 2:].all.style("resnet", stride=2)
+    encoder["blocks", 2:].hasattr("style").all.style("resnet", stride=2)
     encoder.initialize(dl.initializers.Kaiming(targets=(nn.Conv2d,)))
     encoder.initialize(dl.initializers.Constant(targets=(nn.BatchNorm2d,)))
     encoder.pool = Layer(nn.AdaptiveAvgPool2d, (1, 1))
