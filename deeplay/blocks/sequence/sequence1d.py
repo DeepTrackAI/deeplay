@@ -81,43 +81,14 @@ class Sequence1dBlock(BaseBlock):
 
         super().__init__(layer=layer, **kwargs)
 
-    def normalized(
-        self,
-        normalization: Union[Type[nn.Module], DeeplayModule] = nn.LayerNorm,
-        mode="append",
-        after=None,
-    ) -> Self:
-        did_replace = mode == "replace" and "normalization" in self.order
+    def get_default_normalization(self) -> DeeplayModule:
+        return Layer(nn.LayerNorm, self.out_features)
 
-        super().normalized(normalization, mode=mode, after=after)
+    def run_with_dummy_data(self):
+        import torch
 
-        if did_replace:
-            # Assume num_features is already correct
-            return self
-
-        idx = self.order.index("normalization")
-        # if layer or blocks before normalization
-        if any(name in self.order[:idx] for name in ["layer", "blocks"]):
-            channels = self.out_features
-        else:
-            channels = self.in_features
-
-        self._configure_normalization(channels)
-
-        return self
-
-    def _configure_normalization(self, channels):
-        ntype: Type[nn.Module] = self.normalization.classtype
-
-        if ntype == nn.BatchNorm1d:
-            self.normalization.configure(num_features=channels)
-        elif ntype == nn.GroupNorm:
-            num_groups = self.normalization.kwargs.get("num_groups", 1)
-            self.normalization.configure(num_groups=num_groups, num_channels=channels)
-        elif ntype == nn.InstanceNorm1d:
-            self.normalization.configure(num_features=channels)
-        elif ntype == nn.LayerNorm:
-            self.normalization.configure(normalized_shape=channels)
+        x = torch.randn(2, 3, self.in_features)
+        return self(x)
 
     def LSTM(self):
         self.configure(mode="LSTM")
@@ -137,14 +108,6 @@ class Sequence1dBlock(BaseBlock):
     def bidirectional(self):
         self.layer.configure(bidirectional=True)
         return self
-
-    def activated(
-        self,
-        activation: Type[nn.Module] | DeeplayModule = nn.ReLU,
-        mode="append",
-        after=None,
-    ) -> Self:
-        return super().activated(activation, mode, after)
 
     def append_dropout(self, p: float, name: str | None = "dropout"):
         self.append(Layer(SequenceDropout, p), name=name)
