@@ -844,7 +844,8 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
         if args or kwargs:
             #
-            self(*args, **kwargs)
+            with torch.no_grad():
+                self(*args, **kwargs)
 
         self._run_hooks("before_build")
 
