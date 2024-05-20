@@ -12,6 +12,10 @@ from deeplay.module import DeeplayModule
 class LinearBlock(BaseBlock):
     """Convolutional block with optional normalization and activation."""
 
+    @property
+    def expected_input_shape(self):
+        return (self.in_features,)
+
     def __init__(
         self,
         in_features: Optional[int],

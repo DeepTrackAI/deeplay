@@ -1,3 +1,4 @@
+from hmac import new
 import inspect
 from logging import config
 from typing import Any, Dict, Tuple, List, Set, Literal, Optional, Callable, Union
@@ -608,6 +609,8 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         self._has_built = False
         self._setattr_recording = set()
 
+        self._computed_values: Dict[str, Callable] = {}
+
         self._logs = {}
         if hasattr(self, "validate_after_build"):
             self._validate_after_build()
@@ -801,7 +804,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         obj = obj.build()
         return obj
 
-    def build(self, *args):
+    def build(self, *args, **kwargs) -> "DeeplayModule":
         """
         Modifies the current instance of the module in place, finalizing its setup.
 
@@ -814,6 +817,12 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
         Note that `build` is automatically called within the `create` method, ensuring that newly created
         instances are fully initialized and ready for use.
+
+        Parameters
+        ----------
+        *args, **kwargs : Any
+            Example input to the forward method used to
+
 
         Returns
         -------
@@ -833,8 +842,9 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
         from .external import Optimizer
 
-        if args:
-            tensors = []
+        if args or kwargs:
+            #
+            self(*args, **kwargs)
 
         self._run_hooks("before_build")
 
@@ -1479,9 +1489,63 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
             "forward method not implemented for {}".format(self.__class__.__name__)
         )
 
-    @after_init
-    def set_p(self, p):
-        self.p = p
+    def __call__(self, *args, **kwargs):
+        if not self._has_built:
+            self._register_input(*args, **kwargs)
+        return super().__call__(*args, **kwargs)
+
+    def _register_input(self, *args, **kwargs):
+        self._update_computed_values(*args, **kwargs)
+
+    def _update_computed_values(self, *args, **kwargs):
+        new_values = {}
+        for name, cb in self._computed_values.items():
+            new_values[name] = cb(*args, **kwargs)
+        if new_values:
+            self.configure(**new_values)
+
+    def computed(self, _x: Union[Callable, str], _f: Optional[Callable] = None):
+        """Register a computed value.
+
+        Can be used as a decorator or as a function.
+        If the first argument is a string, it is assumed to be the name of the computed
+        value. If the second argument is not set, the function is used as a decorator.
+        If the first argument is a function, it is assumed to be the function to be
+        computed, and the name of the function is used as the name of the computed value.
+
+        Parameters
+        ----------
+        _x : Union[Callable, str]
+            The function to be computed or the name of the computed value.
+        _f : Optional[Callable], optional
+            The function to be computed, by default None.
+
+        Examples
+        --------
+        As a decorator:
+        >>> @module.computed("in_features")
+        >>> def f(x):
+        >>>     return x.shape[1]
+
+        As a function:
+        >>> module.computed("in_features", lambda x: x.shape[1])
+
+        As with a function
+        >>> def in_features(x):
+        >>>     return x.shape[1]
+        >>> module.computed(in_features)
+
+
+        """
+        if isinstance(_x, str):
+            name = _x
+            if _f is None:
+                return lambda f: self.computed(name, f)
+            else:
+                self._computed_values[name] = _f
+        else:
+            name = _x.__name__
+            self._computed_values[name] = _x
 
 
 class Selection(DeeplayModule):

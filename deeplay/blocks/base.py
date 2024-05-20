@@ -39,29 +39,7 @@ class BaseBlock(SequentialBlock):
     normalization: Union[DeferredConfigurableLayer, nn.Module]
 
     expected_input_shape: Optional[Tuple[int, ...]] = None
-
-    def output_shape(self, x=None) -> Optional[Tuple[int, ...]]:
-
-        input_shapes = self._input_shape_iterable(x)
-
-        for x in input_shapes:
-            try:
-                for name in self.order:
-                    block = getattr(self, name)
-                    if not hasattr(block, "output_shape"):
-                        return None
-
-                    if name == "shortcut_start":
-                        shortcut = block.output_shape(x)
-                    elif name == "shortcut_end":
-                        x = block.output_shape(x, shortcut)
-                    else:
-                        x = block.output_shape(x)
-                pass
-            except RuntimeError as e:
-                ...
-
-        return x
+    expected_output_shape: Optional[Tuple[int, ...]] = None
 
     def __init__(self, order: Optional[List[str]] = None, **kwargs: DeeplayModule):
         # self.activation = DeferredConfigurableLayer(self, "activation", after="layer")
@@ -82,8 +60,6 @@ class BaseBlock(SequentialBlock):
                     or key[-1] == "order"
                 ):
                     vlist.clear()
-                else:
-                    print(type(vlist[0].value))
 
         def make_new_self():
             args, kwargs = self.get_init_args()
