@@ -1,5 +1,6 @@
-from typing import Type, Union
-from numpy import short
+from ast import Attribute
+from re import T
+from typing import List, Optional, Type, Union, Tuple
 import torch
 import torch.nn as nn
 
@@ -37,10 +38,37 @@ class BaseBlock(SequentialBlock):
 
     normalization: Union[DeferredConfigurableLayer, nn.Module]
 
-    def __init__(self, *args, **kwargs):
+    expected_input_shape: Optional[Tuple[int, ...]] = None
+
+    def output_shape(self, x=None) -> Optional[Tuple[int, ...]]:
+
+        input_shapes = self._input_shape_iterable(x)
+
+        for x in input_shapes:
+            try:
+                for name in self.order:
+                    block = getattr(self, name)
+                    if not hasattr(block, "output_shape"):
+                        return None
+
+                    if name == "shortcut_start":
+                        shortcut = block.output_shape(x)
+                    elif name == "shortcut_end":
+                        x = block.output_shape(x, shortcut)
+                    else:
+                        x = block.output_shape(x)
+                pass
+            except RuntimeError as e:
+                ...
+
+        return x
+
+    def __init__(self, order: Optional[List[str]] = None, **kwargs: DeeplayModule):
         # self.activation = DeferredConfigurableLayer(self, "activation", after="layer")
+        self._input_shape = None
+
         self.normalization = DeferredConfigurableLayer(self, "normalization")
-        super(BaseBlock, self).__init__(*args, **kwargs)
+        super(BaseBlock, self).__init__(order=order, **kwargs)
 
     def multi(self, n=1) -> Self:
 

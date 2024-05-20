@@ -11,12 +11,17 @@ from deeplay.ops.logs import FromLogs
 from deeplay.ops.merge import Add, MergeOp
 from deeplay.ops.shape import Permute
 from deeplay.blocks.base import DeferredConfigurableLayer
+from deeplay.shapes import Variable
 
 
 class Conv2dBlock(BaseBlock):
     """Convolutional block with optional normalization and activation."""
 
     pool: Union[DeferredConfigurableLayer, nn.Module]
+
+    @property
+    def expected_input_shape(self):
+        return (self.in_channels, Variable(), Variable())
 
     def __init__(
         self,

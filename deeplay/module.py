@@ -801,7 +801,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         obj = obj.build()
         return obj
 
-    def build(self):
+    def build(self, *args):
         """
         Modifies the current instance of the module in place, finalizing its setup.
 
@@ -832,6 +832,9 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         """
 
         from .external import Optimizer
+
+        if args:
+            tensors = []
 
         self._run_hooks("before_build")
 
