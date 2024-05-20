@@ -264,7 +264,12 @@ def residual(
 
     if _order:
         block_orders.append(_order)
-
+    ksize = block.kernel_size
+    if isinstance(ksize, tuple):
+        padding = tuple(k // 2 for k in ksize)
+    else:
+        padding = ksize // 2
+    block.configure(padding=padding)
     block.multi(n=len(block_orders))
     block.shortcut()
 
