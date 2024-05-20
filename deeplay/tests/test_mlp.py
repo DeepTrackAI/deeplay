@@ -89,12 +89,12 @@ class TestComponentMLP(unittest.TestCase):
 
     def test_configure_activation_with_argument(self):
         mlp = MultiLayerPerceptron(2, [4, 3, 5], 3)
-        mlp.activation.configure(nn.Softmax, dim=4)
+        mlp.activation.configure(nn.Softmax, dim=1)
         mlp.build()
         self.assertEqual(len(mlp.blocks), 4)
         for idx, block in enumerate(mlp.blocks):
             self.assertIsInstance(block.activation, nn.Softmax)
-            self.assertEqual(block.activation.dim, 4)
+            self.assertEqual(block.activation.dim, 1)
 
     def test_configure_normalization(self):
         mlp = MultiLayerPerceptron(2, [4, 3, 5], 3)

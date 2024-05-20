@@ -59,7 +59,7 @@ class TestResnet18(unittest.TestCase):
         self.assertEqual(block.blocks[0].blocks[1].layer.in_channels, 64)
         self.assertEqual(block.blocks[0].blocks[1].layer.out_channels, 64)
         self.assertIsInstance(block.blocks[0].shortcut_start.layer, nn.Identity)
-        self.assertIsInstance(block.blocks[0].shortcut_start.activation, nn.Identity)
+        # self.assertIsInstance(block.blocks[0].shortcut_start.activation, nn.Identity)
         self.assertNotIn("normalization", block.blocks[0].shortcut_start.order)
 
     def test_style_resnet_64_128(self):
@@ -95,7 +95,7 @@ class TestResnet18(unittest.TestCase):
         )
         self.assertEqual(block.blocks[0].shortcut_start.layer.in_channels, 64)
         self.assertEqual(block.blocks[0].shortcut_start.layer.out_channels, 128)
-        self.assertIsInstance(block.blocks[0].shortcut_start.activation, nn.Identity)
+        # self.assertIsInstance(block.blocks[0].shortcut_start.activation, nn.Identity)
 
     def test_correct_structure(self):
         model = BackboneResnet18(in_channels=3)
@@ -153,8 +153,8 @@ class TestResnet18(unittest.TestCase):
                 self.assertIsInstance(
                     model.blocks[idx].blocks[0].shortcut_start.layer, nn.Identity
                 )
-                self.assertIsInstance(
-                    model.blocks[idx].blocks[0].shortcut_start.activation, nn.Identity
+                self.assertFalse(
+                    hasattr(model.blocks[idx].blocks[0].shortcut_start, "activation")
                 )
                 self.assertNotIn(
                     "normalization", model.blocks[idx].blocks[0].shortcut_start.order
@@ -175,8 +175,8 @@ class TestResnet18(unittest.TestCase):
                     model.blocks[idx].blocks[0].shortcut_start.layer.out_channels,
                     out_channels[idx],
                 )
-                self.assertIsInstance(
-                    model.blocks[idx].blocks[0].shortcut_start.activation, nn.Identity
+                self.assertFalse(
+                    hasattr(model.blocks[idx].blocks[0].shortcut_start, "activation")
                 )
 
     def test_forward(self):

@@ -174,8 +174,8 @@ class TestComponentViT(unittest.TestCase):
         self.assertEqual(vit.input.layer.in_channels, 3)
         self.assertEqual(vit.input.layer.out_channels, 384)
 
-        self.assertIs(vit.output.blocks[0].layer.in_features, 384)
-        self.assertIs(vit.output.blocks[-1].layer.out_features, 10)
+        self.assertEqual(vit.output.blocks[0].layer.in_features, 384)
+        self.assertEqual(vit.output.blocks[-1].layer.out_features, 10)
 
     def test_lazy_input(self):
         vit = ViT(

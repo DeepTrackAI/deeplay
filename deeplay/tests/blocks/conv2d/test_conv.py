@@ -120,7 +120,7 @@ class TestConv2dBlock(unittest.TestCase):
         block.blocks[0].multi(2)
         block.blocks[1].multi(2)
         block.build()
-        
+
         self.assertEqual(block.blocks[0].blocks[0].layer.in_channels, 1)
         self.assertEqual(block.blocks[0].blocks[0].layer.out_channels, 2)
 
@@ -132,7 +132,6 @@ class TestConv2dBlock(unittest.TestCase):
 
         self.assertEqual(block.blocks[1].blocks[1].layer.in_channels, 2)
         self.assertEqual(block.blocks[1].blocks[1].layer.out_channels, 2)
-
 
     def test_style_residual(self):
         block = Conv2dBlock(in_channels=1, out_channels=1).style("residual").build()
@@ -188,9 +187,9 @@ class TestConv2dBlock(unittest.TestCase):
 
     def test_style_spatial_self_attention(self):
         block = (
-            Conv2dBlock(in_channels=1, out_channels=1)
+            Conv2dBlock(in_channels=2, out_channels=2)
             .style("spatial_self_attention")
-            .build()
+            .build(torch.randn(1, 4, 4, 2))
         )
         self.assertEqual(
             block.order,
@@ -202,7 +201,7 @@ class TestConv2dBlock(unittest.TestCase):
             ],
         )
 
-        x = torch.randn(1, 4, 4, 1)  # expects (B, H, W, C)
+        x = torch.randn(1, 4, 4, 2)  # expects (B, H, W, C)
         output = block(x)
         self.assertEqual(output.shape, x.shape)
         self.assertIsInstance(block.normalization, nn.LayerNorm)
