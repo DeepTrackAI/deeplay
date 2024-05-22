@@ -55,9 +55,20 @@ class Layer(External):
         if self.classtype in self._classwise_computed_values:
             for name, func in self._classwise_computed_values[self.classtype].items():
                 self.computed(name, func)
-        self._update_computed_values(*x, **kwargs)
+        new_values = self._update_computed_values(*x, **kwargs)
         layer = self.build()
-        return layer(*x, **kwargs)
+        try:
+            return layer(*x, **kwargs)
+        except Exception as e:
+            # We undo the computation of the computed values.
+            my_config = self._user_config.take(self.tags, keep_list=True)
+            for key, value in new_values.items():
+                for keytuple, vlist in my_config.items():
+                    if keytuple[-1] == key and vlist and vlist[-1].value == value:
+                        vlist.pop()
+                        print(f"Removed {key} from {keytuple}")
+                        break
+            raise e
 
     @classmethod
     def register_computed(cls, ocls: Type[nn.Module], signal="forward"):
