@@ -187,7 +187,6 @@ class BaseBlock(SequentialBlock):
                 "To suppress this warning, call `model.build(example_input)` with a valid input. "
                 "To raise an error instead, call `block.error_on_failed_forward()`. ",
             )
-            raise e
         except TypeError as e:
             if self._error_on_failed_forward:
                 raise e
