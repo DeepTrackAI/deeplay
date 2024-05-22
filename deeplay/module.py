@@ -882,7 +882,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     #     else:
     #         return None
 
-    def new(self, detach: bool = False) -> "DeeplayModule":
+    def new(self, detach: bool = True) -> "DeeplayModule":
         memo = {}
         for module in self.modules():
             if isinstance(module, DeeplayModule) and module._has_built:
