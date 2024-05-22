@@ -893,9 +893,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         new = copy.deepcopy(self, memo)
 
         if detach:
-            new._root_module = (new,)
-            for name, module in new.named_modules():
-                module._root_module = (new,)
+            new.set_root_module(new)
         return new
 
     def predict(
