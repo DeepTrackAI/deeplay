@@ -1504,6 +1504,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
             new_values[name] = cb(*args, **kwargs)
         if new_values:
             self.configure(**new_values)
+        return new_values
 
     def computed(self, _x: Union[Callable, str], _f: Optional[Callable] = None):
         """Register a computed value.
