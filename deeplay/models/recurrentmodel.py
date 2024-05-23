@@ -101,7 +101,7 @@ class RecurrentModel(RecurrentNeuralNetwork):
         hidden_features: List[int],
         out_features: Optional[int] = None,
         return_sequence: bool = False,
-        return_cell_state: bool = True,
+        return_cell_state: bool = False,
         rnn_type: Union[Literal["RNN", "LSTM", "GRU"], Type[torch.nn.Module]] = "LSTM",
         out_activation: Union[Type[torch.nn.Module], torch.nn.Module, None] = None,
         bidirectional: bool = False,
@@ -123,7 +123,7 @@ class RecurrentModel(RecurrentNeuralNetwork):
             hidden_features=hidden_features[:-1],
             out_features=hidden_features[-1],
             batch_first=batch_first,
-            return_cell_state=True,
+            return_cell_state=return_cell_state,
         )
         for block in self.blocks:
             if rnn_type == "LSTM" or rnn_type == torch.nn.LSTM:
