@@ -167,7 +167,10 @@ class RecurrentModel(RecurrentNeuralNetwork):
             x = self.embedding_dropout(x)
 
         outputs = x
-        outputs, hidden = super().forward(outputs)
+        if self.return_cell_state:
+            outputs, hidden = super().forward(outputs)
+        else:
+            outputs = super().forward(outputs)
 
         if self.bidirectional:
             outputs = (
