@@ -944,11 +944,20 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         if output_device is None:
             output_device = device
 
+        
+
         output_containers = []
         with torch.no_grad():
             for idx_0 in range(0, len(x), batch_size):
                 idx_1 = min(idx_0 + batch_size, len(x))
                 batch = [item[idx_0:idx_1] for item in [x, *args]]
+                for idx, x in enumerate(batch):
+                    # if is on mps
+                    if isinstance(x, torch.Tensor) and x.device.type == "mps":
+                        # This is a fix to a torch MPS issue where indexed tensors
+                        # will cause subRange crashes.
+                        batch[idx] = torch.clone(x)
+
                 for i, item in enumerate(batch):
                     if not isinstance(item, torch.Tensor):
                         if isinstance(item, np.ndarray):
