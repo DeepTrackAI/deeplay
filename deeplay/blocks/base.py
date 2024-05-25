@@ -125,10 +125,11 @@ class BaseBlock(SequentialBlock):
 
     def normalized(
         self,
-        normalization: Union[Type[nn.Module], DeeplayModule],
+        normalization: Optional[Union[Type[nn.Module], DeeplayModule]] = None,
         mode="append",
         after=None,
     ) -> Self:
+        normalization = normalization or self.get_default_normalization()
         self.set("normalization", normalization, mode=mode, after=after)
         return self
 
