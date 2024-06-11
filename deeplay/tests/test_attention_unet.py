@@ -121,3 +121,24 @@ class TestAttentionUNet(unittest.TestCase):
 
         # Check output shape
         self.assertEqual(output.shape, (2, 1, 64, 64))
+
+    def test_self_attention_heads(self):
+
+        attn_unet = AttentionUNet(
+            in_channels=1,
+            channels=[8, 16, 32],
+            base_channels=[64, 64],
+            channel_attention=[True, True, True],
+            out_channels=1,
+            position_embedding_dim=64,
+            num_attention_heads={"self": 2, "cross": 2},
+        )
+        attn_unet.build()
+
+        # Test on a batch of 2
+        x = torch.rand(2, 1, 64, 64)
+        t = torch.rand(2, 1)
+        output = attn_unet(x, positional_encoding(t, 64), y=None, context=None)
+
+        # Check output shape
+        self.assertEqual(output.shape, (2, 1, 64, 64))
