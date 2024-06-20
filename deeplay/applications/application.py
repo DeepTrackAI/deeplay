@@ -506,6 +506,8 @@ class Application(DeeplayModule, L.LightningModule):
         import pickle
 
         for name, module in self.named_modules():
+            if not isinstance(module, DeeplayModule):
+                continue
             self._user_config.remove_derived_configurations(module.tags)
             self.__parent_hooks__ = {
                 "before_build": [],
