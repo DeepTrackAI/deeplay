@@ -1,5 +1,5 @@
 from typing import Type, TypeVar
-import pickle
+import dill
 
 T = TypeVar("T")
 
@@ -27,7 +27,7 @@ class ExtendedConstructorMeta(type):
             _args = kwargs.pop("__build_args")
             _kwargs = kwargs.pop("__build_kwargs")
 
-            app = pickle.loads(kwargs["__from_ckpt_application"])
+            app = dill.loads(kwargs["__from_ckpt_application"])
             app.build(*_args, **_kwargs)
             return app
 

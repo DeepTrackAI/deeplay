@@ -1,6 +1,7 @@
 import copy
 
 import logging
+from pickle import PicklingError
 from typing import (
     Callable,
     Dict,
@@ -13,6 +14,7 @@ from typing import (
     Union,
     Any,
 )
+from warnings import warn
 
 import lightning as L
 import matplotlib.pyplot as plt
@@ -28,6 +30,7 @@ from torch_geometric.data import Data
 import deeplay as dl
 from deeplay import DeeplayModule, Optimizer
 from deeplay.callbacks import RichProgressBar, LogHistory
+import dill
 
 logging.getLogger("lightning.pytorch.utilities.rank_zero").setLevel(logging.WARNING)
 logging.getLogger("lightning.pytorch.accelerators.cuda").setLevel(logging.WARNING)
@@ -498,7 +501,11 @@ class Application(DeeplayModule, L.LightningModule):
 
     def build(self, *args, **kwargs):
         if self.root_module is self:
-            self._store_hparams(*args, **kwargs)
+            try:
+                self._store_hparams(*args, **kwargs)
+            except PicklingError:
+                warn("Could not store hparams, checkpointing might not be available.")
+                self.__construct__()
 
         return super().build(*args, **kwargs)
 
@@ -521,7 +528,7 @@ class Application(DeeplayModule, L.LightningModule):
             }
         self._modules.clear()
 
-        _pickled_application = pickle.dumps(self)
+        _pickled_application = dill.dumps(self)
         self._set_hparams(
             {
                 "__from_ckpt_application": _pickled_application,
