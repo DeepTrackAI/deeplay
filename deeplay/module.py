@@ -1296,25 +1296,25 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
             # self._setattr_recording.add(name)
 
-    def __reduce__(self):
-        # try:
-        #     # This can fail for modules passed as args that are subsequently
-        #     # removed from the module
-        #     self._user_config.remove_derived_configurations(self.tags)
-        # except RuntimeError:
-        #     ...
+    # def __reduce__(self):
+    #     # try:
+    #     #     # This can fail for modules passed as args that are subsequently
+    #     #     # removed from the module
+    #     #     self._user_config.remove_derived_configurations(self.tags)
+    #     # except RuntimeError:
+    #     #     ...
 
-        self.__parent_hooks__ = {
-            "before_build": [],
-            "after_build": [],
-            "after_init": [],
-        }
-        self.__constructor_hooks__ = {
-            "before_build": [],
-            "after_build": [],
-            "after_init": [],
-        }
-        return super().__reduce__()
+    #     # self.__parent_hooks__ = {
+    #     #     "before_build": [],
+    #     #     "after_build": [],
+    #     #     "after_init": [],
+    #     # }
+    #     # self.__constructor_hooks__ = {
+    #     #     "before_build": [],
+    #     #     "after_build": [],
+    #     #     "after_init": [],
+    #     # }
+    #     return super().__reduce__()
 
     def _select_string(self, structure, selections, select, ellipsis=False):
         selects = select.split(",")
