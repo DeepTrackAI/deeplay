@@ -7,3 +7,4 @@ kornia
 scipy
 scikit-image
 rich
+dill
