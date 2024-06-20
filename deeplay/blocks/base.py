@@ -91,9 +91,9 @@ class BaseBlock(SequentialBlock):
         """Returns the default merge operation for the block."""
         return Add()
 
-    @abstractmethod
     def get_default_shortcut(self) -> DeeplayModule:
         """Returns the default shortcut function for the block."""
+        return Layer(nn.Identity)
 
     @abstractmethod
     def call_with_dummy_data(self):
