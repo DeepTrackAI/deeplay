@@ -1,6 +1,7 @@
 from hmac import new
 import inspect
 from logging import config
+from pickle import PickleError, PicklingError
 from typing import Any, Dict, Tuple, List, Set, Literal, Optional, Callable, Union
 from typing_extensions import Self
 
@@ -15,6 +16,14 @@ import numpy as np
 from .meta import ExtendedConstructorMeta, not_top_level
 from .decorators import after_init, after_build
 from functools import partial
+
+
+def builder(cls, args, kwargs):
+    # Builds a class given the arguments and keyword arguments.
+    # Used to support kwargs when pickling in __reduce__.
+    obj = cls(*args, **kwargs)
+    obj.__construct__()
+    return obj
 
 
 class ConfigItem:
@@ -939,6 +948,21 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
             for arg in args:
                 assert len(arg) == len(x), "All inputs must have the same length."
 
+        if len(x) >= 1000:
+            if isinstance(x, torch.Tensor) and x.device.type == "mps":
+                device = x.device
+                x = x.cpu().to(device)
+
+            args = []
+            for arg in args:
+                if isinstance(arg, torch.Tensor) and arg.device.type == "mps":
+                    arg = arg.cpu().to(device)
+                args.append(arg)
+            args = tuple(args)
+            # for _x in (x,) + args:
+            #     if isinstance(_x, torch.Tensor) and _x.device.type == "mps":
+            #         _x.to("cpu").to("mps")
+
         if device is None:
             device = self.device
         if output_device is None:
@@ -1271,6 +1295,26 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
                     # value.set_root_module(self.root_module)
 
             # self._setattr_recording.add(name)
+
+    def __reduce__(self):
+        # try:
+        #     # This can fail for modules passed as args that are subsequently
+        #     # removed from the module
+        #     self._user_config.remove_derived_configurations(self.tags)
+        # except RuntimeError:
+        #     ...
+
+        self.__parent_hooks__ = {
+            "before_build": [],
+            "after_build": [],
+            "after_init": [],
+        }
+        self.__constructor_hooks__ = {
+            "before_build": [],
+            "after_build": [],
+            "after_init": [],
+        }
+        return super().__reduce__()
 
     def _select_string(self, structure, selections, select, ellipsis=False):
         selects = select.split(",")
