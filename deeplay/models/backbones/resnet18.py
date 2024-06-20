@@ -11,13 +11,26 @@ from deeplay.external.layer import Layer
 
 @Conv2dBlock.register_style
 def resnet(block: Conv2dBlock, stride: int = 1):
+    """ResNet style block composed of two residual blocks.
+
+    Parameters
+    ----------
+    stride : int
+        Stride of the first block, by default 1
+    """
+    # 1. create two blocks
     block.multi(2)
+
+    # 2. make the two blocks
     block.blocks[0].style("residual", order="lnaln|a")
     block.blocks[1].style("residual", order="lnaln|a")
+
+    # 3. if stride > 1, stride the first block and add normalization to the shortcut
     if stride > 1:
         block.blocks[0].strided(stride)
         block.blocks[0].shortcut_start.normalized()
 
+    # 4. remove the pooling layer if it exists.
     block[...].isinstance(Conv2dBlock).all.remove("pool", allow_missing=True)
 
 
