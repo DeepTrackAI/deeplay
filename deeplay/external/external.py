@@ -42,6 +42,7 @@ class External(DeeplayModule):
     def __pre_init__(self, classtype: type, *args, **kwargs):
         # Hack
         self.classtype = classtype
+        self._non_classtype_args = args
         self._computed = {}
         super().__pre_init__(*args, classtype=classtype, **kwargs)
         self.assert_not_positional_only_and_variadic()
@@ -90,7 +91,7 @@ class External(DeeplayModule):
             args = args + (kwargs.pop(arg),)
 
         if argspec.varargs is not None:
-            args = args + self._actual_init_args["args"]
+            args = args + self._non_classtype_args
 
         # Remove *args and **kwargs from kwargs
         for key in list(kwargs.keys()):
