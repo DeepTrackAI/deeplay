@@ -33,6 +33,14 @@ class ExtendedConstructorMeta(type):
 
         __user_config = kwargs.pop("__user_config", None)
         obj = cls.__new__(cls, *args, **kwargs)
+        object.__setattr__(
+            obj,
+            "_actual_init_args",
+            {
+                "args": args,
+                "kwargs": kwargs,
+            },
+        )
         # if isinstance(obj, cls):
         cls.__pre_init__(obj, *args, **kwargs)
 

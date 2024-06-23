@@ -595,11 +595,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         # Stored as tuple to avoid it being included in modules
         self._root_module = (self,)
 
-        self._actual_init_args = {
-            "args": args,
-            "_args": _args,
-            "kwargs": kwargs,
-        }
+        self._actual_init_args["_args"] = _args
 
         self._base_user_config = Config()
 
@@ -899,17 +895,37 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     #         return None
 
     def new(self, detach: bool = True) -> "DeeplayModule":
-        memo = {}
-        for module in self.modules():
-            if isinstance(module, DeeplayModule) and module._has_built:
-                memo[id(module)] = module
-        if self.root_module is not self:
-            memo[id(self.root_module)] = self.root_module
 
-        new = copy.deepcopy(self, memo)
+        args, kwargs = self.get_init_args()
+
+        args = list(args)
+        for i, arg in enumerate(args):
+            if isinstance(arg, DeeplayModule):
+                arg = arg.new(detach=detach)
+                args[i] = arg
+            else:
+                args[i] = copy.deepcopy(arg)
+
+        for key, value in kwargs.items():
+            if isinstance(value, DeeplayModule):
+                kwargs[key] = value.new(detach=detach)
+            else:
+                kwargs[key] = copy.deepcopy(value)
+
+        new = type(self)(*args, **kwargs)
+        # memo = {}
+        # for module in self.modules():
+        #     if isinstance(module, DeeplayModule) and module._has_built:
+        #         memo[id(module)] = module
+        # if self.root_module is not self:
+        #     memo[id(self.root_module)] = self.root_module
+
+        # new = copy.deepcopy(self, memo)
 
         if detach:
             new.set_root_module(new)
+        else:
+            new.set_root_module(self.root_module)
         return new
 
     def predict(
