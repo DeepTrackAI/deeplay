@@ -1,4 +1,5 @@
 import unittest
+from prompt_toolkit import Application
 import torch
 import torch.nn as nn
 from deeplay import ConvolutionalNeuralNetwork, Layer, LayerList
@@ -128,3 +129,19 @@ class TestComponentCNN(unittest.TestCase):
 
         for block in cnn_with_pool_module.blocks[1:]:
             self.assertIsInstance(block.pool, nn.MaxPool2d)
+
+    def test_create_twice(self):
+
+        class Wrapper(Application):
+            def __init__(self, model, **kwargs):
+                self.model = model
+                super().__init__(**kwargs)
+
+        cnn = ConvolutionalNeuralNetwork(3, [4, 4], 1, pool=torch.nn.MaxPool2d(2))
+        app_1 = Wrapper(cnn)
+        app_2 = Wrapper(cnn)
+
+        self.assertListEqual(
+            app_2.model.blocks[1].order,
+            ["pool", "layer", "activation"],
+        )
