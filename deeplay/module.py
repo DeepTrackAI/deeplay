@@ -198,17 +198,23 @@ class Config(Dict[Tuple[str, ...], ConfigItemList]):
                         newitem = ConfigItem(item.source.tags, item.value)
                         itemlist[idx] = newitem
 
-    def remove_derived_configurations(self, tags: List[Tuple[str, ...]]):
-        assert all(isinstance(tag, tuple) for tag in tags), (
-            f"Tags must be a list of tuples, but found {tags}. "
-            "Please check the tags being used."
-        )
+    def remove_derived_configurations(
+        self, tags: Optional[List[Tuple[str, ...]]] = None
+    ):
+        if tags is None:
+            match_tag = lambda key: True
+        else:
+            match_tag = lambda key: any(tag in key for tag in tags)
+            assert all(isinstance(tag, tuple) for tag in tags), (
+                f"Tags must be a list of tuples, but found {tags}. "
+                "Please check the tags being used."
+            )
         for k, itemlist in self.items():
             for item in itemlist:
                 if (
                     item.source is not None
                     and isinstance(item, ConfigItem)
-                    and any(tag in item.source for tag in tags)
+                    and match_tag(item.source)
                 ):
                     itemlist.remove(item)
 
@@ -808,6 +814,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         # Now, `built_layer` is an instance of nn.Linear(in_features=20, out_features=40)
         ```
         """
+        self._cleanup_and_construct()
         obj = self.new()
         obj.set_root_module(obj.root_module)
         obj = obj.build()
@@ -1499,6 +1506,11 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
             self._run_hooks("after_init")
             self.is_constructing = False
             self.__post_init__()
+
+    def _cleanup_and_construct(self):
+        self._modules.clear()
+        self._user_config.remove_derived_configurations()
+        self.__construct__()
 
     def get_init_args(self):
         argspec = self.get_argspec()
