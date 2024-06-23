@@ -47,8 +47,8 @@ class External(DeeplayModule):
         super().__pre_init__(*args, classtype=classtype, **kwargs)
         self.assert_not_positional_only_and_variadic()
 
-    def _actual_init(self, classtype, *args, **kwargs):
-        self.classtype = classtype
+    def _actual_init(self, *args, **kwargs):
+        self.classtype = kwargs.pop("classtype")
         self.assert_not_positional_only_and_variadic()
 
     def assert_not_positional_only_and_variadic(self):
@@ -118,8 +118,8 @@ class External(DeeplayModule):
     def get_init_args(self):
         kwargs = self.kwargs.copy()
         # hack for external
-        classtype = kwargs.pop("classtype")
-        return (classtype,), kwargs
+        # classtype = kwargs.pop("classtype")
+        return (), kwargs
 
     def get_argspec(self):
         classtype = self.classtype
@@ -191,3 +191,7 @@ class External(DeeplayModule):
             f"{key}={value}" for key, value in self.kwargs.items() if key != "classtype"
         )
         return f"{self.__class__.__name__}[{self.classtype.__name__}]({classkwargs})"
+
+    # def __reduce__(self):
+    #     # External object do not support
+    #     return object.__reduce__(self)
