@@ -3,6 +3,8 @@ import inspect
 from logging import config
 from pickle import PickleError, PicklingError
 from typing import Any, Dict, Tuple, List, Set, Literal, Optional, Callable, Union
+from warnings import warn
+from regex import R
 from typing_extensions import Self
 
 import torch
@@ -14,7 +16,7 @@ import inspect
 import numpy as np
 
 from .meta import ExtendedConstructorMeta, not_top_level
-from .decorators import after_init, after_build
+from .decorators import after_init, after_build, stateful
 from functools import partial
 
 
@@ -109,6 +111,7 @@ class Config(Dict[Tuple[str, ...], ConfigItemList]):
         keep_list=False,
         take_subconfig=False,
         trim_tags=False,
+        trim_derived=False,
     ):
         res = Config()
 
@@ -118,6 +121,16 @@ class Config(Dict[Tuple[str, ...], ConfigItemList]):
 
             return len(key) >= len(tag) and key[: len(tag)] == tag
 
+        def maybe_trim_derived(key, tag, value: ConfigItemList):
+            if not trim_derived:
+                return value
+            return [
+                item
+                for item in value
+                if not isinstance(item, DetachedConfigItem)
+                and item.source_depth <= len(tag)
+            ]
+
         def new_key(key, tag):
             if not trim_tags:
                 return key
@@ -126,7 +139,7 @@ class Config(Dict[Tuple[str, ...], ConfigItemList]):
         for tag in tags:
             res.update(
                 {
-                    new_key(key, tag): value
+                    new_key(key, tag): maybe_trim_derived(key, tag, value)
                     for key, value in self.items()
                     if matches_key(key, tag)
                 }
@@ -139,6 +152,7 @@ class Config(Dict[Tuple[str, ...], ConfigItemList]):
                 }
             )
         out = {}
+
         # Sort list by source, take the last item with the source closest to the root.
         if not keep_list:
             for key, itemlist in res.items():
@@ -435,6 +449,8 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     _has_built: bool
     _setattr_recording: Set[str]
     _tag: Tuple[str, ...]
+    _config_tape: list
+    _is_calling_stateful_method: bool
 
     logs: Dict[str, Any]
 
@@ -709,6 +725,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
         self._modules[target] = replacement
 
+    @stateful
     def configure(self, *args: Any, **kwargs: Any):
         """
         Configures the module with specified arguments.
@@ -810,9 +827,16 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         # Now, `built_layer` is an instance of nn.Linear(in_features=20, out_features=40)
         ```
         """
+        if self._has_built:
+            warn(
+                "Module has already been built. "
+                "Please only use one of `build` or `create`.",
+                RuntimeWarning,
+            )
+            return self
         self._cleanup_and_construct()
         obj = self.new()
-        obj.set_root_module(obj.root_module)
+        # obj.set_root_module(obj.root_module)
         obj = obj.build()
         return obj
 
@@ -894,38 +918,19 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     #     else:
     #         return None
 
-    def new(self, detach: bool = True) -> "DeeplayModule":
+    def new(self, detach: bool = True, memo=None) -> "DeeplayModule":
 
-        args, kwargs = self.get_init_args()
-
-        args = list(args)
-        for i, arg in enumerate(args):
-            if isinstance(arg, DeeplayModule):
-                arg = arg.new(detach=detach)
-                args[i] = arg
-            else:
-                args[i] = copy.deepcopy(arg)
-
-        for key, value in kwargs.items():
-            if isinstance(value, DeeplayModule):
-                kwargs[key] = value.new(detach=detach)
-            else:
-                kwargs[key] = copy.deepcopy(value)
+        memo = {}
+        args, kwargs = (
+            self._actual_init_args["args"],
+            self._actual_init_args["kwargs"],
+        )
+        args, kwargs = self._copy_args_and_kwargs(args, kwargs, memo)
 
         new = type(self)(*args, **kwargs)
-        # memo = {}
-        # for module in self.modules():
-        #     if isinstance(module, DeeplayModule) and module._has_built:
-        #         memo[id(module)] = module
-        # if self.root_module is not self:
-        #     memo[id(self.root_module)] = self.root_module
+        new._config_tape = self._config_tape.copy()
+        new._replay_tape()
 
-        # new = copy.deepcopy(self, memo)
-
-        if detach:
-            new.set_root_module(new)
-        else:
-            new.set_root_module(self.root_module)
         return new
 
     def predict(
@@ -1146,6 +1151,22 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
         """
         self.__active_hooks__["after_init"].append(func)
+
+    def _register_hook(self, hook_type, func):
+        if ExtendedConstructorMeta._is_top_level["value"]:
+            self.__active_hooks__[hook_type].append(ConfigItem(None, func))
+        else:
+            # If we are not currently constructing the top level module,
+            # this means that this is a derived configuration.
+            # Thus, we store the source of the derived configuration such
+            # that it can be cleared at the correct time.
+
+            current_constructing_module: DeeplayModule = (
+                ExtendedConstructorMeta._is_top_level["constructing_module"]
+            )
+            self.__active_hooks__[hook_type].append(
+                ConfigItem(current_constructing_module.tags, func)
+            )
 
     def get_user_configuration(self):
         """
@@ -1527,6 +1548,67 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         self._modules.clear()
         self._user_config.remove_derived_configurations()
         self.__construct__()
+
+    def _append_to_tape(self, obj, method_name, args, kwargs):
+        if (
+            self.root_module._is_calling_stateful_method
+            or self.is_constructing
+            or self.root_module.is_constructing
+        ):
+            return
+        self._config_tape.append((obj.tags, method_name, args, kwargs))
+
+    def _replay_tape(self):
+        memo = {}
+        for tags, method_name, args, kwargs in self._config_tape.copy():
+            target = self._get_module_from_tags(tags)
+            method = getattr(target, method_name)
+            args, kwargs = self._copy_args_and_kwargs(args, kwargs, memo)
+            with target.calling_stateful():
+                method(*args, **kwargs)
+
+    def _get_module_from_tags(self, tags):
+        for name, module in self.root_module.named_modules():
+
+            if name == "":
+                name = ()
+            else:
+                name = tuple(name.split("."))
+
+            if name in tags:
+                return module
+
+        raise ValueError(f"Module with tags {tags} not found in {self.root_module}")
+
+    def calling_stateful(self):
+        class Stateful:
+            def __enter__(_):
+                self._is_calling_stateful_method = True
+                self.root_module._is_calling_stateful_method = True
+
+            def __exit__(_, *args):
+                self._is_calling_stateful_method = False
+                self.root_module._is_calling_stateful_method = False
+
+        return Stateful()
+
+    def _copy_args_and_kwargs(self, args, kwargs, memo=None):
+        memo = {} if memo is None else memo
+        new_args = []
+        for arg in args:
+            if isinstance(arg, DeeplayModule):
+                new_args.append(arg.new(memo=memo))
+            else:
+                new_args.append(copy.deepcopy(arg, memo))
+
+        new_kwargs = {}
+        for key, value in kwargs.items():
+            if isinstance(value, DeeplayModule):
+                new_kwargs[key] = value.new(memo=memo)
+            else:
+                new_kwargs[key] = copy.deepcopy(value, memo)
+
+        return new_args, new_kwargs
 
     def get_init_args(self):
         argspec = self.get_argspec()
