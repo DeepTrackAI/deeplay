@@ -554,7 +554,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         If inside the constructor, __constructor_hooks__ is returned.
         Else, __parent_hooks__ is returned.
         """
-        if ExtendedConstructorMeta._is_top_level["value"]:
+        if ExtendedConstructorMeta._module_state["is_top_level"]:
             return self.__user_hooks__
         if self.is_constructing:
             return self.__constructor_hooks__
@@ -1152,7 +1152,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         self.__active_hooks__["after_init"].append(func)
 
     def _register_hook(self, hook_type, func):
-        if ExtendedConstructorMeta._is_top_level["value"]:
+        if ExtendedConstructorMeta._module_state["is_top_level"]:
             self.__active_hooks__[hook_type].append(ConfigItem(None, func))
         else:
             # If we are not currently constructing the top level module,
@@ -1161,7 +1161,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
             # that it can be cleared at the correct time.
 
             current_constructing_module: DeeplayModule = (
-                ExtendedConstructorMeta._is_top_level["constructing_module"]
+                ExtendedConstructorMeta._module_state["constructing_module"]
             )
             self.__active_hooks__[hook_type].append(
                 ConfigItem(current_constructing_module.tags, func)
@@ -1210,7 +1210,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     def _configure_kwargs(self, kwargs):
         for name, value in kwargs.items():
             self._assert_valid_configurable(name)
-            if ExtendedConstructorMeta._is_top_level["value"]:
+            if ExtendedConstructorMeta._module_state["is_top_level"]:
                 self._user_config.set_for_tags(self.tags, name, value)
             else:
                 # If we are not currently constructing the top level module,
@@ -1219,7 +1219,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
                 # that it can be cleared at the correct time.
 
                 current_constructing_module: DeeplayModule = (
-                    ExtendedConstructorMeta._is_top_level["constructing_module"]
+                    ExtendedConstructorMeta._module_state["constructing_module"]
                 )
 
                 # check if self is a child of the constructing module
