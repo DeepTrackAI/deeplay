@@ -41,6 +41,8 @@ class ExtendedConstructorMeta(type):
                 "kwargs": kwargs,
             },
         )
+        object.__setattr__(obj, "_config_tape", [])
+        object.__setattr__(obj, "_is_calling_stateful_method", False)
         # if isinstance(obj, cls):
         cls.__pre_init__(obj, *args, **kwargs)
 
