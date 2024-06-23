@@ -1,8 +1,8 @@
 import unittest
-from prompt_toolkit import Application
+
 import torch
 import torch.nn as nn
-from deeplay import ConvolutionalNeuralNetwork, Layer, LayerList
+from deeplay import ConvolutionalNeuralNetwork, Layer, LayerList, Application
 
 import itertools
 
@@ -138,8 +138,8 @@ class TestComponentCNN(unittest.TestCase):
                 super().__init__(**kwargs)
 
         cnn = ConvolutionalNeuralNetwork(3, [4, 4], 1, pool=torch.nn.MaxPool2d(2))
-        app_1 = Wrapper(cnn)
-        app_2 = Wrapper(cnn)
+        app_1 = Wrapper(cnn).create()
+        app_2 = Wrapper(cnn).create()
 
         self.assertListEqual(
             app_2.model.blocks[1].order,
