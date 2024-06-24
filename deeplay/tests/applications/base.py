@@ -1,10 +1,7 @@
-from gc import enable
 import io
-from typing import Iterable, List, Tuple, Type, Union
+from typing import Iterable, List, Tuple, Type
 import unittest
-from regex import D
 import torch
-import torch.nn as nn
 
 from deeplay.applications.application import Application
 from deeplay.external.optimizers.adam import Adam
