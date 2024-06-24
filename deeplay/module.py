@@ -1293,28 +1293,6 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         config_before = self._user_config.take(receivertags, take_subconfig=True)
         is_empty = len(config_before) == 0
         self._user_config.update(d)
-        # config_after = self._user_config.take(receivertags, take_subconfig=True)
-
-        # any_change = False
-        # if list(config_before.keys()) != list(config_after.keys()):
-        #     any_change = True
-        # else:
-        #     for key in config_before:
-        #         bef_value = config_before[key]
-        #         aft_value = config_after[key]
-        #         if isinstance(bef_value, ConfigItem) and isinstance(aft_value, ConfigItem):
-        #             if bef_value.value != aft_value.value:
-        #                 any_change = True
-        #                 break
-        #         else:
-        #             ...
-        # if config_before[key].value != config_after[key].value:
-        #     any_change = True
-        #     break
-
-        # self._user_config._detached_configurations += (
-        #     receiver._user_config._detached_configurations
-        # )
         receiver.set_root_module(self.root_module)
         return not is_empty
 
@@ -1337,27 +1315,6 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
                     # # ensure that logs are stored in the correct place
                     # value.set_root_module(self.root_module)
 
-            # self._setattr_recording.add(name)
-
-    # def __reduce__(self):
-    #     # try:
-    #     #     # This can fail for modules passed as args that are subsequently
-    #     #     # removed from the module
-    #     #     self._user_config.remove_derived_configurations(self.tags)
-    #     # except RuntimeError:
-    #     #     ...
-
-    #     # self.__parent_hooks__ = {
-    #     #     "before_build": [],
-    #     #     "after_build": [],
-    #     #     "after_init": [],
-    #     # }
-    #     # self.__constructor_hooks__ = {
-    #     #     "before_build": [],
-    #     #     "after_build": [],
-    #     #     "after_init": [],
-    #     # }
-    #     return super().__reduce__()
 
     def _select_string(self, structure, selections, select, ellipsis=False):
         selects = select.split(",")
