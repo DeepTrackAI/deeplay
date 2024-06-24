@@ -329,8 +329,10 @@ class Application(DeeplayModule, L.LightningModule):
     def log_metrics(
         self, kind: Literal["train", "val", "test"], y_hat, y, **logger_kwargs
     ):
+        ys = self.metrics_preprocess(y_hat, y)
+
         metrics: tm.MetricCollection = getattr(self, f"{kind}_metrics")
-        metrics(y_hat, y)
+        metrics(*ys)
 
         for name, metric in metrics.items():
             self.log(
@@ -338,6 +340,9 @@ class Application(DeeplayModule, L.LightningModule):
                 metric,
                 **logger_kwargs,
             )
+
+    def metrics_preprocess(self, y_hat, y) -> Tuple[torch.Tensor, torch.Tensor]:
+        return y_hat, y
 
     @L.LightningModule.trainer.setter
     def trainer(self, trainer):

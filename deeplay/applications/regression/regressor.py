@@ -22,14 +22,9 @@ class Regressor(Application):
         optimizer=None,
         **kwargs,
     ):
-        super().__init__(loss=loss, **kwargs)
+        super().__init__(loss=loss, optimizer=optimizer or Adam(lr=1e-3), **kwargs)
 
         self.model = model
-        self.optimizer = optimizer or Adam(lr=1e-3)
-
-        @self.optimizer.params
-        def params(self):
-            return self.model.parameters()
 
     def forward(self, x):
         return self.model(x)

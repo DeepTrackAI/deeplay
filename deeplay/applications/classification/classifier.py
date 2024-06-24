@@ -10,10 +10,9 @@ import torchmetrics as tm
 
 
 class Classifier(Application):
+
     model: torch.nn.Module
-    loss: torch.nn.Module
     metrics: list
-    optimizer: Optimizer
 
     def __init__(
         self,
@@ -26,19 +25,15 @@ class Classifier(Application):
     ):
         if num_classes is not None and kwargs.get("metrics", None) is None:
             kwargs["metrics"] = [tm.Accuracy("multiclass", num_classes=num_classes)]
-        super().__init__(loss=loss, **kwargs)
+        super().__init__(loss=loss, optimizer=optimizer or Adam(lr=1e-3), **kwargs)
 
         self.model = model
-        self.optimizer = optimizer or Adam(lr=1e-3)
         self.make_targets_one_hot = make_targets_one_hot
-
-        @self.optimizer.params
-        def params(self):
-            return self.model.parameters()
+        self.num_classes = num_classes
 
     def compute_loss(self, y_hat, y):
         if self.make_targets_one_hot:
-            y = F.one_hot(y, num_classes=y_hat.size(1)).float()
+            y = F.one_hot(y, num_classes=self.num_classes or y_hat.size(1)).float()
 
         return self.loss(y_hat, y)
 
