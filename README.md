@@ -88,3 +88,9 @@ Here you find a series of notebooks tailored for Deeplay's developers:
 - DT101 **[Deeplay File Structure](https://github.com/DeepTrackAI/deeplay/blob/develop/tutorials/developers/DT101_files.ipynb)**
 
 - DT111 **[Style Guide](https://github.com/DeepTrackAI/deeplay/blob/develop/tutorials/developers/DT111_style.ipynb)**
+
+- DT121 **[Deeplay Classes Overview](https://github.com/DeepTrackAI/deeplay/blob/develop/tutorials/developers/DT121_overview.ipynb)**
+
+- DT131 **[Deeplay Applications](https://github.com/DeepTrackAI/deeplay/blob/develop/tutorials/developers/DT131_applications.ipynb)**
+
+- DT141 **[Deeplay Models](https://github.com/DeepTrackAI/deeplay/blob/develop/tutorials/developers/DT141_models.ipynb)**

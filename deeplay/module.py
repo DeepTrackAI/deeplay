@@ -1,4 +1,3 @@
-from hmac import new
 import inspect
 from logging import config
 from pickle import PickleError, PicklingError
@@ -1314,7 +1313,6 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
                     # # root module should always be update to
                     # # ensure that logs are stored in the correct place
                     # value.set_root_module(self.root_module)
-
 
     def _select_string(self, structure, selections, select, ellipsis=False):
         selects = select.split(",")
