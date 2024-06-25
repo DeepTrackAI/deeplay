@@ -27,7 +27,6 @@ class TestComponentEncDec(unittest.TestCase):
         self.assertEqual(encdec.decoder.blocks[-2].layer.out_channels, 8)
 
         self.assertEqual(encdec.decoder.output.layer.out_channels, 1)
-
         # test on a batch of 2
         x = torch.randn(2, 3, 64, 64)
         y = encdec(x)

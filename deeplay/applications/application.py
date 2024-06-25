@@ -1,6 +1,7 @@
 import copy
 
 import logging
+from pickle import PicklingError
 from typing import (
     Callable,
     Dict,
@@ -13,6 +14,7 @@ from typing import (
     Union,
     Any,
 )
+from warnings import warn
 
 import lightning as L
 import matplotlib.pyplot as plt
@@ -28,6 +30,7 @@ from torch_geometric.data import Data
 import deeplay as dl
 from deeplay import DeeplayModule, Optimizer
 from deeplay.callbacks import RichProgressBar, LogHistory
+import dill
 
 logging.getLogger("lightning.pytorch.utilities.rank_zero").setLevel(logging.WARNING)
 logging.getLogger("lightning.pytorch.accelerators.cuda").setLevel(logging.WARNING)
@@ -326,8 +329,10 @@ class Application(DeeplayModule, L.LightningModule):
     def log_metrics(
         self, kind: Literal["train", "val", "test"], y_hat, y, **logger_kwargs
     ):
+        ys = self.metrics_preprocess(y_hat, y)
+
         metrics: tm.MetricCollection = getattr(self, f"{kind}_metrics")
-        metrics(y_hat, y)
+        metrics(*ys)
 
         for name, metric in metrics.items():
             self.log(
@@ -335,6 +340,9 @@ class Application(DeeplayModule, L.LightningModule):
                 metric,
                 **logger_kwargs,
             )
+
+    def metrics_preprocess(self, y_hat, y) -> Tuple[torch.Tensor, torch.Tensor]:
+        return y_hat, y
 
     @L.LightningModule.trainer.setter
     def trainer(self, trainer):
@@ -495,3 +503,48 @@ class Application(DeeplayModule, L.LightningModule):
             kwargs.update({"batch_size": self._current_batch_size})
 
         super().log(name, value, **kwargs)
+
+    def build(self, *args, **kwargs):
+        if self.root_module is self:
+            try:
+                self._store_hparams(*args, **kwargs)
+            except PicklingError:
+                warn("Could not store hparams, checkpointing might not be available.")
+                self.__construct__()
+
+        return super().build(*args, **kwargs)
+
+    def _store_hparams(self, *args, **kwargs):
+        import pickle
+
+        for name, module in self.named_modules():
+            if not isinstance(module, DeeplayModule):
+                continue
+            self._user_config.remove_derived_configurations(module.tags)
+            self.__parent_hooks__ = {
+                "before_build": [],
+                "after_build": [],
+                "after_init": [],
+            }
+            self.__constructor_hooks__ = {
+                "before_build": [],
+                "after_build": [],
+                "after_init": [],
+            }
+        self._modules.clear()
+
+        _pickled_application = dill.dumps(self)
+        self._set_hparams(
+            {
+                "__from_ckpt_application": _pickled_application,
+                "__build_args": args,
+                "__build_kwargs": kwargs,
+            }
+        )
+
+        # restore the application
+        self.__construct__()
+
+    # @classmethod
+    # def load_from_checkpoint(cls, checkpoint_path: str | Path | np.IO, map_location: torch.device | str | int | Callable[[UntypedStorage, str], UntypedStorage | None] | Dict[torch.device | str | int, torch.device | str | int] | None = None, hparams_file: str | Path | None = None, strict: bool | None = None, **kwargs: Any) -> Self:
+    #     return super().load_from_checkpoint(checkpoint_path, map_location, hparams_file, strict, **kwargs)

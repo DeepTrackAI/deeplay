@@ -78,6 +78,7 @@ def add_imports(stub_path, cls):
 
     imports = [
         "from typing import Literal, Type, Union, Optional, overload\n",
+        "from typing_extensions import Self\n",
     ]
 
     lines = imports + lines

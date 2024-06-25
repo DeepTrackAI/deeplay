@@ -262,8 +262,10 @@ class TestDeeplayModule(unittest.TestCase):
 
     def test_variadic_module(self):
         external = dl.External(VariadicModule, 10, 20, arg=30)
-        built = external.build()
+
         created = external.create()
+        built = external.build()
+
         self.assertIsInstance(created, VariadicModule)
         self.assertIsInstance(built, VariadicModule)
 

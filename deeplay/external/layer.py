@@ -66,7 +66,6 @@ class Layer(External):
                 for keytuple, vlist in my_config.items():
                     if keytuple[-1] == key and vlist and vlist[-1].value == value:
                         vlist.pop()
-                        print(f"Removed {key} from {keytuple}")
                         break
             raise e
 

@@ -1,3 +1,4 @@
+numpy<2.0.0
 matplotlib
 lightning
 torchmetrics
@@ -7,3 +8,4 @@ kornia
 scipy
 scikit-image
 rich
+dill

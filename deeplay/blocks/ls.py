@@ -5,7 +5,7 @@ from typing import (
     Any,
 )
 
-from ..module import DeeplayModule
+from deeplay.module import DeeplayModule
 from .sequential import SequentialBlock
 
 

@@ -30,8 +30,7 @@ import itertools
 class TestComponentGCN(unittest.TestCase):
     def test_gnn_defaults(self):
         gnn = GraphConvolutionalNeuralNetwork(2, [4], 1)
-        gnn.build()
-        gnn.create()
+        gnn = gnn.create()
 
         self.assertEqual(len(gnn.blocks), 2)
 
@@ -56,8 +55,7 @@ class TestComponentGCN(unittest.TestCase):
 
     def test_normalization_with_sparse_A(self):
         gnn = GraphConvolutionalNeuralNetwork(2, [4], 1)
-        gnn.build()
-        gnn.create()
+        gnn = gnn.create()
 
         inp = {}
         inp["x"] = torch.randn(3, 2)
@@ -82,8 +80,7 @@ class TestComponentGCN(unittest.TestCase):
     def test_normalization_no_normalization_with_sparse_A(self):
         gnn = GraphConvolutionalNeuralNetwork(2, [4], 1)
         gnn.replace("normalize", Layer(nn.Identity))
-        gnn.build()
-        gnn.create()
+        gnn = gnn.create()
 
         inp = {}
         inp["x"] = torch.randn(3, 2)
@@ -95,8 +92,7 @@ class TestComponentGCN(unittest.TestCase):
 
     def test_normalization_with_sparse_A_and_repd_edges(self):
         gnn = GraphConvolutionalNeuralNetwork(2, [4], 1)
-        gnn.build()
-        gnn.create()
+        gnn = gnn.create()
 
         inp = {}
         inp["x"] = torch.randn(3, 2)
@@ -122,8 +118,7 @@ class TestComponentGCN(unittest.TestCase):
     def test_normalization_with_dense_A(self):
         gnn = GraphConvolutionalNeuralNetwork(2, [4], 1)
         gnn.normalize.configure(dense_laplacian_normalization)
-        gnn.build()
-        gnn.create()
+        gnn = gnn.create()
 
         inp = {}
         inp["x"] = torch.randn(3, 2)
@@ -148,8 +143,7 @@ class TestComponentGCN(unittest.TestCase):
     def test_normalization_no_normalization_with_dense_A(self):
         gnn = GraphConvolutionalNeuralNetwork(2, [4], 1)
         gnn.replace("normalize", Layer(nn.Identity))
-        gnn.build()
-        gnn.create()
+        gnn = gnn.create()
 
         inp = {}
         inp["x"] = torch.randn(3, 2)
@@ -162,14 +156,17 @@ class TestComponentGCN(unittest.TestCase):
     def test_numeric_output(self):
         gnn = GraphConvolutionalNeuralNetwork(2, [4], 1)
         gnn.output.update.set_output_map()
-        gnn.build()
-        gnn.create()
+
+        gnn = gnn.create()
+        # print(gnn.output.update.output_args)
+        # gnn.build()
 
         inp = {}
         inp["x"] = torch.randn(3, 2)
         inp["edge_index"] = torch.tensor([[0, 1, 1, 2], [1, 0, 2, 1]])
 
         out = gnn(inp)
+        # print(out)
         self.assertTrue(torch.is_tensor(out))
 
     def test_custom_propagation(self):
@@ -178,10 +175,11 @@ class TestComponentGCN(unittest.TestCase):
                 return x * 0
 
         gnn = GraphConvolutionalNeuralNetwork(2, [4], 1)
+        # print("before", gnn.propagate)
         gnn.propagate.configure(custom_propagation)
-        gnn.build()
-        gnn.create()
 
+        gnn = gnn.create()
+        # # print(gnn._input_mapped)
         inp = {}
         inp["x"] = torch.randn(3, 2)
         inp["edge_index"] = torch.tensor([[0, 1, 1, 2], [1, 0, 2, 1]])
@@ -191,8 +189,7 @@ class TestComponentGCN(unittest.TestCase):
 
     def test_tg_data_input(self):
         gnn = GraphConvolutionalNeuralNetwork(2, [4], 1)
-        gnn.build()
-        gnn.create()
+        gnn = gnn.create()
 
         inp = Data(
             x=torch.randn(3, 2),
@@ -206,8 +203,7 @@ class TestComponentGCN(unittest.TestCase):
 class TestComponentMPN(unittest.TestCase):
     def test_mpn_defaults(self):
         gnn = MessagePassingNeuralNetwork([4], 1)
-        gnn.build()
-        gnn.create()
+        gnn = gnn.create()
 
         self.assertEqual(len(gnn.blocks), 2)
 
@@ -245,8 +241,7 @@ class TestComponentMPN(unittest.TestCase):
 
     def test_gnn_default_propagation(self):
         gnn = MessagePassingNeuralNetwork([4], 1)
-        gnn.build()
-        gnn.create()
+        gnn = gnn.create()
 
         inp = {}
         inp["x"] = torch.randn(10, 2)
@@ -361,8 +356,7 @@ class TestComponentMPN(unittest.TestCase):
 
     def test_tg_data_input(self):
         gnn = MessagePassingNeuralNetwork([4], 1)
-        gnn.build()
-        gnn.create()
+        gnn = gnn.create()
 
         inp = Data(
             x=torch.randn(10, 2),
@@ -380,8 +374,7 @@ class TestComponentMPN(unittest.TestCase):
 class TestComponentRMLP(unittest.TestCase):
     def test_rmpn_defaults(self):
         gnn = ResidualMessagePassingNeuralNetwork([4], 4)
-        gnn.build()
-        gnn.create()
+        gnn = gnn.create()
 
         self.assertEqual(len(gnn.blocks), 2)
 
@@ -419,8 +412,7 @@ class TestComponentRMLP(unittest.TestCase):
 
     def test_gnn_default_propagation(self):
         gnn = ResidualMessagePassingNeuralNetwork([4], 4)
-        gnn.build()
-        gnn.create()
+        gnn = gnn.create()
 
         inp = {}
         inp["x"] = torch.randn(10, 4)
@@ -463,8 +455,7 @@ class TestComponentRMLP(unittest.TestCase):
 
     def test_tg_data_input(self):
         gnn = ResidualMessagePassingNeuralNetwork([4], 4)
-        gnn.build()
-        gnn.create()
+        gnn = gnn.create()
 
         inp = Data(
             x=torch.randn(10, 4),
@@ -580,7 +571,7 @@ class TestModelGraphToGlobalMPM(unittest.TestCase):
 class TestModelGraphToNodesMPM(unittest.TestCase):
     def test_gtonmpm_defaults(self):
         model = GraphToNodeMPM([64, 64], 1)
-        model = model.create()
+        model = model.build()
 
         # node and edge encoders are defined as Linear layers by default
         self.assertEqual(len(model.encoder[0].blocks), 1)

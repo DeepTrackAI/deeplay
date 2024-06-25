@@ -1,7 +1,8 @@
-from hmac import new
 import inspect
 from logging import config
+from pickle import PickleError, PicklingError
 from typing import Any, Dict, Tuple, List, Set, Literal, Optional, Callable, Union
+from warnings import warn
 from typing_extensions import Self
 
 import torch
@@ -13,8 +14,16 @@ import inspect
 import numpy as np
 
 from .meta import ExtendedConstructorMeta, not_top_level
-from .decorators import after_init, after_build
+from .decorators import after_init, after_build, stateful
 from functools import partial
+
+
+def builder(cls, args, kwargs):
+    # Builds a class given the arguments and keyword arguments.
+    # Used to support kwargs when pickling in __reduce__.
+    obj = cls(*args, **kwargs)
+    obj.__construct__()
+    return obj
 
 
 class ConfigItem:
@@ -100,6 +109,7 @@ class Config(Dict[Tuple[str, ...], ConfigItemList]):
         keep_list=False,
         take_subconfig=False,
         trim_tags=False,
+        trim_derived=False,
     ):
         res = Config()
 
@@ -109,6 +119,16 @@ class Config(Dict[Tuple[str, ...], ConfigItemList]):
 
             return len(key) >= len(tag) and key[: len(tag)] == tag
 
+        def maybe_trim_derived(key, tag, value: ConfigItemList):
+            if not trim_derived:
+                return value
+            return [
+                item
+                for item in value
+                if not isinstance(item, DetachedConfigItem)
+                and item.source_depth <= len(tag)
+            ]
+
         def new_key(key, tag):
             if not trim_tags:
                 return key
@@ -117,7 +137,7 @@ class Config(Dict[Tuple[str, ...], ConfigItemList]):
         for tag in tags:
             res.update(
                 {
-                    new_key(key, tag): value
+                    new_key(key, tag): maybe_trim_derived(key, tag, value)
                     for key, value in self.items()
                     if matches_key(key, tag)
                 }
@@ -130,6 +150,7 @@ class Config(Dict[Tuple[str, ...], ConfigItemList]):
                 }
             )
         out = {}
+
         # Sort list by source, take the last item with the source closest to the root.
         if not keep_list:
             for key, itemlist in res.items():
@@ -189,17 +210,23 @@ class Config(Dict[Tuple[str, ...], ConfigItemList]):
                         newitem = ConfigItem(item.source.tags, item.value)
                         itemlist[idx] = newitem
 
-    def remove_derived_configurations(self, tags: List[Tuple[str, ...]]):
-        assert all(isinstance(tag, tuple) for tag in tags), (
-            f"Tags must be a list of tuples, but found {tags}. "
-            "Please check the tags being used."
-        )
+    def remove_derived_configurations(
+        self, tags: Optional[List[Tuple[str, ...]]] = None
+    ):
+        if tags is None:
+            match_tag = lambda key: True
+        else:
+            match_tag = lambda key: any(tag in key for tag in tags)
+            assert all(isinstance(tag, tuple) for tag in tags), (
+                f"Tags must be a list of tuples, but found {tags}. "
+                "Please check the tags being used."
+            )
         for k, itemlist in self.items():
             for item in itemlist:
                 if (
                     item.source is not None
                     and isinstance(item, ConfigItem)
-                    and any(tag in item.source for tag in tags)
+                    and match_tag(item.source)
                 ):
                     itemlist.remove(item)
 
@@ -420,6 +447,8 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     _has_built: bool
     _setattr_recording: Set[str]
     _tag: Tuple[str, ...]
+    _config_tape: list
+    _is_calling_stateful_method: bool
 
     logs: Dict[str, Any]
 
@@ -524,7 +553,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         If inside the constructor, __constructor_hooks__ is returned.
         Else, __parent_hooks__ is returned.
         """
-        if ExtendedConstructorMeta._is_top_level["value"]:
+        if ExtendedConstructorMeta._module_state["is_top_level"]:
             return self.__user_hooks__
         if self.is_constructing:
             return self.__constructor_hooks__
@@ -580,11 +609,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         # Stored as tuple to avoid it being included in modules
         self._root_module = (self,)
 
-        self._actual_init_args = {
-            "args": args,
-            "_args": _args,
-            "kwargs": kwargs,
-        }
+        self._actual_init_args["_args"] = _args
 
         self._base_user_config = Config()
 
@@ -698,6 +723,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
         self._modules[target] = replacement
 
+    @stateful
     def configure(self, *args: Any, **kwargs: Any):
         """
         Configures the module with specified arguments.
@@ -799,8 +825,16 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         # Now, `built_layer` is an instance of nn.Linear(in_features=20, out_features=40)
         ```
         """
+        if self._has_built:
+            warn(
+                "Module has already been built. "
+                "Please only use one of `build` or `create`.",
+                RuntimeWarning,
+            )
+            return self
+        self._cleanup_and_construct()
         obj = self.new()
-        obj.set_root_module(obj.root_module)
+        # obj.set_root_module(obj.root_module)
         obj = obj.build()
         return obj
 
@@ -882,18 +916,19 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     #     else:
     #         return None
 
-    def new(self, detach: bool = True) -> "DeeplayModule":
+    def new(self, detach: bool = True, memo=None) -> "DeeplayModule":
+
         memo = {}
-        for module in self.modules():
-            if isinstance(module, DeeplayModule) and module._has_built:
-                memo[id(module)] = module
-        if self.root_module is not self:
-            memo[id(self.root_module)] = self.root_module
+        args, kwargs = (
+            self._actual_init_args["args"],
+            self._actual_init_args["kwargs"],
+        )
+        args, kwargs = self._copy_args_and_kwargs(args, kwargs, memo)
 
-        new = copy.deepcopy(self, memo)
+        new = type(self)(*args, **kwargs)
+        new._config_tape = self._config_tape.copy()
+        new._replay_tape()
 
-        if detach:
-            new.set_root_module(new)
         return new
 
     def predict(
@@ -938,6 +973,21 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         if args:
             for arg in args:
                 assert len(arg) == len(x), "All inputs must have the same length."
+
+        if len(x) >= 1000:
+            if isinstance(x, torch.Tensor) and x.device.type == "mps":
+                device = x.device
+                x = x.cpu().to(device)
+
+            args = []
+            for arg in args:
+                if isinstance(arg, torch.Tensor) and arg.device.type == "mps":
+                    arg = arg.cpu().to(device)
+                args.append(arg)
+            args = tuple(args)
+            # for _x in (x,) + args:
+            #     if isinstance(_x, torch.Tensor) and _x.device.type == "mps":
+            #         _x.to("cpu").to("mps")
 
         if device is None:
             device = self.device
@@ -1100,6 +1150,22 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         """
         self.__active_hooks__["after_init"].append(func)
 
+    def _register_hook(self, hook_type, func):
+        if ExtendedConstructorMeta._module_state["is_top_level"]:
+            self.__active_hooks__[hook_type].append(ConfigItem(None, func))
+        else:
+            # If we are not currently constructing the top level module,
+            # this means that this is a derived configuration.
+            # Thus, we store the source of the derived configuration such
+            # that it can be cleared at the correct time.
+
+            current_constructing_module: DeeplayModule = (
+                ExtendedConstructorMeta._module_state["constructing_module"]
+            )
+            self.__active_hooks__[hook_type].append(
+                ConfigItem(current_constructing_module.tags, func)
+            )
+
     def get_user_configuration(self):
         """
         Retrieves the current user configuration of the module.
@@ -1143,7 +1209,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     def _configure_kwargs(self, kwargs):
         for name, value in kwargs.items():
             self._assert_valid_configurable(name)
-            if ExtendedConstructorMeta._is_top_level["value"]:
+            if ExtendedConstructorMeta._module_state["is_top_level"]:
                 self._user_config.set_for_tags(self.tags, name, value)
             else:
                 # If we are not currently constructing the top level module,
@@ -1152,7 +1218,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
                 # that it can be cleared at the correct time.
 
                 current_constructing_module: DeeplayModule = (
-                    ExtendedConstructorMeta._is_top_level["constructing_module"]
+                    ExtendedConstructorMeta._module_state["constructing_module"]
                 )
 
                 # check if self is a child of the constructing module
@@ -1226,28 +1292,6 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         config_before = self._user_config.take(receivertags, take_subconfig=True)
         is_empty = len(config_before) == 0
         self._user_config.update(d)
-        # config_after = self._user_config.take(receivertags, take_subconfig=True)
-
-        # any_change = False
-        # if list(config_before.keys()) != list(config_after.keys()):
-        #     any_change = True
-        # else:
-        #     for key in config_before:
-        #         bef_value = config_before[key]
-        #         aft_value = config_after[key]
-        #         if isinstance(bef_value, ConfigItem) and isinstance(aft_value, ConfigItem):
-        #             if bef_value.value != aft_value.value:
-        #                 any_change = True
-        #                 break
-        #         else:
-        #             ...
-        # if config_before[key].value != config_after[key].value:
-        #     any_change = True
-        #     break
-
-        # self._user_config._detached_configurations += (
-        #     receiver._user_config._detached_configurations
-        # )
         receiver.set_root_module(self.root_module)
         return not is_empty
 
@@ -1269,8 +1313,6 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
                     # # root module should always be update to
                     # # ensure that logs are stored in the correct place
                     # value.set_root_module(self.root_module)
-
-            # self._setattr_recording.add(name)
 
     def _select_string(self, structure, selections, select, ellipsis=False):
         selects = select.split(",")
@@ -1455,6 +1497,72 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
             self._run_hooks("after_init")
             self.is_constructing = False
             self.__post_init__()
+
+    def _cleanup_and_construct(self):
+        self._modules.clear()
+        self._user_config.remove_derived_configurations()
+        self.__construct__()
+
+    def _append_to_tape(self, obj, method_name, args, kwargs):
+        if (
+            self.root_module._is_calling_stateful_method
+            or self.is_constructing
+            or self.root_module.is_constructing
+        ):
+            return
+        self._config_tape.append((obj.tags, method_name, args, kwargs))
+
+    def _replay_tape(self):
+        memo = {}
+        for tags, method_name, args, kwargs in self._config_tape.copy():
+            target = self._get_module_from_tags(tags)
+            method = getattr(target, method_name)
+            args, kwargs = self._copy_args_and_kwargs(args, kwargs, memo)
+            with target.calling_stateful():
+                method(*args, **kwargs)
+
+    def _get_module_from_tags(self, tags):
+        for name, module in self.root_module.named_modules():
+
+            if name == "":
+                name = ()
+            else:
+                name = tuple(name.split("."))
+
+            if name in tags:
+                return module
+
+        raise ValueError(f"Module with tags {tags} not found in {self.root_module}")
+
+    def calling_stateful(self):
+        class Stateful:
+            def __enter__(_):
+                self._is_calling_stateful_method = True
+                self.root_module._is_calling_stateful_method = True
+
+            def __exit__(_, *args):
+                self._is_calling_stateful_method = False
+                self.root_module._is_calling_stateful_method = False
+
+        return Stateful()
+
+    def _copy_args_and_kwargs(self, args, kwargs, memo=None):
+        memo = {} if memo is None else memo
+        new_args = []
+        for arg in args:
+            if isinstance(arg, DeeplayModule):
+                new_args.append(arg.new(memo=memo))
+            else:
+                new_args.append(copy.deepcopy(arg, memo))
+
+        new_kwargs = {}
+        for key, value in kwargs.items():
+            if isinstance(value, DeeplayModule):
+                new_kwargs[key] = value.new(memo=memo)
+            else:
+                new_kwargs[key] = copy.deepcopy(value, memo)
+
+        return new_args, new_kwargs
 
     def get_init_args(self):
         argspec = self.get_argspec()
