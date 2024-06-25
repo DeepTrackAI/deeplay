@@ -62,11 +62,16 @@ class TestConv2dBlock(unittest.TestCase):
         self.assertIsInstance(block.pool, nn.MaxPool2d)
 
     def test_strided(self):
-        block = Conv2dBlock(in_channels=1, out_channels=1).strided(2).build()
+        block = Conv2dBlock(in_channels=1, out_channels=1, padding=1).strided(2).build()
         self.assertEqual(block.layer.stride, (2, 2))
 
     def test_pooled_strided(self):
-        block = Conv2dBlock(in_channels=1, out_channels=1).pooled().strided(2).build()
+        block = (
+            Conv2dBlock(in_channels=1, out_channels=1, padding=1)
+            .pooled()
+            .strided(2)
+            .build()
+        )
         self.assertNotIn("pool", block.order)
         self.assertEqual(block.layer.stride, (2, 2))
 
@@ -81,31 +86,46 @@ class TestConv2dBlock(unittest.TestCase):
         self.assertEqual(block.layer.stride, (2, 2))
 
     def test_shortcut(self):
-        block = Conv2dBlock(in_channels=1, out_channels=1).shortcut().build()
+        block = Conv2dBlock(in_channels=1, out_channels=1, padding=1).shortcut().build()
         self.assertIsInstance(block.shortcut_end, Add)
         self.assertIsInstance(block.shortcut_start.layer, nn.Identity)
 
     def test_shortcut_different_num_channels(self):
-        block = Conv2dBlock(in_channels=1, out_channels=2).shortcut().build()
+        block = Conv2dBlock(in_channels=1, out_channels=2, padding=1).shortcut().build()
         self.assertIsInstance(block.shortcut_end, Add)
         self.assertIsInstance(block.shortcut_start, Conv2dBlock)
         self.assertEqual(block.shortcut_start.layer.in_channels, 1)
         self.assertEqual(block.shortcut_start.layer.out_channels, 2)
 
     def test_strided_shortcut(self):
-        block = Conv2dBlock(in_channels=1, out_channels=1).strided(2).shortcut().build()
+        block = (
+            Conv2dBlock(in_channels=1, out_channels=1, padding=1)
+            .strided(2)
+            .shortcut()
+            .build()
+        )
         self.assertIsInstance(block.shortcut_end, Add)
         self.assertIsInstance(block.shortcut_start, Conv2dBlock)
         self.assertEqual(block.shortcut_start.layer.stride, (2, 2))
 
     def test_shortcut_strided(self):
-        block = Conv2dBlock(in_channels=1, out_channels=1).shortcut().strided(2).build()
+        block = (
+            Conv2dBlock(in_channels=1, out_channels=1, padding=1)
+            .shortcut()
+            .strided(2)
+            .build()
+        )
         self.assertIsInstance(block.shortcut_end, Add)
         self.assertIsInstance(block.shortcut_start, Conv2dBlock)
         self.assertEqual(block.shortcut_start.layer.stride, (2, 2))
 
     def test_multi_strided(self):
-        block = Conv2dBlock(in_channels=1, out_channels=1).multi(3).strided(2).build()
+        block = (
+            Conv2dBlock(in_channels=1, out_channels=1, padding=1)
+            .multi(3)
+            .strided(2)
+            .build()
+        )
         self.assertEqual(block.blocks[0].layer.stride, (2, 2))
         for b in block.blocks[1:]:
             self.assertEqual(b.layer.stride, (1, 1))
@@ -116,11 +136,11 @@ class TestConv2dBlock(unittest.TestCase):
     #         self.assertEqual(b.layer.stride, (2, 2))
 
     def test_multi_multi(self):
-        block = Conv2dBlock(in_channels=1, out_channels=2).multi(2)
+        block = Conv2dBlock(in_channels=1, out_channels=2, padding=1).multi(2)
         block.blocks[0].multi(2)
         block.blocks[1].multi(2)
         block.build()
-        
+
         self.assertEqual(block.blocks[0].blocks[0].layer.in_channels, 1)
         self.assertEqual(block.blocks[0].blocks[0].layer.out_channels, 2)
 
@@ -132,7 +152,6 @@ class TestConv2dBlock(unittest.TestCase):
 
         self.assertEqual(block.blocks[1].blocks[1].layer.in_channels, 2)
         self.assertEqual(block.blocks[1].blocks[1].layer.out_channels, 2)
-
 
     def test_style_residual(self):
         block = Conv2dBlock(in_channels=1, out_channels=1).style("residual").build()
@@ -188,9 +207,9 @@ class TestConv2dBlock(unittest.TestCase):
 
     def test_style_spatial_self_attention(self):
         block = (
-            Conv2dBlock(in_channels=1, out_channels=1)
+            Conv2dBlock(in_channels=2, out_channels=2)
             .style("spatial_self_attention")
-            .build()
+            .build(torch.randn(1, 4, 4, 2))
         )
         self.assertEqual(
             block.order,
@@ -202,7 +221,7 @@ class TestConv2dBlock(unittest.TestCase):
             ],
         )
 
-        x = torch.randn(1, 4, 4, 1)  # expects (B, H, W, C)
+        x = torch.randn(1, 4, 4, 2)  # expects (B, H, W, C)
         output = block(x)
         self.assertEqual(output.shape, x.shape)
         self.assertIsInstance(block.normalization, nn.LayerNorm)

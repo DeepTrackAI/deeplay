@@ -61,6 +61,8 @@ class RecurrentNeuralNetwork(DeeplayModule):
         self.in_features = in_features
         self.hidden_features = hidden_features
         self.out_features = out_features
+        self.batch_first = batch_first
+        self.return_cell_state = return_cell_state
 
         if in_features is None:
             raise ValueError("in_features must be specified, got None")

@@ -11,12 +11,17 @@ from deeplay.ops.logs import FromLogs
 from deeplay.ops.merge import Add, MergeOp
 from deeplay.ops.shape import Permute
 from deeplay.blocks.base import DeferredConfigurableLayer
+from deeplay.shapes import Variable
 
 
 class Conv2dBlock(BaseBlock):
     """Convolutional block with optional normalization and activation."""
 
     pool: Union[DeferredConfigurableLayer, nn.Module]
+
+    @property
+    def expected_input_shape(self):
+        return (self.in_channels, Variable(), Variable())
 
     def __init__(
         self,
@@ -147,46 +152,50 @@ class Conv2dBlock(BaseBlock):
             elif isinstance(self.shortcut_start, Layer):
                 self.shortcut_start.configure(
                     nn.Conv2d,
-                    self.in_channels,
-                    self.out_channels,
+                    in_channels=self.in_channels,
+                    out_channels=self.out_channels,
                     kernel_size=1,
                     stride=stride,
                     padding=0,
                 )
         return self
 
-    def multi(self, n=1) -> Self:
-        super().multi(n)
-        self["blocks", 1:].configure(in_channels=self.out_channels)
-        return self
+    def get_default_normalization(self) -> DeeplayModule:
+        return Layer(nn.BatchNorm2d, self.out_channels)
 
-    def shortcut(
-        self,
-        merge: MergeOp = Add(),
-        shortcut: Optional[
-            Union[Literal["auto"], Type[nn.Module], DeeplayModule]
-        ] = "auto",
-    ) -> Self:
-        merge = merge.new()
-        if shortcut == "auto":
-            shortcut = Conv2dBlock(
-                self.in_channels,
-                self.out_channels,
+    def get_default_activation(self) -> DeeplayModule:
+        return Layer(nn.ReLU)
+
+    def get_default_shortcut(self) -> DeeplayModule:
+        if self.in_channels == self.out_channels and (
+            self.stride == 1 or self.in_channels is None
+        ):
+            block = Conv2dBlock(
+                in_channels=self.in_channels,
+                out_channels=self.out_channels,
                 kernel_size=1,
                 stride=self.stride,
                 padding=0,
-                activation=Layer(nn.Identity),
             )
-            if self.in_channels == self.out_channels and (
-                self.stride == 1 or self.stride == (1, 1)
-            ):
-                shortcut.layer.configure(nn.Identity)
-        elif shortcut is None:
-            shortcut = Layer(nn.Identity)
-        elif isinstance(shortcut, type):
-            shortcut = Layer(shortcut)
+            block.configure("layer", nn.Identity)
+            return block
+        else:
+            return Conv2dBlock(
+                in_channels=self.in_channels,
+                out_channels=self.out_channels,
+                kernel_size=1,
+                stride=self.stride,
+                padding=0,
+            )
 
-        return super().shortcut(merge=merge, shortcut=shortcut)
+    def get_default_merge(self) -> MergeOp:
+        return Add()
+
+    def call_with_dummy_data(self):
+        import torch
+
+        x = torch.randn(2, self.in_channels, 16, 16)
+        self(x)
 
     def _assert_valid_configurable(self, *args):
         return True
@@ -255,7 +264,12 @@ def residual(
 
     if _order:
         block_orders.append(_order)
-
+    ksize = block.kernel_size
+    if isinstance(ksize, tuple):
+        padding = tuple(k // 2 for k in ksize)
+    else:
+        padding = ksize // 2
+    block.configure(padding=padding)
     block.multi(n=len(block_orders))
     block.shortcut()
 

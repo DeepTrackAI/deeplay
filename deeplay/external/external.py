@@ -42,6 +42,7 @@ class External(DeeplayModule):
     def __pre_init__(self, classtype: type, *args, **kwargs):
         # Hack
         self.classtype = classtype
+        self._computed = {}
         super().__pre_init__(*args, classtype=classtype, **kwargs)
         self.assert_not_positional_only_and_variadic()
 
@@ -169,7 +170,6 @@ class External(DeeplayModule):
     def configure(self, classtype: Optional[type] = None, **kwargs):
         if classtype is not None:
             super().configure(classtype=classtype)
-
         super().configure(**kwargs)
 
     def _assert_valid_configurable(self, *args):

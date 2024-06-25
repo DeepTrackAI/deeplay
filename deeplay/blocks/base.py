@@ -1,5 +1,9 @@
-from typing import Type, Union
-from numpy import short
+from ast import Attribute
+from re import A, T
+from typing import Any, List, Optional, Type, Union, Tuple
+from abc import ABC, abstractmethod
+from warnings import warn
+
 import torch
 import torch.nn as nn
 
@@ -37,10 +41,13 @@ class BaseBlock(SequentialBlock):
 
     normalization: Union[DeferredConfigurableLayer, nn.Module]
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, order: Optional[List[str]] = None, **kwargs: DeeplayModule):
         # self.activation = DeferredConfigurableLayer(self, "activation", after="layer")
+        self._input_shape = None
         self.normalization = DeferredConfigurableLayer(self, "normalization")
-        super(BaseBlock, self).__init__(*args, **kwargs)
+        self._forward_has_been_called_once = False
+        self._error_on_failed_forward = False
+        super(BaseBlock, self).__init__(order=order, **kwargs)
 
     def multi(self, n=1) -> Self:
 
@@ -66,13 +73,39 @@ class BaseBlock(SequentialBlock):
 
         blocks = Sequential([make_new_self() for _ in range(n)])
         self.configure(order=["blocks"], blocks=blocks)
+        if hasattr(self, "in_features") and hasattr(self, "out_features"):
+            self["blocks", 1:].configure(in_features=self.out_features)
+        elif hasattr(self, "in_channels") and hasattr(self, "out_channels"):
+            self["blocks", 1:].configure(in_channels=self.out_channels)
         return self
+
+    def get_default_activation(self) -> DeeplayModule:
+        """Returns the default activation function for the block."""
+        return Layer(nn.ReLU)
+
+    @abstractmethod
+    def get_default_normalization(self) -> DeeplayModule:
+        """Returns the default normalization function for the block."""
+
+    def get_default_merge(self) -> MergeOp:
+        """Returns the default merge operation for the block."""
+        return Add()
+
+    @abstractmethod
+    def get_default_shortcut(self) -> DeeplayModule:
+        """Returns the default shortcut function for the block."""
+
+    @abstractmethod
+    def call_with_dummy_data(self):
+        """Calls the forward method with dummy data to build the block."""
 
     def shortcut(
         self,
-        merge: MergeOp = Add(),
-        shortcut: Union[Type[nn.Module], DeeplayModule] = nn.Identity,
+        merge: Optional[MergeOp] = None,
+        shortcut: Union[Type[nn.Module], DeeplayModule, None] = None,
     ) -> Self:
+        merge = merge or self.get_default_merge()
+        shortcut = shortcut or self.get_default_shortcut()
 
         shortcut = Layer(shortcut) if isinstance(shortcut, type) else shortcut
         # print(shortcut.new())
@@ -82,19 +115,21 @@ class BaseBlock(SequentialBlock):
 
     def activated(
         self,
-        activation: Union[Type[nn.Module], DeeplayModule] = nn.ReLU,
+        activation: Union[Type[nn.Module], DeeplayModule, None] = None,
         mode="append",
         after=None,
     ) -> Self:
+        activation = activation or self.get_default_activation()
         self.set("activation", activation, mode=mode, after=after)
         return self
 
     def normalized(
         self,
-        normalization: Union[Type[nn.Module], DeeplayModule],
+        normalization: Optional[Union[Type[nn.Module], DeeplayModule]] = None,
         mode="append",
         after=None,
     ) -> Self:
+        normalization = normalization or self.get_default_normalization()
         self.set("normalization", normalization, mode=mode, after=after)
         return self
 
@@ -123,6 +158,7 @@ class BaseBlock(SequentialBlock):
         return self
 
     def forward(self, x):
+        self._forward_has_been_called_once = True
         for name in self.order:
             block = getattr(self, name)
 
@@ -132,8 +168,36 @@ class BaseBlock(SequentialBlock):
                 x = block(x, shortcut)
             else:
                 x = block(x)
-
         return x
+
+    def build(self, *args, **kwargs):
+        if args or kwargs:
+            return super().build(*args, **kwargs)
+        if self._forward_has_been_called_once:
+            return super().build()
+
+        try:
+            with torch.no_grad():
+                self.call_with_dummy_data()
+        except RuntimeError as e:
+            if self._error_on_failed_forward:
+                raise e
+            warn(
+                f"{self.tags[0]} could not be built with default input. This likely means the block is not configured correctly, "
+                "or that it uses lazy initialization. "
+                "To suppress this warning, call `model.build(example_input)` with a valid input. "
+                "To raise an error instead, call `block.error_on_failed_forward()`. ",
+            )
+        except TypeError as e:
+            if self._error_on_failed_forward:
+                raise e
+            ...
+
+        return super().build()
+
+    def error_on_failed_forward(self):
+        self._error_on_failed_forward = True
+        return self
 
     def _assert_valid_configurable(self, *args):
         return True
