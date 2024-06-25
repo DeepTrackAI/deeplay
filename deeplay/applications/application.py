@@ -232,7 +232,7 @@ class Application(DeeplayModule, L.LightningModule):
     def configure_optimizers(self):
         try:
 
-            return self.optimizer.create()
+            return self.create_optimizer_with_params(self.optimizer, self.parameters())
 
         except AttributeError as e:
             raise AttributeError(
