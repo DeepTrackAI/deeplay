@@ -1314,6 +1314,13 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
                     # # ensure that logs are stored in the correct place
                     # value.set_root_module(self.root_module)
 
+    def __getattr__(self, name):
+        from deeplay.schedulers import BaseScheduler
+        x = super().__getattr__(name)
+        if self._has_built and isinstance(x, BaseScheduler):
+            return x.__get__(self, type(self))
+        return x
+
     def _select_string(self, structure, selections, select, ellipsis=False):
         selects = select.split(",")
         selects = [select.strip() for select in selects]
