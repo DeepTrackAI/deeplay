@@ -724,9 +724,9 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         self._modules[target] = replacement
 
     @after_init
-    def schedule(self, attr: str, scheduler):
-        from deeplay.schedulers import BaseScheduler
-        setattr(self, attr, scheduler)
+    def schedule(self, **schedulers):
+        for attr, scheduler in schedulers.items():
+            setattr(self, attr, scheduler)
 
     @after_init
     def schedule_linear(
@@ -752,7 +752,9 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     ):
         from deeplay.schedulers import LogLinearScheduler
 
-        setattr(self, attr, LogLinearScheduler(start_value, end_value, n_steps, on_epoch))
+        setattr(
+            self, attr, LogLinearScheduler(start_value, end_value, n_steps, on_epoch)
+        )
 
     @stateful
     def configure(self, *args: Any, **kwargs: Any):
