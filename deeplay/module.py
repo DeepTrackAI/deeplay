@@ -724,7 +724,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
         self._modules[target] = replacement
 
     @after_init
-    def schedule(self, attr: str, scheduler: "BaseScheduler"):
+    def schedule(self, attr: str, scheduler):
         from deeplay.schedulers import BaseScheduler
         setattr(self, attr, scheduler)
 
