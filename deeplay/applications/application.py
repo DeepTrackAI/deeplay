@@ -360,9 +360,8 @@ class Application(DeeplayModule, L.LightningModule):
                 continue
             try:
                 if isinstance(module, L.LightningModule) or hasattr(module, "trainer"):
-                    print("Aattaching trainer to", module)
+
                     module.trainer = trainer
-                    print("Aattached trainer to", module, module.trainer)
 
             except RuntimeError:
                 # hasattr can raise RuntimeError if the module is not attached to a trainer
