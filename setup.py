@@ -8,7 +8,7 @@ with open("requirements.txt", "r") as file:
 
 setup(
     name="deeplay",
-    version="0.0.7",
+    version="0.1.0",
     license="MIT",
     packages=find_packages(),
     author=(
