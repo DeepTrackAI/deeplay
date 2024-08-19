@@ -221,6 +221,7 @@ class Config(Dict[Tuple[str, ...], ConfigItemList]):
                 f"Tags must be a list of tuples, but found {tags}. "
                 "Please check the tags being used."
             )
+
         for k, itemlist in self.items():
             for item in itemlist:
                 if (
@@ -832,6 +833,7 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
                 RuntimeWarning,
             )
             return self
+
         self._cleanup_and_construct()
         obj = self.new()
         # obj.set_root_module(obj.root_module)
@@ -1537,12 +1539,19 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
     def calling_stateful(self):
         class Stateful:
             def __enter__(_):
+                self._is_calling_stateful_method_previous_state = self._is_calling_stateful_method
+                self.root_module._is_calling_stateful_method_previous_state = (
+                    self.root_module._is_calling_stateful_method
+                )
+
                 self._is_calling_stateful_method = True
                 self.root_module._is_calling_stateful_method = True
 
             def __exit__(_, *args):
-                self._is_calling_stateful_method = False
-                self.root_module._is_calling_stateful_method = False
+                self._is_calling_stateful_method = self._is_calling_stateful_method_previous_state
+                self.root_module._is_calling_stateful_method = (
+                    self.root_module._is_calling_stateful_method_previous_state
+                )
 
         return Stateful()
 
