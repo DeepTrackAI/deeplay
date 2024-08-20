@@ -317,6 +317,26 @@ class TestLayerList(unittest.TestCase):
         self.assertEqual(testclass.model.blocks[1].layer.out_features, 2)
         self.assertEqual(testclass.model.blocks[2].layer.out_features, 2)
 
+    def test_configure_sequential_sub_model(self):
+        from deeplay import ConvolutionalNeuralNetwork, MultiLayerPerceptron
+
+        model = Sequential(
+            ConvolutionalNeuralNetwork(1, [32, 64], 96),
+            MultiLayerPerceptron(96, [128], 1),
+        )
+        model[1].configure(hidden_features=[128, 256, 512])
+        model = model.create()
+
+        self.assertEqual(len(model[1].blocks[1:-1]), 2)
+        self.assertEqual(model[1].blocks[0].in_features, 96)
+        self.assertEqual(model[1].blocks[0].out_features, 128)
+        self.assertEqual(model[1].blocks[1].in_features, 128)
+        self.assertEqual(model[1].blocks[1].out_features, 256)
+        self.assertEqual(model[1].blocks[2].in_features, 256)
+        self.assertEqual(model[1].blocks[2].out_features, 512)
+        self.assertEqual(model[1].blocks[3].in_features, 512)
+        self.assertEqual(model[1].blocks[3].out_features, 1)
+
 
 class TestSequential(unittest.TestCase):
     def test_set_inp_out_mapping_1(self):
