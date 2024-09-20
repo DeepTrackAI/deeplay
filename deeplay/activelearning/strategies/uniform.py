@@ -20,9 +20,10 @@ class UniformStrategy(Strategy):
         val_batch_size: int = None,
         test_batch_size: int = None,
         loss=torch.nn.CrossEntropyLoss(),
-        optimizer=Adam(lr=1e-3),
-        **kwargs
+        optimizer=None,
+        **kwargs,
     ):
+        optimizer = optimizer or Adam(lr=1e-3)
         super().__init__(
             train_pool,
             val_pool,
@@ -32,7 +33,7 @@ class UniformStrategy(Strategy):
             test_batch_size,
             loss=loss,
             optimizer=optimizer,
-            **kwargs
+            **kwargs,
         )
         self.classifier = classifier
 
