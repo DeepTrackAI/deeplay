@@ -84,6 +84,7 @@ class Application(DeeplayModule, L.LightningModule):
         val_batch_size=None,
         val_steps_per_epoch=10,
         callbacks=[],
+        enable_progress_bar=True,
         **kwargs,
     ) -> LogHistory:
         """Train the model on the training data.
@@ -124,9 +125,11 @@ class Application(DeeplayModule, L.LightningModule):
         )
 
         history = LogHistory()
-        progressbar = RichProgressBar()
+        aux_callbacks = [history]
+        if enable_progress_bar:
+            aux_callbacks = aux_callbacks + RichProgressBar()
 
-        callbacks = callbacks + [history, progressbar]
+        callbacks = callbacks + aux_callbacks
         trainer = dl.Trainer(max_epochs=max_epochs, callbacks=callbacks, **kwargs)
 
         train_dataloader = torch.utils.data.DataLoader(
