@@ -126,8 +126,6 @@ class Application(DeeplayModule, L.LightningModule):
 
         history = LogHistory()
         aux_callbacks = [history]
-        if enable_progress_bar:
-            aux_callbacks = aux_callbacks + RichProgressBar()
 
         callbacks = callbacks + aux_callbacks
         trainer = dl.Trainer(max_epochs=max_epochs, callbacks=callbacks, **kwargs)
