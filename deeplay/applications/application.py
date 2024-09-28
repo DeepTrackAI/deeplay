@@ -84,7 +84,6 @@ class Application(DeeplayModule, L.LightningModule):
         val_batch_size=None,
         val_steps_per_epoch=10,
         callbacks=[],
-        enable_progress_bar=True,
         **kwargs,
     ) -> LogHistory:
         """Train the model on the training data.
