@@ -79,7 +79,7 @@ Here you find a series of notebooks that give you an overview of the core featur
 
 ## Advanced Topics
 
-- AT201 **[Using Mappings as Inputs](https://github.com/DeepTrackAI/deeplay/blob/develop/tutorials/advanced-topics/AT201_mappings.ipynb)**
+- AT201 **[Using Mappings as Inputs](https://github.com/DeepTrackAI/deeplay/blob/develop/tutorials/advanced-topics/AD201_mappings.ipynb)**
 
 ## Developer Tutorials
 
