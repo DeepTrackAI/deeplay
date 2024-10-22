@@ -90,6 +90,15 @@ class RandomRotation2d(Transform):
         mat2d[:, indices[1], indices[0]] = -torch.sin(-angle)
         mat2d[:, indices[0], indices[1]] = torch.sin(-angle)
         mat2d[:, indices[0], indices[0]] = torch.cos(-angle)
-        out = torch.matmul(x.unsqueeze(1), mat2d).squeeze(1)
+        
+        if len(x.size()) == 2:
+            # (B, C) -> (B, 1, C)
+            x = x.unsqueeze(1)
+            return torch.matmul(x, mat2d).squeeze(1)
 
-        return out
+        x_expanded = x.view(x.size(0), 1, x.size(1), -1)
+        y = torch.einsum("bijm,bjk->bikm", x_expanded, mat2d)
+        
+        return y.view(x.size())
+
+        
