@@ -1,0 +1,33 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: Deeplay
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Benjamin
+    family-names: Midtvedt
+    orcid: 'https://orcid.org/0000-0001-9386-4753'
+  - given-names: Jesus
+    family-names: Pineda
+    orcid: 'https://orcid.org/0000-0002-9197-3451'
+  - given-names: Henrik
+    family-names: Klein Morberg
+    orcid: 'https://orcid.org/0000-0001-7275-6921'
+  - given-names: Harshith
+    family-names: Bachimanchi
+    orcid: 'https://orcid.org/0000-0001-9497-8410'
+  - given-names: Carlo
+    family-names: Manzo
+    orcid: 'https://orcid.org/0000-0002-8625-0996'
+  - given-names: Giovanni
+    family-names: Volpe
+    orcid: 'https://orcid.org/0000-0001-5057-1846'
+repository-code: 'https://github.com/DeepTrackAI/deeplay'
+abstract: >-
+  Deeplay is a deep learning library in Python that extends
+  PyTorch with additional functionalities focused on
+  modularity and reusability. 
