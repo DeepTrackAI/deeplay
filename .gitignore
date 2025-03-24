@@ -1,3 +1,6 @@
+# Trial notebooks
+trial*.ipynb
+
 # Byte-compiled / optimized / DLL files
 *.pyc
 
@@ -24,5 +27,3 @@ dist/
 package.json
 # Tutorial files
 tutorials/getting-started/model.pth
-
-release-code/

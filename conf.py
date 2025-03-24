@@ -17,9 +17,9 @@ sys.path.insert(0, "release-code")
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = "deeplay"
-copyright = "2024, Benjamin Midtvedt, Jesus Pineda, Henrik Klein Moberg, Harshith Bachimanchi, Carlo Manzo, Giovanni Volpe"
-author = "Benjamin Midtvedt, Jesus Pineda, Henrik Klein Moberg, Harshith Bachimanchi, Carlo Manzo, Giovanni Volpe"
+project = 'Deeplay'
+copyright = '2025, The Deeplay Developers'
+author = 'The Deeplay Developers'
 release = version
 
 # -- General configuration ---------------------------------------------------
