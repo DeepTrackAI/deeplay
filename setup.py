@@ -13,7 +13,8 @@ setup(
     packages=find_packages(),
     author=(
         "Benjamin Midtvedt, Jesus Pineda, Henrik Klein Moberg, "
-        "Harshith Bachimanchi, Carlo Manzo, Giovanni Volpe"
+        "Harshith Bachimanchi, Mirja Granfors, Alex Lech, "
+        "Carlo Manzo, Giovanni Volpe"
     ),
     description=(
         "An AI-powered platform for advancing deep learning research "
