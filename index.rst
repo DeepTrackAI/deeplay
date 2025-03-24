@@ -14,4 +14,4 @@ Specifically, it facilitates the definition, training, and adjustment of neural 
    :maxdepth: 2
    :caption: Contents:
 
-src/Documentation
+   src/Documentation
