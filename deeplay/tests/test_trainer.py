@@ -1,6 +1,14 @@
 from deeplay import DataLoader, Regressor
 from deeplay.callbacks import LogHistory, RichProgressBar
+
+from deeplay import Regressor, DataLoader
+from lightning.pytorch.callbacks.progress.tqdm_progress import TQDMProgressBar
+from lightning.pytorch.callbacks.progress.progress_bar import ProgressBar
+import unittest
+import torch.nn as nn
+
 from deeplay.trainer import Trainer
+
 import lightning as L
 from lightning.pytorch.callbacks.progress.tqdm_progress import TQDMProgressBar
 import torch
@@ -12,7 +20,8 @@ from unittest.mock import patch
 class TestTrainer(unittest.TestCase):
 
     def setUp(self):
-        self._patcher = patch("torch.backends.mps.is_available", return_value=False)
+        self._patcher = patch("torch.backends.mps.is_available",
+                              return_value=False)
         self._mock = self._patcher.start()
 
     def tearDown(self):
@@ -23,8 +32,49 @@ class TestTrainer(unittest.TestCase):
         self.assertIsInstance(trainer, Trainer)
         self.assertIsInstance(trainer.callbacks[0], LogHistory)
         self.assertIsInstance(
-            trainer.callbacks[1], RichProgressBar
+            trainer.callbacks[1], TQDMProgressBar
         )  # should be added by default
+
+    def test_trainer(self):
+        trainer = Trainer(callbacks=[LogHistory()])
+        trainer.disable_progress_bar()
+        self.assertIsInstance(trainer, Trainer)
+        self.assertIsInstance(trainer.callbacks[0], LogHistory)
+
+        has_a_progress_bar = False
+        for callback in trainer.callbacks:
+            if isinstance(callback, ProgressBar):
+                has_a_progress_bar = True
+                break
+        self.assertFalse(has_a_progress_bar)
+
+    def test_trainer_tqdm_progress_bar(self):
+        trainer = Trainer(callbacks=[LogHistory()])
+        trainer.tqdm_progress_bar()
+        self.assertIsInstance(trainer, Trainer)
+        self.assertIsInstance(trainer.callbacks[0], LogHistory)
+
+        num_progress_bars = 0
+        for callback in trainer.callbacks:
+            if isinstance(callback, ProgressBar):
+                num_progress_bars += 1
+                self.assertIsInstance(callback, TQDMProgressBar)
+
+        self.assertEqual(num_progress_bars, 1)
+
+    def test_trainer_rich_progress_bar(self):
+        trainer = Trainer(callbacks=[LogHistory()])
+        trainer.rich_progress_bar()
+        self.assertIsInstance(trainer, Trainer)
+        self.assertIsInstance(trainer.callbacks[0], LogHistory)
+
+        num_progress_bars = 0
+        for callback in trainer.callbacks:
+            if isinstance(callback, ProgressBar):
+                num_progress_bars += 1
+                self.assertIsInstance(callback, RichProgressBar)
+
+        self.assertEqual(num_progress_bars, 1)
 
     def test_trainer_explicit_progress_bar(self):
         trainer = Trainer(callbacks=[LogHistory(), RichProgressBar()])
