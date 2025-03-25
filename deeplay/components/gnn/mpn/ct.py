@@ -2,7 +2,7 @@ from typing import Optional, Literal, Any, overload, Union, Type
 
 from deeplay import DeeplayModule, Layer
 from deeplay.blocks import LayerActivation
-from deeplay.components.cnn import concat
+# from deeplay.components.cnn import concat  #TODO: Check this line
 
 import torch.nn as nn
 
@@ -31,7 +31,7 @@ class CombineTransform(DeeplayModule):
         if in_features is not None and in_features <= 0:
             raise ValueError(f"in_channels must be positive, got {in_features}")
 
-        self.combine = concat()
+        # self.combine = concat()  #TODO: Check this line
         self.mlp = LayerActivation(
             layer=(
                 Layer(nn.Linear, in_features, out_features)
