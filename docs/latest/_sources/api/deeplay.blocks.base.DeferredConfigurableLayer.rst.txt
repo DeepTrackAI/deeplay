@@ -1,0 +1,17 @@
+DeferredConfigurableLayer
+=========================
+
+.. currentmodule:: deeplay.blocks.base
+
+.. autoclass:: DeferredConfigurableLayer
+   :show-inheritance:
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~DeferredConfigurableLayer.configure
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: configure

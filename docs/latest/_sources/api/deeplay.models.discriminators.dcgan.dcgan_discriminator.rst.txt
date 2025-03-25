@@ -1,0 +1,6 @@
+dcgan_discriminator
+===================
+
+.. currentmodule:: deeplay.models.discriminators.dcgan
+
+.. autofunction:: dcgan_discriminator

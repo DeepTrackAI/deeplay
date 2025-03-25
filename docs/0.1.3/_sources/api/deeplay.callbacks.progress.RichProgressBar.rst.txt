@@ -1,0 +1,7 @@
+RichProgressBar
+===============
+
+.. currentmodule:: deeplay.callbacks.progress
+
+.. autoclass:: RichProgressBar
+   :show-inheritance:

@@ -1,0 +1,7 @@
+RMSprop
+=======
+
+.. currentmodule:: deeplay.external.optimizers.rmsprop
+
+.. autoclass:: RMSprop
+   :show-inheritance:

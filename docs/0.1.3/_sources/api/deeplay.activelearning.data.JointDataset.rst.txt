@@ -1,0 +1,7 @@
+JointDataset
+============
+
+.. currentmodule:: deeplay.activelearning.data
+
+.. autoclass:: JointDataset
+   :show-inheritance:

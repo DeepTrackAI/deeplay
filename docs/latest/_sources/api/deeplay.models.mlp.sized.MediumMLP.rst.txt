@@ -1,0 +1,7 @@
+MediumMLP
+=========
+
+.. currentmodule:: deeplay.models.mlp.sized
+
+.. autoclass:: MediumMLP
+   :show-inheritance:

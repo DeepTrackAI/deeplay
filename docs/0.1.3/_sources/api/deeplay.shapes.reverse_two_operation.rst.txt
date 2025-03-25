@@ -1,0 +1,6 @@
+reverse_two_operation
+=====================
+
+.. currentmodule:: deeplay.shapes
+
+.. autofunction:: reverse_two_operation

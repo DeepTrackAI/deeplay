@@ -1,0 +1,6 @@
+residual
+========
+
+.. currentmodule:: deeplay.blocks.conv.conv2d
+
+.. autofunction:: residual

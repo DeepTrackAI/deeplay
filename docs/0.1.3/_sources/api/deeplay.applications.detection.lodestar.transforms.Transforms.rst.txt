@@ -1,0 +1,17 @@
+Transforms
+==========
+
+.. currentmodule:: deeplay.applications.detection.lodestar.transforms
+
+.. autoclass:: Transforms
+   :show-inheritance:
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~Transforms.__call__
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: __call__

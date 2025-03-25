@@ -1,0 +1,17 @@
+Computed
+========
+
+.. currentmodule:: deeplay.shapes
+
+.. autoclass:: Computed
+   :show-inheritance:
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~Computed.__call__
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: __call__

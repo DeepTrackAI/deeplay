@@ -1,0 +1,1 @@
+.. automodapi:: deeplay.models.discriminators.cyclegan

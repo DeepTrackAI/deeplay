@@ -1,0 +1,7 @@
+RandomRotation2d
+================
+
+.. currentmodule:: deeplay.applications.detection.lodestar.transforms
+
+.. autoclass:: RandomRotation2d
+   :show-inheritance:

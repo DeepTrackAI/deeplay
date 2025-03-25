@@ -1,0 +1,17 @@
+LeastConfidence
+===============
+
+.. currentmodule:: deeplay.activelearning.criterion
+
+.. autoclass:: LeastConfidence
+   :show-inheritance:
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~LeastConfidence.score
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: score

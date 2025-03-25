@@ -1,0 +1,17 @@
+UNetEncoder
+===========
+
+.. currentmodule:: deeplay.components.diffusion.attention_unet
+
+.. autoclass:: UNetEncoder
+   :show-inheritance:
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~UNetEncoder.forward
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: forward

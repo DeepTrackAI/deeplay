@@ -1,0 +1,17 @@
+Patchify
+========
+
+.. currentmodule:: deeplay.models.visiontransformer
+
+.. autoclass:: Patchify
+   :show-inheritance:
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~Patchify.forward
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: forward

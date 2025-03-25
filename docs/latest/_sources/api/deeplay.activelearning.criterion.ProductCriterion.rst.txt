@@ -1,0 +1,17 @@
+ProductCriterion
+================
+
+.. currentmodule:: deeplay.activelearning.criterion
+
+.. autoclass:: ProductCriterion
+   :show-inheritance:
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~ProductCriterion.score
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: score

@@ -1,0 +1,17 @@
+Permute
+=======
+
+.. currentmodule:: deeplay.ops.shape
+
+.. autoclass:: Permute
+   :show-inheritance:
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~Permute.forward
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: forward

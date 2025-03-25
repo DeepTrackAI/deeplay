@@ -1,0 +1,6 @@
+two_operation
+=============
+
+.. currentmodule:: deeplay.shapes
+
+.. autofunction:: two_operation

@@ -1,0 +1,7 @@
+GraphToNodeMPM
+==============
+
+.. currentmodule:: deeplay.models.gnn.gtonmpm
+
+.. autoclass:: GraphToNodeMPM
+   :show-inheritance:

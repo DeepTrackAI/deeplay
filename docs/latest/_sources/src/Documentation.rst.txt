@@ -1,0 +1,99 @@
+Documentation
+=============
+
+Here, you will find the documentation for deeplay.
+The documentation is organized into the following sections:
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Contents:
+
+   decorators
+   list
+   meta
+   module
+   shapes
+   trainer
+   activelearning.criterion
+   activelearning.data
+   activelearning.strategies.strategy
+   activelearning.strategies.uncertainty
+   activelearning.strategies.uniform
+   activelearning.strategies.adversarial.adversarial
+   applications.application
+   applications.autoencoders.vae
+   applications.autoencoders.wae
+   applications.classification.binary
+   applications.classification.categorical
+   applications.classification.classifier
+   applications.classification.multilabel
+   applications.detection.lodestar.dataset
+   applications.detection.lodestar.lodestar
+   applications.detection.lodestar.transforms
+   applications.regression.regressor
+   blocks.base
+   blocks.block
+   blocks.la
+   blocks.lan
+   blocks.land
+   blocks.lanu
+   blocks.ls
+   blocks.plan
+   blocks.recurrentblock
+   blocks.residual
+   blocks.sequential
+   blocks.conv.conv2d
+   blocks.linear.linear
+   blocks.sequence.sequence1d
+   callbacks.history
+   callbacks.progress
+   components.dict
+   components.mlp
+   components.rnn
+   components.cnn.cnn
+   components.cnn.encdec
+   components.diffusion.attention_unet
+   components.gnn.tpu
+   components.gnn.gcn.gcn
+   components.gnn.gcn.normalization
+   components.gnn.mpn.cla
+   components.gnn.mpn.ct
+   components.gnn.mpn.ldw
+   components.gnn.mpn.mpn
+   components.gnn.mpn.propagation
+   components.gnn.mpn.rmpn
+   components.gnn.mpn.transformation
+   components.gnn.mpn.update
+   components.transformer.enc
+   components.transformer.ldsn
+   components.transformer.pemb
+   components.transformer.satt
+   external.external
+   external.layer
+   external.optimizers.adam
+   external.optimizers.optimizer
+   external.optimizers.rmsprop
+   external.optimizers.sgd
+   initializers.constant
+   initializers.initializer
+   initializers.kaiming
+   initializers.normal
+   models.recurrentmodel
+   models.visiontransformer
+   models.backbones.resnet18
+   models.discriminators.cyclegan
+   models.discriminators.dcgan
+   models.generators.cyclegan
+   models.generators.dcgan
+   models.gnn.gtoeMAGIK
+   models.gnn.gtoempm
+   models.gnn.gtogmpm
+   models.gnn.gtonmpm
+   models.gnn.mpm
+   models.mlp.sized
+   ops.logs
+   ops.merge
+   ops.shape
+   ops.attention.cross
+   ops.attention.self
+

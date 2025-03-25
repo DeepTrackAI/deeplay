@@ -1,0 +1,7 @@
+XLargeMLP
+=========
+
+.. currentmodule:: deeplay.models.mlp.sized
+
+.. autoclass:: XLargeMLP
+   :show-inheritance:

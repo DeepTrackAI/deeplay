@@ -1,0 +1,7 @@
+Block
+=====
+
+.. currentmodule:: deeplay.components.diffusion.attention_unet
+
+.. autoclass:: Block
+   :show-inheritance:

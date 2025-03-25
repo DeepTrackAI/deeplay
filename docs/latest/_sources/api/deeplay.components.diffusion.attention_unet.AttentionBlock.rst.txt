@@ -1,0 +1,17 @@
+AttentionBlock
+==============
+
+.. currentmodule:: deeplay.components.diffusion.attention_unet
+
+.. autoclass:: AttentionBlock
+   :show-inheritance:
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~AttentionBlock.forward
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: forward

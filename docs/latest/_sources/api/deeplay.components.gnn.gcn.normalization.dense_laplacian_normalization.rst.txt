@@ -1,0 +1,21 @@
+dense_laplacian_normalization
+=============================
+
+.. currentmodule:: deeplay.components.gnn.gcn.normalization
+
+.. autoclass:: dense_laplacian_normalization
+   :show-inheritance:
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~dense_laplacian_normalization.degree
+      ~dense_laplacian_normalization.forward
+      ~dense_laplacian_normalization.normalize
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: degree
+   .. automethod:: forward
+   .. automethod:: normalize

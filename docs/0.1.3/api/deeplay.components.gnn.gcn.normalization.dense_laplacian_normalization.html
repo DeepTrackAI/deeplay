@@ -1,0 +1,934 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>dense_laplacian_normalization &#8212; Deeplay 0.1.3 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/graphviz.css?v=fd3f3429" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../_static/documentation_options.js?v=360bc84d"></script>
+    <script src="../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api/deeplay.components.gnn.gcn.normalization.dense_laplacian_normalization';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://deeptrackai.github.io/deeplay/latest/_static/switcher.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '0.1.3';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            false;
+        </script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="sparse_laplacian_normalization" href="deeplay.components.gnn.gcn.normalization.sparse_laplacian_normalization.html" />
+    <link rel="prev" title="deeplay.components.gnn.gcn.normalization Module" href="../src/components.gnn.gcn.normalization.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.1.3" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">Deeplay 0.1.3 documentation</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../src/Documentation.html">
+    Documentation
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../src/Documentation.html">
+    Documentation
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/decorators.html">deeplay.decorators Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.decorators.after_build.html">after_build</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.decorators.after_init.html">after_init</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.decorators.before_build.html">before_build</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.decorators.stateful.html">stateful</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.decorators.Callback.html">Callback</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/list.html">deeplay.list Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.list.LayerList.html">LayerList</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.list.Parallel.html">Parallel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.list.ReferringLayerList.html">ReferringLayerList</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.list.Sequential.html">Sequential</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/meta.html">deeplay.meta Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.meta.not_top_level.html">not_top_level</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.meta.ExtendedConstructorMeta.html">ExtendedConstructorMeta</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/module.html">deeplay.module Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.module.builder.html">builder</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.module.Config.html">Config</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.module.ConfigItem.html">ConfigItem</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.module.ConfigItemList.html">ConfigItemList</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.module.DeeplayModule.html">DeeplayModule</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.module.DetachedConfigItem.html">DetachedConfigItem</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.module.Selection.html">Selection</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/shapes.html">deeplay.shapes Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.shapes.reverse_two_operation.html">reverse_two_operation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.shapes.two_operation.html">two_operation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.shapes.unary_operation.html">unary_operation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.shapes.Computed.html">Computed</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.shapes.Variable.html">Variable</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/trainer.html">deeplay.trainer Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.trainer.Trainer.html">Trainer</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/activelearning.criterion.html">deeplay.activelearning.criterion Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.activelearning.criterion.ActiveLearningCriterion.html">ActiveLearningCriterion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.activelearning.criterion.Constant.html">Constant</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.activelearning.criterion.Entropy.html">Entropy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.activelearning.criterion.FractionCriterion.html">FractionCriterion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.activelearning.criterion.L1Upper.html">L1Upper</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.activelearning.criterion.L2Upper.html">L2Upper</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.activelearning.criterion.LeastConfidence.html">LeastConfidence</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.activelearning.criterion.Margin.html">Margin</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.activelearning.criterion.ProductCriterion.html">ProductCriterion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.activelearning.criterion.SumCriterion.html">SumCriterion</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/activelearning.data.html">deeplay.activelearning.data Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.activelearning.data.ActiveLearningDataset.html">ActiveLearningDataset</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.activelearning.data.JointDataset.html">JointDataset</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/activelearning.strategies.strategy.html">deeplay.activelearning.strategies.strategy Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.activelearning.strategies.strategy.Strategy.html">Strategy</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/activelearning.strategies.uncertainty.html">deeplay.activelearning.strategies.uncertainty Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.activelearning.strategies.uncertainty.UncertaintyStrategy.html">UncertaintyStrategy</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/activelearning.strategies.uniform.html">deeplay.activelearning.strategies.uniform Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.activelearning.strategies.uniform.UniformStrategy.html">UniformStrategy</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/activelearning.strategies.adversarial.adversarial.html">deeplay.activelearning.strategies.adversarial.adversarial Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.activelearning.strategies.adversarial.adversarial.AdversarialStrategy.html">AdversarialStrategy</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/applications.application.html">deeplay.applications.application Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.applications.application.Application.html">Application</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/applications.autoencoders.vae.html">deeplay.applications.autoencoders.vae Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.applications.autoencoders.vae.VariationalAutoEncoder.html">VariationalAutoEncoder</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/applications.autoencoders.wae.html">deeplay.applications.autoencoders.wae Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.applications.autoencoders.wae.WassersteinAutoEncoder.html">WassersteinAutoEncoder</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/applications.classification.binary.html">deeplay.applications.classification.binary Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.applications.classification.binary.BinaryClassifier.html">BinaryClassifier</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/applications.classification.categorical.html">deeplay.applications.classification.categorical Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.applications.classification.categorical.CategoricalClassifier.html">CategoricalClassifier</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/applications.classification.classifier.html">deeplay.applications.classification.classifier Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.applications.classification.classifier.Classifier.html">Classifier</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/applications.classification.multilabel.html">deeplay.applications.classification.multilabel Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.applications.classification.multilabel.MultiLabelClassifier.html">MultiLabelClassifier</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1"><a class="reference internal" href="../src/applications.detection.lodestar.dataset.html">deeplay.applications.detection.lodestar.dataset Module</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/applications.detection.lodestar.lodestar.html">deeplay.applications.detection.lodestar.lodestar Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.applications.detection.lodestar.lodestar.LodeSTAR.html">LodeSTAR</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/applications.detection.lodestar.transforms.html">deeplay.applications.detection.lodestar.transforms Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.applications.detection.lodestar.transforms.RandomRotation2d.html">RandomRotation2d</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.applications.detection.lodestar.transforms.RandomTranslation2d.html">RandomTranslation2d</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.applications.detection.lodestar.transforms.Transform.html">Transform</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.applications.detection.lodestar.transforms.Transforms.html">Transforms</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/applications.regression.regressor.html">deeplay.applications.regression.regressor Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.applications.regression.regressor.Regressor.html">Regressor</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/blocks.base.html">deeplay.blocks.base Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.blocks.base.BaseBlock.html">BaseBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.blocks.base.DeferredConfigurableLayer.html">DeferredConfigurableLayer</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/blocks.block.html">deeplay.blocks.block Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.blocks.block.Block.html">Block</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/blocks.la.html">deeplay.blocks.la Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.blocks.la.LayerActivation.html">LayerActivation</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/blocks.lan.html">deeplay.blocks.lan Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.blocks.lan.LayerActivationNormalization.html">LayerActivationNormalization</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/blocks.land.html">deeplay.blocks.land Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.blocks.land.LayerActivationNormalizationDropout.html">LayerActivationNormalizationDropout</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/blocks.lanu.html">deeplay.blocks.lanu Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.blocks.lanu.LayerActivationNormalizationUpsample.html">LayerActivationNormalizationUpsample</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/blocks.ls.html">deeplay.blocks.ls Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.blocks.ls.LayerSkip.html">LayerSkip</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/blocks.plan.html">deeplay.blocks.plan Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.blocks.plan.PoolLayerActivationNormalization.html">PoolLayerActivationNormalization</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/blocks.recurrentblock.html">deeplay.blocks.recurrentblock Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.blocks.recurrentblock.RecurrentBlock.html">RecurrentBlock</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/blocks.residual.html">deeplay.blocks.residual Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.blocks.residual.BaseResidual.html">BaseResidual</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.blocks.residual.Conv2dResidual.html">Conv2dResidual</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/blocks.sequential.html">deeplay.blocks.sequential Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.blocks.sequential.SequentialBlock.html">SequentialBlock</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/blocks.conv.conv2d.html">deeplay.blocks.conv.conv2d Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.blocks.conv.conv2d.residual.html">residual</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.blocks.conv.conv2d.spatial_cross_attention.html">spatial_cross_attention</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.blocks.conv.conv2d.spatial_self_attention.html">spatial_self_attention</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.blocks.conv.conv2d.spatial_transformer.html">spatial_transformer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.blocks.conv.conv2d.Conv2dBlock.html">Conv2dBlock</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/blocks.linear.linear.html">deeplay.blocks.linear.linear Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.blocks.linear.linear.LinearBlock.html">LinearBlock</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/blocks.sequence.sequence1d.html">deeplay.blocks.sequence.sequence1d Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.blocks.sequence.sequence1d.Sequence1dBlock.html">Sequence1dBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.blocks.sequence.sequence1d.SequenceDropout.html">SequenceDropout</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/callbacks.history.html">deeplay.callbacks.history Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.callbacks.history.LogHistory.html">LogHistory</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/callbacks.progress.html">deeplay.callbacks.progress Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.callbacks.progress.RichProgressBar.html">RichProgressBar</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.callbacks.progress.TQDMProgressBar.html">TQDMProgressBar</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/components.dict.html">deeplay.components.dict Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.components.dict.AddDict.html">AddDict</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.components.dict.FromDict.html">FromDict</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/components.mlp.html">deeplay.components.mlp Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.components.mlp.MultiLayerPerceptron.html">MultiLayerPerceptron</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/components.rnn.html">deeplay.components.rnn Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.components.rnn.RecurrentNeuralNetwork.html">RecurrentNeuralNetwork</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/components.cnn.cnn.html">deeplay.components.cnn.cnn Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.components.cnn.cnn.ConvolutionalNeuralNetwork.html">ConvolutionalNeuralNetwork</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/components.cnn.encdec.html">deeplay.components.cnn.encdec Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.components.cnn.encdec.ConvolutionalDecoder2d.html">ConvolutionalDecoder2d</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.components.cnn.encdec.ConvolutionalEncoder2d.html">ConvolutionalEncoder2d</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.components.cnn.encdec.ConvolutionalEncoderDecoder2d.html">ConvolutionalEncoderDecoder2d</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.components.cnn.encdec.UNet2d.html">UNet2d</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/components.diffusion.attention_unet.html">deeplay.components.diffusion.attention_unet Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.components.diffusion.attention_unet.AttentionBlock.html">AttentionBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.components.diffusion.attention_unet.AttentionUNet.html">AttentionUNet</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.components.diffusion.attention_unet.Block.html">Block</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.components.diffusion.attention_unet.FeatureIntegrationModule.html">FeatureIntegrationModule</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.components.diffusion.attention_unet.UNetDecoder.html">UNetDecoder</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.components.diffusion.attention_unet.UNetEncoder.html">UNetEncoder</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/components.gnn.tpu.html">deeplay.components.gnn.tpu Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.components.gnn.tpu.TransformPropagateUpdate.html">TransformPropagateUpdate</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/components.gnn.gcn.gcn.html">deeplay.components.gnn.gcn.gcn Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.components.gnn.gcn.gcn.GraphConvolutionalNeuralNetwork.html">GraphConvolutionalNeuralNetwork</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="../src/components.gnn.gcn.normalization.html">deeplay.components.gnn.gcn.normalization Module</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">dense_laplacian_normalization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.components.gnn.gcn.normalization.sparse_laplacian_normalization.html">sparse_laplacian_normalization</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/components.gnn.mpn.cla.html">deeplay.components.gnn.mpn.cla Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.components.gnn.mpn.cla.CombineLayerActivation.html">CombineLayerActivation</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/components.gnn.mpn.ct.html">deeplay.components.gnn.mpn.ct Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.components.gnn.mpn.ct.CombineTransform.html">CombineTransform</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/components.gnn.mpn.ldw.html">deeplay.components.gnn.mpn.ldw Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.components.gnn.mpn.ldw.LearnableDistancewWeighting.html">LearnableDistancewWeighting</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/components.gnn.mpn.mpn.html">deeplay.components.gnn.mpn.mpn Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.components.gnn.mpn.mpn.MessagePassingNeuralNetwork.html">MessagePassingNeuralNetwork</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/components.gnn.mpn.propagation.html">deeplay.components.gnn.mpn.propagation Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.components.gnn.mpn.propagation.Max.html">Max</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.components.gnn.mpn.propagation.Mean.html">Mean</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.components.gnn.mpn.propagation.Min.html">Min</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.components.gnn.mpn.propagation.Prod.html">Prod</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.components.gnn.mpn.propagation.Sum.html">Sum</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.components.gnn.mpn.propagation.WeightedSum.html">WeightedSum</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/components.gnn.mpn.rmpn.html">deeplay.components.gnn.mpn.rmpn Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.components.gnn.mpn.rmpn.ResidualMessagePassingNeuralNetwork.html">ResidualMessagePassingNeuralNetwork</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/components.gnn.mpn.transformation.html">deeplay.components.gnn.mpn.transformation Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.components.gnn.mpn.transformation.Transform.html">Transform</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/components.gnn.mpn.update.html">deeplay.components.gnn.mpn.update Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.components.gnn.mpn.update.Update.html">Update</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/components.transformer.enc.html">deeplay.components.transformer.enc Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.components.transformer.enc.TransformerEncoderLayer.html">TransformerEncoderLayer</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/components.transformer.ldsn.html">deeplay.components.transformer.ldsn Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.components.transformer.ldsn.LayerDropoutSkipNormalization.html">LayerDropoutSkipNormalization</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/components.transformer.pemb.html">deeplay.components.transformer.pemb Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.components.transformer.pemb.sinusoidal_init_.html">sinusoidal_init</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.components.transformer.pemb.IndexedPositionalEmbedding.html">IndexedPositionalEmbedding</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.components.transformer.pemb.PositionalEmbedding.html">PositionalEmbedding</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/components.transformer.satt.html">deeplay.components.transformer.satt Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.components.transformer.satt.MultiheadSelfAttention.html">MultiheadSelfAttention</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/external.external.html">deeplay.external.external Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.external.external.External.html">External</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/external.layer.html">deeplay.external.layer Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.external.layer.Layer.html">Layer</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/external.optimizers.adam.html">deeplay.external.optimizers.adam Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.external.optimizers.adam.Adam.html">Adam</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.external.optimizers.adam.AdamW.html">AdamW</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/external.optimizers.optimizer.html">deeplay.external.optimizers.optimizer Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.external.optimizers.optimizer.Optimizer.html">Optimizer</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/external.optimizers.rmsprop.html">deeplay.external.optimizers.rmsprop Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.external.optimizers.rmsprop.RMSprop.html">RMSprop</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/external.optimizers.sgd.html">deeplay.external.optimizers.sgd Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.external.optimizers.sgd.SGD.html">SGD</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/initializers.constant.html">deeplay.initializers.constant Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.initializers.constant.Constant.html">Constant</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/initializers.initializer.html">deeplay.initializers.initializer Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.initializers.initializer.Initializer.html">Initializer</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/initializers.kaiming.html">deeplay.initializers.kaiming Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.initializers.kaiming.Kaiming.html">Kaiming</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/initializers.normal.html">deeplay.initializers.normal Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.initializers.normal.Normal.html">Normal</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/models.recurrentmodel.html">deeplay.models.recurrentmodel Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.models.recurrentmodel.RecurrentModel.html">RecurrentModel</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/models.visiontransformer.html">deeplay.models.visiontransformer Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.models.visiontransformer.Patchify.html">Patchify</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.models.visiontransformer.ViT.html">ViT</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/models.backbones.resnet18.html">deeplay.models.backbones.resnet18 Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.models.backbones.resnet18.resnet.html">resnet</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.models.backbones.resnet18.resnet18.html">resnet18</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.models.backbones.resnet18.resnet18_input.html">resnet18_input</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.models.backbones.resnet18.BackboneResnet18.html">BackboneResnet18</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/models.discriminators.cyclegan.html">deeplay.models.discriminators.cyclegan Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.models.discriminators.cyclegan.CycleGANDiscriminator.html">CycleGANDiscriminator</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/models.discriminators.dcgan.html">deeplay.models.discriminators.dcgan Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.models.discriminators.dcgan.dcgan_discriminator.html">dcgan_discriminator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.models.discriminators.dcgan.DCGANDiscriminator.html">DCGANDiscriminator</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/models.generators.cyclegan.html">deeplay.models.generators.cyclegan Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.models.generators.cyclegan.CycleGANResnetGenerator.html">CycleGANResnetGenerator</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/models.generators.dcgan.html">deeplay.models.generators.dcgan Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.models.generators.dcgan.dcgan_generator.html">dcgan_generator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.models.generators.dcgan.DCGANGenerator.html">DCGANGenerator</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/models.gnn.gtoeMAGIK.html">deeplay.models.gnn.gtoeMAGIK Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.models.gnn.gtoeMAGIK.GraphToEdgeMAGIK.html">GraphToEdgeMAGIK</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/models.gnn.gtoempm.html">deeplay.models.gnn.gtoempm Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.models.gnn.gtoempm.GraphToEdgeMPM.html">GraphToEdgeMPM</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/models.gnn.gtogmpm.html">deeplay.models.gnn.gtogmpm Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.models.gnn.gtogmpm.GlobalMeanPool.html">GlobalMeanPool</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.models.gnn.gtogmpm.GraphToGlobalMPM.html">GraphToGlobalMPM</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/models.gnn.gtonmpm.html">deeplay.models.gnn.gtonmpm Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.models.gnn.gtonmpm.GraphToNodeMPM.html">GraphToNodeMPM</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/models.gnn.mpm.html">deeplay.models.gnn.mpm Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.models.gnn.mpm.MPM.html">MPM</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/models.mlp.sized.html">deeplay.models.mlp.sized Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.models.mlp.sized.normed_leaky.html">normed_leaky</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.models.mlp.sized.LargeMLP.html">LargeMLP</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.models.mlp.sized.MediumMLP.html">MediumMLP</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.models.mlp.sized.SmallMLP.html">SmallMLP</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.models.mlp.sized.XLargeMLP.html">XLargeMLP</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/ops.logs.html">deeplay.ops.logs Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.ops.logs.FromLogs.html">FromLogs</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/ops.merge.html">deeplay.ops.merge Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.ops.merge.MergeOp.html">MergeOp</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.ops.merge.Add.html">Add</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.ops.merge.Cat.html">Cat</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.ops.merge.Lambda.html">Lambda</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/ops.shape.html">deeplay.ops.shape Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.ops.shape.Flatten.html">Flatten</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.ops.shape.View.html">View</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.ops.shape.Reshape.html">Reshape</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.ops.shape.Squeeze.html">Squeeze</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.ops.shape.Unsqueeze.html">Unsqueeze</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.ops.shape.Permute.html">Permute</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/ops.attention.cross.html">deeplay.ops.attention.cross Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.ops.attention.cross.MultiheadCrossAttention.html">MultiheadCrossAttention</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../src/ops.attention.self.html">deeplay.ops.attention.self Module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="deeplay.ops.attention.self.MultiheadSelfAttention.html">MultiheadSelfAttention</a></li>
+</ul>
+</details></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../src/Documentation.html" class="nav-link">Documentation</a></li>
+    
+    
+    <li class="breadcrumb-item"><a href="../src/components.gnn.gcn.normalization.html" class="nav-link">deeplay.components.gnn.gcn.normalization Module</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">dense_laplacian_normalization</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="dense-laplacian-normalization">
+<h1>dense_laplacian_normalization<a class="headerlink" href="#dense-laplacian-normalization" title="Link to this heading">#</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="deeplay.components.gnn.gcn.normalization.dense_laplacian_normalization">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">deeplay.components.gnn.gcn.normalization.</span></span><span class="sig-name descname"><span class="pre">dense_laplacian_normalization</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#deeplay.components.gnn.gcn.normalization.dense_laplacian_normalization" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="deeplay.module.DeeplayModule.html#deeplay.module.DeeplayModule" title="deeplay.module.DeeplayModule"><code class="xref py py-class docutils literal notranslate"><span class="pre">DeeplayModule</span></code></a></p>
+<p class="rubric">Methods Summary</p>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#deeplay.components.gnn.gcn.normalization.dense_laplacian_normalization.degree" title="deeplay.components.gnn.gcn.normalization.dense_laplacian_normalization.degree"><code class="xref py py-obj docutils literal notranslate"><span class="pre">degree</span></code></a>(A)</p></td>
+<td><p>Compute the degree of each node in a graph given its adjacency matrix.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#deeplay.components.gnn.gcn.normalization.dense_laplacian_normalization.forward" title="deeplay.components.gnn.gcn.normalization.dense_laplacian_normalization.forward"><code class="xref py py-obj docutils literal notranslate"><span class="pre">forward</span></code></a>(x, A)</p></td>
+<td><p>Define the computation performed at every call.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#deeplay.components.gnn.gcn.normalization.dense_laplacian_normalization.normalize" title="deeplay.components.gnn.gcn.normalization.dense_laplacian_normalization.normalize"><code class="xref py py-obj docutils literal notranslate"><span class="pre">normalize</span></code></a>(x, A)</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p class="rubric">Methods Documentation</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="deeplay.components.gnn.gcn.normalization.dense_laplacian_normalization.degree">
+<span class="sig-name descname"><span class="pre">degree</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">A</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#deeplay.components.gnn.gcn.normalization.dense_laplacian_normalization.degree" title="Link to this definition">#</a></dt>
+<dd><p>Compute the degree of each node in a graph given its adjacency matrix.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="deeplay.components.gnn.gcn.normalization.dense_laplacian_normalization.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">A</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#deeplay.components.gnn.gcn.normalization.dense_laplacian_normalization.forward" title="Link to this definition">#</a></dt>
+<dd><p>Define the computation performed at every call.</p>
+<p>Should be overridden by all subclasses.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Although the recipe for forward pass needs to be defined within
+this function, one should call the <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code> instance afterwards
+instead of this since the former takes care of running the
+registered hooks while the latter silently ignores them.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="deeplay.components.gnn.gcn.normalization.dense_laplacian_normalization.normalize">
+<span class="sig-name descname"><span class="pre">normalize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">A</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#deeplay.components.gnn.gcn.normalization.dense_laplacian_normalization.normalize" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="../src/components.gnn.gcn.normalization.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">deeplay.components.gnn.gcn.normalization Module</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="deeplay.components.gnn.gcn.normalization.sparse_laplacian_normalization.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">sparse_laplacian_normalization</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#deeplay.components.gnn.gcn.normalization.dense_laplacian_normalization"><code class="docutils literal notranslate"><span class="pre">dense_laplacian_normalization</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#deeplay.components.gnn.gcn.normalization.dense_laplacian_normalization.degree"><code class="docutils literal notranslate"><span class="pre">dense_laplacian_normalization.degree()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#deeplay.components.gnn.gcn.normalization.dense_laplacian_normalization.forward"><code class="docutils literal notranslate"><span class="pre">dense_laplacian_normalization.forward()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#deeplay.components.gnn.gcn.normalization.dense_laplacian_normalization.normalize"><code class="docutils literal notranslate"><span class="pre">dense_laplacian_normalization.normalize()</span></code></a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/api/deeplay.components.gnn.gcn.normalization.dense_laplacian_normalization.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, The Deeplay Developers.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.4.7.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

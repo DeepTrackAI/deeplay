@@ -1,0 +1,41 @@
+BaseBlock
+=========
+
+.. currentmodule:: deeplay.blocks.base
+
+.. autoclass:: BaseBlock
+   :show-inheritance:
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~BaseBlock.activated
+      ~BaseBlock.build
+      ~BaseBlock.call_with_dummy_data
+      ~BaseBlock.error_on_failed_forward
+      ~BaseBlock.forward
+      ~BaseBlock.get_default_activation
+      ~BaseBlock.get_default_merge
+      ~BaseBlock.get_default_normalization
+      ~BaseBlock.get_default_shortcut
+      ~BaseBlock.multi
+      ~BaseBlock.normalized
+      ~BaseBlock.set
+      ~BaseBlock.shortcut
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: activated
+   .. automethod:: build
+   .. automethod:: call_with_dummy_data
+   .. automethod:: error_on_failed_forward
+   .. automethod:: forward
+   .. automethod:: get_default_activation
+   .. automethod:: get_default_merge
+   .. automethod:: get_default_normalization
+   .. automethod:: get_default_shortcut
+   .. automethod:: multi
+   .. automethod:: normalized
+   .. automethod:: set
+   .. automethod:: shortcut

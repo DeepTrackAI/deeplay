@@ -1,0 +1,17 @@
+MPM
+===
+
+.. currentmodule:: deeplay.models.gnn.mpm
+
+.. autoclass:: MPM
+   :show-inheritance:
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~MPM.forward
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: forward

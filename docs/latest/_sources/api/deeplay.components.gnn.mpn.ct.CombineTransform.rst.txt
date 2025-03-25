@@ -1,0 +1,21 @@
+CombineTransform
+================
+
+.. currentmodule:: deeplay.components.gnn.mpn.ct
+
+.. autoclass:: CombineTransform
+   :show-inheritance:
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~CombineTransform.configure
+      ~CombineTransform.forward
+      ~CombineTransform.get_forward_args
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: configure
+   .. automethod:: forward
+   .. automethod:: get_forward_args

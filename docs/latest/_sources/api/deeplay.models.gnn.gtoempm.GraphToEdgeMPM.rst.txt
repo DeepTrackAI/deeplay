@@ -1,0 +1,7 @@
+GraphToEdgeMPM
+==============
+
+.. currentmodule:: deeplay.models.gnn.gtoempm
+
+.. autoclass:: GraphToEdgeMPM
+   :show-inheritance:

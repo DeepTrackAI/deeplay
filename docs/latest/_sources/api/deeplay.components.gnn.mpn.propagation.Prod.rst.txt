@@ -1,0 +1,17 @@
+Prod
+====
+
+.. currentmodule:: deeplay.components.gnn.mpn.propagation
+
+.. autoclass:: Prod
+   :show-inheritance:
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~Prod.forward
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: forward

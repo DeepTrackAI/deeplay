@@ -1,0 +1,7 @@
+AdamW
+=====
+
+.. currentmodule:: deeplay.external.optimizers.adam
+
+.. autoclass:: AdamW
+   :show-inheritance:

@@ -1,0 +1,6 @@
+dcgan_generator
+===============
+
+.. currentmodule:: deeplay.models.generators.dcgan
+
+.. autofunction:: dcgan_generator

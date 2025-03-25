@@ -1,0 +1,17 @@
+Variable
+========
+
+.. currentmodule:: deeplay.shapes
+
+.. autoclass:: Variable
+   :show-inheritance:
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~Variable.__call__
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: __call__

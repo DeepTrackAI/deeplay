@@ -1,0 +1,17 @@
+SequenceDropout
+===============
+
+.. currentmodule:: deeplay.blocks.sequence.sequence1d
+
+.. autoclass:: SequenceDropout
+   :show-inheritance:
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~SequenceDropout.forward
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: forward

@@ -1,0 +1,1 @@
+.. automodapi:: deeplay.activelearning.strategies.uniform

@@ -1,0 +1,6 @@
+not_top_level
+=============
+
+.. currentmodule:: deeplay.meta
+
+.. autofunction:: not_top_level

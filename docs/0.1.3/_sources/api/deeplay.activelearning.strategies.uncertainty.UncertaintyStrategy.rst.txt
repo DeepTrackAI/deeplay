@@ -1,0 +1,21 @@
+UncertaintyStrategy
+===================
+
+.. currentmodule:: deeplay.activelearning.strategies.uncertainty
+
+.. autoclass:: UncertaintyStrategy
+   :show-inheritance:
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~UncertaintyStrategy.forward
+      ~UncertaintyStrategy.query_strategy
+      ~UncertaintyStrategy.training_step
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: forward
+   .. automethod:: query_strategy
+   .. automethod:: training_step

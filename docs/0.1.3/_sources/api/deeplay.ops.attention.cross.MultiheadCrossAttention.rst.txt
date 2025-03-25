@@ -1,0 +1,17 @@
+MultiheadCrossAttention
+=======================
+
+.. currentmodule:: deeplay.ops.attention.cross
+
+.. autoclass:: MultiheadCrossAttention
+   :show-inheritance:
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~MultiheadCrossAttention.forward
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: forward

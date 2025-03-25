@@ -1,0 +1,17 @@
+SumCriterion
+============
+
+.. currentmodule:: deeplay.activelearning.criterion
+
+.. autoclass:: SumCriterion
+   :show-inheritance:
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~SumCriterion.score
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: score

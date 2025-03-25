@@ -1,0 +1,6 @@
+resnet18_input
+==============
+
+.. currentmodule:: deeplay.models.backbones.resnet18
+
+.. autofunction:: resnet18_input

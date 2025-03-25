@@ -1,0 +1,6 @@
+sinusoidal_init_
+================
+
+.. currentmodule:: deeplay.components.transformer.pemb
+
+.. autofunction:: sinusoidal_init_

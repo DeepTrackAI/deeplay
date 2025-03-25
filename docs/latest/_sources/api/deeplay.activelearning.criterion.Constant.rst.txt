@@ -1,0 +1,17 @@
+Constant
+========
+
+.. currentmodule:: deeplay.activelearning.criterion
+
+.. autoclass:: Constant
+   :show-inheritance:
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~Constant.score
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: score

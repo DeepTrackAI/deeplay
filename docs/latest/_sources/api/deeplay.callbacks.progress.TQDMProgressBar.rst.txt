@@ -1,0 +1,7 @@
+TQDMProgressBar
+===============
+
+.. currentmodule:: deeplay.callbacks.progress
+
+.. autoclass:: TQDMProgressBar
+   :show-inheritance:

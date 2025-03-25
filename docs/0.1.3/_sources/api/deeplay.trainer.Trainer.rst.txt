@@ -1,0 +1,33 @@
+Trainer
+=======
+
+.. currentmodule:: deeplay.trainer
+
+.. autoclass:: Trainer
+   :show-inheritance:
+
+   .. rubric:: Attributes Summary
+
+   .. autosummary::
+
+      ~Trainer.history
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~Trainer.disable_history
+      ~Trainer.disable_progress_bar
+      ~Trainer.rich_progress_bar
+      ~Trainer.tqdm_progress_bar
+
+   .. rubric:: Attributes Documentation
+
+   .. autoattribute:: history
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: disable_history
+   .. automethod:: disable_progress_bar
+   .. automethod:: rich_progress_bar
+   .. automethod:: tqdm_progress_bar

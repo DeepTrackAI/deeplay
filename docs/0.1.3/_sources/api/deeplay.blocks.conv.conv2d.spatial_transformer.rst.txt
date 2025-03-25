@@ -1,0 +1,6 @@
+spatial_transformer
+===================
+
+.. currentmodule:: deeplay.blocks.conv.conv2d
+
+.. autofunction:: spatial_transformer

@@ -1,0 +1,17 @@
+Sum
+===
+
+.. currentmodule:: deeplay.components.gnn.mpn.propagation
+
+.. autoclass:: Sum
+   :show-inheritance:
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~Sum.forward
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: forward

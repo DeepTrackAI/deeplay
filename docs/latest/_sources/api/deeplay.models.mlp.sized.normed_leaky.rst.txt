@@ -1,0 +1,6 @@
+normed_leaky
+============
+
+.. currentmodule:: deeplay.models.mlp.sized
+
+.. autofunction:: normed_leaky

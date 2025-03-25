@@ -1,0 +1,7 @@
+CycleGANDiscriminator
+=====================
+
+.. currentmodule:: deeplay.models.discriminators.cyclegan
+
+.. autoclass:: CycleGANDiscriminator
+   :show-inheritance:
