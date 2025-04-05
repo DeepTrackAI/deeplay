@@ -1,4 +1,4 @@
-"""Graph augmentations for MAGIK.
+"""2D Graph augmentations.
 
 This module provides classes to augment data during training
 with transformations, node dropouts, and noise.
@@ -25,47 +25,81 @@ import numpy as np
 import torch
 from torch_geometric.data import Data
 
-class NoisyNode:
-    """Class to add noise to node attributes.
+class NodeNormalNoise:
+    """Adds normal noise to node attributes.
 
     """
+    def __init__(self, sigma: float = 1.0, mu: float = 0.0):
+        self.sigma = sigma
+        self.mu = mu
 
     def __call__(
         self,
-        graph: Data,
-    ) -> Data :
+        graph: torch_geometric.data.Data,
+    ) -> torch_geometric.data.Data :
         
         # Ensure original graph is unchanged.
         graph = graph.clone()
         
         # Center positions.
         node_feats = graph.x[:, :2] - 0.5
-        node_feats += np.random.randn(*node_feats.shape) * np.random.rand()*0.1
+
+        # Add Normal noise.
+        node_feats += np.random.randn(*node_feats.shape) * self.sigma + self.mu
+
+        # Restore positions.
+        graph.x[:, :2] = node_feats + 0.5
+        return graph
+
+class NodeUniformNoise:
+    """Adds uniform noise to node attributes.
+
+    """
+    def __init__(self, low: float = 0.0, high: float = 1.0):
+        self.low = low
+        self.high = high
+
+    def __call__(
+        self,
+        graph: torch_geometric.data.Data,
+    ) -> torch_geometric.data.Data :
+        
+        # Ensure original graph is unchanged.
+        graph = graph.clone()
+        
+        # Center positions.
+        node_feats = graph.x[:, :2] - 0.5
+
+        # Add Uniform noise.
+        node_feats += np.random.uniform(
+            self.low,
+            self.high,
+            size=node_feats.shape
+        )
 
         # Restore positions.
         graph.x[:, :2] = node_feats + 0.5
         return graph
 
 
-class NodeDropout:
-    """Removal (dropout) of random nodes to simulate missing frames.
 
-    """
+class NodeDropout:
+    """Removal (dropout) of random nodes and edges with some probability."""
+
+    def __init__(self, dropout_rate: float = 0.05):
+        self.dropout_rate = dropout_rate.
 
     def __call__(
         self,
-        graph: Data
-    ) -> Data:
+        graph: torch_geometric.data.Data
+    ) -> torch_geometric.data.Data:
 
         # Ensure original graph is unchanged.
         graph = graph.clone()
 
-        # Specify node dropout rate.
-        dropout_rate = 0.05
-
         # Get indices of random nodes.
         idx = np.array(list(range(len(graph.x))))
-        dropped_idx = idx[np.random.rand(len(graph.x)) < dropout_rate]
+        dropped_idx = idx[np.random.rand(len(graph.x)) < self.dropout_rate]
 
         # Compute connectivity matrix to dropped nodes.
         for dropped_node in dropped_idx:
@@ -83,24 +117,27 @@ class NodeDropout:
         return graph
 
 
-class RandomRotation:
-    """Random rotations to diversify training data.
-    
-    """
+class NodeRotations2D:
+    """Random rotations to diversify training data"""
     
     def __call__(
         self,
-        graph: Data
-    ) -> Data:
+        graph: torch_geometric.data.Data
+    ) -> torch_geometric.data.Data:
         # Ensure original graph is unchanged.
         graph = graph.clone()
 
         # Center positons.
         node_feats = graph.x[:, :2] - 0.5  
+
+        # Sample random angle.
         angle = np.random.rand() * 2 * np.pi
 
         rotation_matrix = torch.tensor(
-            [[cos(angle), -sin(angle)], [sin(angle), cos(angle)]]
+            [
+                [cos(angle), -sin(angle)],
+                [sin(angle),  cos(angle)]
+            ]
         ).float()
         rotated_node_attr = torch.matmul(node_feats, rotation_matrix)
 
@@ -110,15 +147,13 @@ class RandomRotation:
         return graph
 
  
-class RandomFlip:
-    """Random flip to diversify training data.
-    
-    """
+class NodeFlips2D:
+    """Randomly flips nodes."""
 
     def __call__(
         self,
-        graph: Data
-    ) -> Data:
+        graph: torch_geometric.data.Data
+    ) -> torch_geometric.data.Data:
 
         # Ensure original graph is unchanged.
         graph = graph.clone()
@@ -126,18 +161,20 @@ class RandomFlip:
         # Center positons.
         node_feats = graph.x[:, :2] - 0.5  
 
-        if np.random.randint(2): node_feats[:, 0] *= -1
-        if np.random.randint(2): node_feats[:, 1] *= -1
+        if np.random.randint(2):
+            node_feats[:, 0] *= -1
+
+        if np.random.randint(2):
+            node_feats[:, 1] *= -1
 
         # Restore positons.
         graph.x[:, :2] = node_feats + 0.5  
+
         return graph
 
 
-class AugmentCentroids:
-    """Translation and rotation to diversify training data.
-    
-    """
+class NodeAugmentation2D:
+    """Translations and rotations to diversify training data."""
 
     def __call__(
         self,
@@ -166,13 +203,11 @@ class AugmentCentroids:
             translate[1]
         )
 
-        # Flip centroids randomly.
-        flip = np.random.rand(1,2)
-
-        if flip[0] > 0.5:
+        # Flip centroids.
+        if np.random.randint(2):
             centroids_x *= -1
 
-        if flip[1] > 0.5:
+        if np.random.randint(2):
             centroids_y *= -1
 
         # Restore positions.
