@@ -35,8 +35,8 @@ class NodeNormalNoise:
 
     def __call__(
         self,
-        graph: torch_geometric.data.Data,
-    ) -> torch_geometric.data.Data :
+        graph: Data,
+    ) -> Data :
         
         # Ensure original graph is unchanged.
         graph = graph.clone()
@@ -61,8 +61,8 @@ class NodeUniformNoise:
 
     def __call__(
         self,
-        graph: torch_geometric.data.Data,
-    ) -> torch_geometric.data.Data :
+        graph: Data,
+    ) -> Data :
         
         # Ensure original graph is unchanged.
         graph = graph.clone()
@@ -91,8 +91,8 @@ class NodeDropout:
 
     def __call__(
         self,
-        graph: torch_geometric.data.Data
-    ) -> torch_geometric.data.Data:
+        graph: Data
+    ) -> Data:
 
         # Ensure original graph is unchanged.
         graph = graph.clone()
@@ -122,8 +122,8 @@ class NodeRotations2D:
     
     def __call__(
         self,
-        graph: torch_geometric.data.Data
-    ) -> torch_geometric.data.Data:
+        graph: Data
+    ) -> Data:
         # Ensure original graph is unchanged.
         graph = graph.clone()
 
@@ -152,8 +152,8 @@ class NodeFlips2D:
 
     def __call__(
         self,
-        graph: torch_geometric.data.Data
-    ) -> torch_geometric.data.Data:
+        graph: Data
+    ) -> Data:
 
         # Ensure original graph is unchanged.
         graph = graph.clone()
