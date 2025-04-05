@@ -60,7 +60,7 @@ jobs:
       # Step 6: Update switcher.json
       - name: Update switcher.json
         run: |
-          SWITCHER_FILE=static/switcher.json
+          SWITCHER_FILE=_static/switcher.json
           jq --arg version "$VERSION" \
              '. |= [{"name": $version, "version": $version, "url": "https://deeptrackai.github.io/deeplay/\($version)/"}] + .' \
              $SWITCHER_FILE > temp.json && mv temp.json $SWITCHER_FILE
@@ -88,6 +88,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add docs/latest docs/$VERSION static/switcher.json
+          git add docs/latest docs/$VERSION _static/switcher.json
           git commit -m "Update docs for release $VERSION"
           git push

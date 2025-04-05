@@ -1,3 +1,6 @@
+# Trial notebooks
+trial*.ipynb
+
 # Byte-compiled / optimized / DLL files
 *.pyc
 

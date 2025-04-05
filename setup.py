@@ -8,12 +8,13 @@ with open("requirements.txt", "r") as file:
 
 setup(
     name="deeplay",
-    version="0.1.2",
+    version="0.1.3",
     license="MIT",
     packages=find_packages(),
     author=(
         "Benjamin Midtvedt, Jesus Pineda, Henrik Klein Moberg, "
-        "Harshith Bachimanchi, Carlo Manzo, Giovanni Volpe"
+        "Harshith Bachimanchi, Mirja Granfors, Alex Lech, "
+        "Carlo Manzo, Giovanni Volpe"
     ),
     description=(
         "An AI-powered platform for advancing deep learning research "
