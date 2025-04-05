@@ -87,7 +87,7 @@ class NodeDropout:
     """Removal (dropout) of random nodes and edges with some probability."""
 
     def __init__(self, dropout_rate: float = 0.05):
-        self.dropout_rate = dropout_rate.
+        self.dropout_rate = dropout_rate
 
     def __call__(
         self,
