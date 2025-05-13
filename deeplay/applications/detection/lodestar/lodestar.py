@@ -180,8 +180,8 @@ class LodeSTAR(Application):
             Threshold for detection
         mode: string
             Mode for thresholding. Can be either "quantile" or "ratio" or "constant". If "quantile", then
-            `ratio` defines the quantile of scores to accept. If "ratio", then cutoff defines the ratio of the max
-            score as threshhold. If constant, the cutoff is used directly as treshhold.
+            "cutoff" defines the quantile of scores to accept. If "ratio", then "cutoff" defines the ratio of the max
+            score as threshhold. If "constant", the "cutoff" is used directly as treshhold.
         """
         y = self(x.to(self.device))
         y_pred, weights = y[:, :-1], y[:, -1:]
@@ -228,8 +228,8 @@ class LodeSTAR(Application):
             Threshold for detection
         mode: string
             Mode for thresholding. Can be either "quantile" or "ratio" or "constant". If "quantile", then
-            `ratio` defines the quantile of scores to accept. If "ratio", then cutoff defines the ratio of the max
-            score as threshhold. If constant, the cutoff is used directly as treshhold.
+            "cutoff" defines the quantile of scores to accept. If "ratio", then "cutoff" defines the ratio of the max
+            score as threshhold. If "constant", the "cutoff" is used directly as treshhold.
         """
         score = self.get_detection_score(y_pred, weights, alpha, beta)
         return self.find_local_maxima(y_pred, score, cutoff, mode)
@@ -244,8 +244,8 @@ class LodeSTAR(Application):
             Output from model, score-map
         cutoff, mode: float, string
             Treshholding parameters. Mode can be either "quantile" or "ratio" or "constant". If "quantile", then
-            `ratio` defines the quantile of scores to accept. If "ratio", then cutoff defines the ratio of the max
-            score as threshhold. If constant, the cutoff is used directly as treshhold.
+            "cutoff" defines the quantile of scores to accept. If "ratio", then "cutoff" defines the ratio of the max
+            score as threshhold. If "constant", the "cutoff" is used directly as treshhold.
 
         """
         score = score[3:-3, 3:-3]
