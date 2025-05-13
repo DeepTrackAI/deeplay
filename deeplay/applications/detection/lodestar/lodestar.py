@@ -228,7 +228,7 @@ class LodeSTAR(Application):
             Threshold for detection
         mode: string
             Mode for thresholding. Can be either "quantile" or "ratio" or "constant". If "quantile", then
-            `ratio` defines the quantile of scores to accept. If "ratio", then cutoff defines the ratio of the max
+            cutoff defines the quantile of scores to accept. If "ratio", then cutoff defines the ratio of the max
             score as threshhold. If constant, the cutoff is used directly as treshhold.
         """
         score = self.get_detection_score(y_pred, weights, alpha, beta)
@@ -244,7 +244,7 @@ class LodeSTAR(Application):
             Output from model, score-map
         cutoff, mode: float, string
             Treshholding parameters. Mode can be either "quantile" or "ratio" or "constant". If "quantile", then
-            `ratio` defines the quantile of scores to accept. If "ratio", then cutoff defines the ratio of the max
+            cutoff defines the quantile of scores to accept. If "ratio", then cutoff defines the ratio of the max
             score as threshhold. If constant, the cutoff is used directly as treshhold.
 
         """
