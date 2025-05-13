@@ -244,8 +244,8 @@ class LodeSTAR(Application):
             Output from model, score-map
         cutoff, mode: float, string
             Treshholding parameters. Mode can be either "quantile" or "ratio" or "constant". If "quantile", then
-            cutoff defines the quantile of scores to accept. If "ratio", then cutoff defines the ratio of the max
-            score as threshhold. If constant, the cutoff is used directly as treshhold.
+            "cutoff" defines the quantile of scores to accept. If "ratio", then "cutoff" defines the ratio of the max
+            score as threshhold. If "constant", the "cutoff" is used directly as treshhold.
 
         """
         score = score[3:-3, 3:-3]
