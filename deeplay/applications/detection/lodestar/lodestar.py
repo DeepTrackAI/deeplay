@@ -175,7 +175,7 @@ class LodeSTAR(Application):
         x : array-like
             Input to model
         alpha, beta: float
-            Geometric weight of the weight-map vs the consistenct metric for detection.
+            Geometric weight of the weight-map vs the consistency metric for detection.
         cutoff: float
             Threshold for detection
         mode: string
@@ -223,7 +223,7 @@ class LodeSTAR(Application):
         y_pred, weights: array-like
             Output from model
         alpha, beta: float
-            Geometric weight of the weight-map vs the consistenct metric for detection.
+            Geometric weight of the weight-map vs the consistency metric for detection.
         cutoff: float
             Threshold for detection
         mode: string
@@ -285,11 +285,11 @@ class LodeSTAR(Application):
         pred, weights: array-like
             Output from model
         alpha, beta: float
-            Geometric weight of the weight-map vs the consistenct metric for detection.
+            Geometric weight of the weight-map vs the consistency metric for detection.
         """
         return (
             weights[0].detach().cpu().numpy() ** alpha
-            * cls.local_consistency(pred) ** beta
+            * cls.local_y(pred) ** beta
         )
 
     def train_preprocess(self, batch):
