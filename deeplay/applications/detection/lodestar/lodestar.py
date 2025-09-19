@@ -289,7 +289,7 @@ class LodeSTAR(Application):
         """
         return (
             weights[0].detach().cpu().numpy() ** alpha
-            * cls.local_y(pred) ** beta
+            * cls.local_consistency(pred) ** beta
         )
 
     def train_preprocess(self, batch):
