@@ -1,5 +1,4 @@
 from ast import Attribute
-from re import A, T
 from typing import Any, List, Optional, Type, Union, Tuple
 from abc import ABC, abstractmethod
 from warnings import warn
