@@ -1,5 +1,4 @@
-
-<h3 align="center">deeplay</h3>
+<h3 align="center">deeplay - A Modular Superset of PyTorch</h3>
 <p align="center">
   <a href="/LICENSE" alt="licence">
     <img src="https://img.shields.io/github/license/DeepTrackAI/deeplay">
