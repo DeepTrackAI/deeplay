@@ -1,6 +1,6 @@
 <h3 align="center">Deeplay - A Modular Superset of PyTorch</h3>
 <p align="center">
-  <a href="LICENSE">
+  <a href="/LICENSE">
     <img src="https://img.shields.io/github/license/DeepTrackAI/deeplay" alt="license">
   </a>
   <a href="https://badge.fury.io/py/deeplay">
