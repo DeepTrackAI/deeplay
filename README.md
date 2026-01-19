@@ -1,7 +1,7 @@
-<h3 align="center">deeplay - A Modular Superset of PyTorch</h3>
+<h3 align="center">Deeplay - A Modular Superset of PyTorch</h3>
 <p align="center">
-  <a href="/LICENSE" alt="licence">
-    <img src="https://img.shields.io/github/license/DeepTrackAI/deeplay">
+  <a href="LICENSE">
+    <img src="https://img.shields.io/github/license/DeepTrackAI/deeplay" alt="license">
   </a>
   <a href="https://badge.fury.io/py/deeplay">
     <img src="https://badge.fury.io/py/deeplay.svg" alt="PyPI version">
@@ -10,7 +10,7 @@
     <img src="https://img.shields.io/badge/docs-available-blue?logo=readthedocs">
   </a>
   <a href="https://badge.fury.io/py/deeptrack">
-    <img src="https://img.shields.io/badge/python-3.9%20%7C%203.14%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue" alt="Python version">
+    <img src="https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue" alt="Python version">
   </a>
 </p>
 
