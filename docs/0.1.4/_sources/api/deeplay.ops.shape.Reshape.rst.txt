@@ -1,0 +1,7 @@
+Reshape
+=======
+
+.. currentmodule:: deeplay.ops.shape
+
+.. autoclass:: Reshape
+   :show-inheritance:

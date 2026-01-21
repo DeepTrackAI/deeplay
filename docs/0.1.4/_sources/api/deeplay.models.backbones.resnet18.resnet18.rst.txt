@@ -1,0 +1,6 @@
+resnet18
+========
+
+.. currentmodule:: deeplay.models.backbones.resnet18
+
+.. autofunction:: resnet18

@@ -1,0 +1,7 @@
+GraphToGlobalMPM
+================
+
+.. currentmodule:: deeplay.models.gnn.gtogmpm
+
+.. autoclass:: GraphToGlobalMPM
+   :show-inheritance:

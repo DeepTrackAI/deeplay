@@ -1,0 +1,19 @@
+Initializer
+===========
+
+.. currentmodule:: deeplay.initializers.initializer
+
+.. autoclass:: Initializer
+   :show-inheritance:
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~Initializer.initialize
+      ~Initializer.initialize_tensor
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: initialize
+   .. automethod:: initialize_tensor

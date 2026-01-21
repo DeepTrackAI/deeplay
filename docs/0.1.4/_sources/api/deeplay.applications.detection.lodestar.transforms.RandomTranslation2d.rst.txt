@@ -1,0 +1,7 @@
+RandomTranslation2d
+===================
+
+.. currentmodule:: deeplay.applications.detection.lodestar.transforms
+
+.. autoclass:: RandomTranslation2d
+   :show-inheritance:

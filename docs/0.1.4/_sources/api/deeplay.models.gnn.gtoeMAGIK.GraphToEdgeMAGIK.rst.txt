@@ -1,0 +1,7 @@
+GraphToEdgeMAGIK
+================
+
+.. currentmodule:: deeplay.models.gnn.gtoeMAGIK
+
+.. autoclass:: GraphToEdgeMAGIK
+   :show-inheritance:

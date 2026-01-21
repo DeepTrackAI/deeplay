@@ -1,0 +1,17 @@
+FeatureIntegrationModule
+========================
+
+.. currentmodule:: deeplay.components.diffusion.attention_unet
+
+.. autoclass:: FeatureIntegrationModule
+   :show-inheritance:
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~FeatureIntegrationModule.forward
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: forward

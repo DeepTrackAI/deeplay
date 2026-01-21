@@ -1,0 +1,6 @@
+spatial_self_attention
+======================
+
+.. currentmodule:: deeplay.blocks.conv.conv2d
+
+.. autofunction:: spatial_self_attention

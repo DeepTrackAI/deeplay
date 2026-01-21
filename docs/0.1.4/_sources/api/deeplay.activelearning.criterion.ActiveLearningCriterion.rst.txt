@@ -1,0 +1,17 @@
+ActiveLearningCriterion
+=======================
+
+.. currentmodule:: deeplay.activelearning.criterion
+
+.. autoclass:: ActiveLearningCriterion
+   :show-inheritance:
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~ActiveLearningCriterion.score
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: score

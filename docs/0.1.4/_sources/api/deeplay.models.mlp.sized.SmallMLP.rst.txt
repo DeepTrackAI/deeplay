@@ -1,0 +1,7 @@
+SmallMLP
+========
+
+.. currentmodule:: deeplay.models.mlp.sized
+
+.. autoclass:: SmallMLP
+   :show-inheritance:

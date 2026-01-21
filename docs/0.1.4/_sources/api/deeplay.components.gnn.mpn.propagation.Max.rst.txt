@@ -1,0 +1,17 @@
+Max
+===
+
+.. currentmodule:: deeplay.components.gnn.mpn.propagation
+
+.. autoclass:: Max
+   :show-inheritance:
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~Max.forward
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: forward

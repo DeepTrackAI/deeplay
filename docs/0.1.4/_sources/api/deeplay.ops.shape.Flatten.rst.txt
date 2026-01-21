@@ -1,0 +1,17 @@
+Flatten
+=======
+
+.. currentmodule:: deeplay.ops.shape
+
+.. autoclass:: Flatten
+   :show-inheritance:
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~Flatten.forward
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: forward

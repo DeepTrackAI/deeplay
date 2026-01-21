@@ -1,0 +1,17 @@
+Min
+===
+
+.. currentmodule:: deeplay.components.gnn.mpn.propagation
+
+.. autoclass:: Min
+   :show-inheritance:
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~Min.forward
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: forward

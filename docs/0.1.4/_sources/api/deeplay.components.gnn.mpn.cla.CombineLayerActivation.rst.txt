@@ -1,0 +1,21 @@
+CombineLayerActivation
+======================
+
+.. currentmodule:: deeplay.components.gnn.mpn.cla
+
+.. autoclass:: CombineLayerActivation
+   :show-inheritance:
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~CombineLayerActivation.configure
+      ~CombineLayerActivation.forward
+      ~CombineLayerActivation.get_forward_args
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: configure
+   .. automethod:: forward
+   .. automethod:: get_forward_args

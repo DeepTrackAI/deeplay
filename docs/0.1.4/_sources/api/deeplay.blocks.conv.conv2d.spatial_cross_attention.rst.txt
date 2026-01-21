@@ -1,0 +1,6 @@
+spatial_cross_attention
+=======================
+
+.. currentmodule:: deeplay.blocks.conv.conv2d
+
+.. autofunction:: spatial_cross_attention

@@ -1,0 +1,7 @@
+SGD
+===
+
+.. currentmodule:: deeplay.external.optimizers.sgd
+
+.. autoclass:: SGD
+   :show-inheritance:

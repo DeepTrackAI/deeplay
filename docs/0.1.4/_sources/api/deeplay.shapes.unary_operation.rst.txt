@@ -1,0 +1,6 @@
+unary_operation
+===============
+
+.. currentmodule:: deeplay.shapes
+
+.. autofunction:: unary_operation

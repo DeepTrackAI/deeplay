@@ -1,0 +1,19 @@
+LearnableDistancewWeighting
+===========================
+
+.. currentmodule:: deeplay.components.gnn.mpn.ldw
+
+.. autoclass:: LearnableDistancewWeighting
+   :show-inheritance:
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~LearnableDistancewWeighting.extra_repr
+      ~LearnableDistancewWeighting.forward
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: extra_repr
+   .. automethod:: forward

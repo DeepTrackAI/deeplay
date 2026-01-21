@@ -1,0 +1,17 @@
+MergeOp
+=======
+
+.. currentmodule:: deeplay.ops.merge
+
+.. autoclass:: MergeOp
+   :show-inheritance:
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~MergeOp.forward
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: forward
