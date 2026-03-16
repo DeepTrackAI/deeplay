@@ -22,6 +22,14 @@ from deeplay import (
     Max,
     Layer,
     GlobalMeanPool,
+    GlobalGraphPooling,
+    GlobalGraphUpsampling,
+    MinCutPooling,
+    MinCutUpsampling,
+    GraphEncoder,
+    GraphDecoder,
+    GraphEncoderBlock,
+    GraphDecoderBlock,
 )
 
 import itertools
@@ -729,3 +737,119 @@ class TestModelGraphToEdgeMAGIK(unittest.TestCase):
         out = model(inp)
 
         self.assertEqual(out.shape, (20, 1))
+
+
+class TestComponentPool(unittest.TestCase):
+    def test_global_pool(self):
+        global_pool = GlobalGraphPooling()
+        global_pool = global_pool.build()
+        
+        inp = {}
+        inp["x"] = torch.randn(3, 2)
+        inp["batch"] = torch.zeros(3, dtype=int)
+        inp["edge_index"] = torch.tensor([[0, 1, 1, 2], [1, 0, 2, 1]])
+        out = global_pool(inp)
+        self.assertEqual(out["x"].shape, (1, 2))
+
+    def test_global_upsampling(self):
+        global_upsampling = GlobalGraphUpsampling()
+        global_upsampling = global_upsampling.build()
+
+        inp = {}
+        inp["x"] = torch.randn(1, 2)
+        inp["s"] = torch.ones((3, 1))
+        out = global_upsampling(inp)
+        self.assertEqual(out["x"].shape, (3, 2))
+
+    def test_mincut_pool(self):
+        mincut = MinCutPooling(num_clusters = 2, hidden_features = [5])
+        mincut = mincut.build()
+
+        inp = {}
+        inp["x"] = torch.randn(3, 1)
+        inp["batch"] = torch.zeros(3, dtype=int)
+        inp["edge_index"] = torch.tensor([[0, 1, 1, 2], [1, 0, 2, 1]])
+        out = mincut(inp)
+
+        self.assertEqual(out["x"].shape, (2, 1))
+        self.assertEqual(out['edge_index'].shape, (2,2))
+        self.assertEqual(out["s"].shape, (3, 2))
+        self.assertTrue((torch.sum(out['s'], axis=1) - torch.tensor([1., 1., 1.])).sum() < 1e-5)
+
+    def test_mincut_upsample(self):
+        mincut_upsample = MinCutUpsampling()
+        mincut_upsample = mincut_upsample.build()
+
+        inp = {}
+        inp["x"] = torch.randn(2, 1)
+        inp["batch"] = torch.zeros(2, dtype=int)
+        inp['s'] = torch.tensor([[1.0, 0], [0, 1.0], [1.0, 0]])
+        inp["edge_index_pool"] = torch.tensor([[0, 1], [1, 0]])
+        out = mincut_upsample(inp)
+
+        self.assertEqual(out["x"].shape, (3, 1))
+
+
+class TestComponentsGraphEncoderDecoder(unittest.TestCase):
+    def test_graph_encoder_block(self):
+        encoder_block = GraphEncoderBlock(in_features=1, out_features=4, num_clusters=2)
+        encoder_block = encoder_block.build()
+
+        inp = {}
+        inp["x"] = torch.randn(3, 1)
+        inp["batch"] = torch.zeros(3, dtype=int)
+        inp["edge_index"] = torch.tensor([[0, 1, 1, 2], [1, 0, 2, 1]])
+        out = encoder_block(inp)
+
+        self.assertEqual(out["x"].shape, (2, 4))
+        self.assertEqual(out["s"].shape, (3, 2))
+        self.assertEqual(out["edge_index_pool"].shape, (2, 2))
+
+    def test_graph_decoder_block(self):
+        decoder_block = GraphDecoderBlock(in_features=1, out_features=4)
+        decoder_block = decoder_block.build()
+
+        inp = {}
+        inp["x"] = torch.randn(2, 1)
+        inp["batch"] = torch.zeros(2, dtype=int)
+        inp["edge_index_pool"] = torch.tensor([[0, 1], [1, 0]])
+        inp["edge_index"] = torch.tensor([[0, 1, 1, 2], [1, 0, 2, 1]])
+        inp['s'] = torch.tensor([[1.0, 0], [0, 1.0], [1.0, 0]])
+        out = decoder_block(inp)
+
+        self.assertEqual(out["x"].shape, (3, 4))
+        self.assertTrue(torch.all(inp["edge_index"] == out["edge_index"]))
+
+    def test_graph_encoder(self):
+        graph_encoder = GraphEncoder(hidden_features=2, num_blocks=3, num_clusters=[3,2,1])
+        graph_encoder = graph_encoder.build()
+
+        self.assertEqual(len(graph_encoder.blocks), 3)
+
+        inp = {}
+        inp["x"] = torch.randn(4, 2)
+        inp["batch"] = torch.zeros(4, dtype=int)
+        inp["edge_index"] = torch.tensor([[0, 1, 1, 2, 1, 3], [1, 0, 2, 1, 3, 1]])
+        inp["edge_attr"] = torch.randn(6, 1)
+        out = graph_encoder(inp)
+
+        self.assertEqual(out["x"].shape, (1, 2))
+        self.assertEqual(out["s_1"].shape, (3, 2))
+
+    def test_graph_decoder(self):
+        graph_decoder = GraphDecoder(hidden_features=2, num_blocks=2, output_node_dim=2, output_edge_dim=1)
+        graph_decoder = graph_decoder.build()
+
+        self.assertEqual(len(graph_decoder.blocks), 2)
+
+        inp = {}
+        inp["x"] = torch.randn(1, 2)
+        inp["batch"] = torch.zeros(1, dtype=int)
+        inp["edge_index_1"] = torch.tensor([[0, 1], [1, 0]])
+        inp["edge_index"] = torch.tensor([[0, 1, 1, 2, 1, 3], [1, 0, 2, 1, 3, 1]])
+        inp['s_1'] = torch.ones((2,1))
+        inp['s_0'] = torch.tensor([[1.0, 0], [0, 1.0], [0, 1.0], [1.0, 0]])
+        out = graph_decoder(inp)
+
+        self.assertEqual(out["x"].shape, (4, 2))
+        self.assertEqual(out["edge_attr"].shape, (6, 1))

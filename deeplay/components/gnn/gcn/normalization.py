@@ -11,8 +11,11 @@ class sparse_laplacian_normalization(DeeplayModule):
         """
         loop_index = torch.arange(num_nodes, device=A.device)
         loop_index = loop_index.unsqueeze(0).repeat(2, 1)
-
-        A = torch.cat([A, loop_index], dim=1)
+        
+        if A.is_sparse:
+            A = torch.cat([A.indices(), loop_index], dim=1)
+        elif (not A.is_sparse) & (A.size(0) == 2):
+            A = torch.cat([A, loop_index], dim=1)
 
         return A
 
