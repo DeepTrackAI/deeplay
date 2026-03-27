@@ -3,6 +3,7 @@ from .classification import *
 from .regression import *
 from .detection import *
 from .autoencoders import *
+from .clustering import *
 
 # from .classification import *
 # from .segmentation import ImageSegmentor

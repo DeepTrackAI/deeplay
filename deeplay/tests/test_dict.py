@@ -5,6 +5,7 @@ from deeplay import (
     Layer,
     LayerSkip,
     AddDict,
+    CatDictElements,
     Parallel,
     DeeplayModule,
 )
@@ -92,3 +93,14 @@ class TestComponentDict(unittest.TestCase):
         # Checks that the base dict is correctly passed
         self.assertEqual(inp.y, 3)
         self.assertEqual(len(out.y), 10)
+
+    def test_cat_dict_elems(self):
+        inp = {}
+        inp["x"] = torch.Tensor([1])
+        inp["y"] = torch.Tensor([1, 1])
+
+        block = CatDictElements(("x", "y")).create()
+        out = block(inp)
+
+        self.assertEqual(out["x"].shape, torch.Size([1]))
+        self.assertEqual(out["y"].shape, torch.Size([3]))

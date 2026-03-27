@@ -8,5 +8,6 @@ torch-geometric
 kornia
 scipy
 scikit-image
+scikit-learn
 rich
 dill

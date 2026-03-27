@@ -12,6 +12,8 @@ from deeplay import (
     GraphToEdgeMAGIK,
     MessagePassingNeuralNetwork,
     ResidualMessagePassingNeuralNetwork,
+    RecurrentMessagePassingModel,
+    RecurrentGraphBlock,
     MultiLayerPerceptron,
     dense_laplacian_normalization,
     Sum,
@@ -22,6 +24,7 @@ from deeplay import (
     Max,
     Layer,
     GlobalMeanPool,
+    CatDictElements,
 )
 
 import itertools
@@ -729,3 +732,107 @@ class TestModelGraphToEdgeMAGIK(unittest.TestCase):
         out = model(inp)
 
         self.assertEqual(out.shape, (20, 1))
+
+
+class TestModelRecurrentMPM(unittest.TestCase):
+    def test_recurrent_graph_block_defaults(self):
+        model = RecurrentGraphBlock(
+            combine=CatDictElements(("x", "hidden")),
+            layer=Layer(nn.Identity),
+            head=Layer(nn.Identity),
+            hidden_features=64,
+            num_iter=1,
+        )
+        model = model.create()
+
+        self.assertIsInstance(model.combine, CatDictElements)
+        self.assertIsInstance(model.layer, nn.Identity)
+        self.assertIsInstance(model.head, nn.Identity)
+
+        self.assertEqual(model.hidden_features, 64)
+        self.assertEqual(model.num_iter, 1)
+
+        # assess the case where hidden is provided
+        inp = {}
+        inp["x"] = torch.ones(10, 64)
+        out = model(inp)
+
+        self.assertTrue(torch.all(out[0]["hidden"][:, :64] == torch.zeros(10, 64)))
+
+        # assess the case where hidden is provided
+        inp["hidden"] = torch.ones(10, 64) * 2
+        out = model(inp)
+
+        self.assertTrue(torch.all(out[0]["hidden"][:, :64] == torch.ones(10, 64) * 2))
+
+    def test_RMPM_defaults(self):
+        model = RecurrentMessagePassingModel(96, 2, num_iter=10)
+        model = model.create()
+
+        self.assertEqual(len(model.encoder[0].blocks), 1)
+        self.assertEqual(len(model.encoder[1].blocks), 1)
+
+        self.assertEqual(model.encoder[0].blocks[0].layer.in_features, 0)
+        self.assertEqual(model.encoder[0].blocks[0].layer.out_features, 96)
+        self.assertEqual(model.encoder[1].blocks[0].layer.in_features, 0)
+        self.assertEqual(model.encoder[1].blocks[0].layer.out_features, 96)
+
+        self.assertIsInstance(model.backbone, RecurrentGraphBlock)
+        self.assertIsInstance(model.backbone.combine, CatDictElements)
+        self.assertIsInstance(model.backbone.layer[0][0], MultiLayerPerceptron)
+        self.assertIsInstance(model.backbone.layer[0][1], MultiLayerPerceptron)
+        self.assertIsInstance(model.backbone.layer[1], MessagePassingNeuralNetwork)
+        self.assertIsInstance(model.backbone.head, MultiLayerPerceptron)
+
+        self.assertEqual(model.backbone.head.in_features, 96)
+        self.assertEqual(model.backbone.head.out_features, 2)
+
+        # check default mapping
+        self.assertEqual(model.encoder[0].input_args, ("x",))
+        self.assertEqual(model.encoder[0].output_args.keys(), {"x"})
+        self.assertEqual(model.encoder[1].input_args, ("edge_attr",))
+        self.assertEqual(model.encoder[1].output_args.keys(), {"edge_attr"})
+
+        self.assertEqual(model.backbone.combine.source, ("x", "edge_attr"))
+        self.assertEqual(
+            model.backbone.combine.target, ("hidden_x", "hidden_edge_attr")
+        )
+
+        self.assertEqual(model.backbone.layer[0][0].input_args, ("hidden_x",))
+        self.assertEqual(model.backbone.layer[0][0].output_args.keys(), {"hidden_x"})
+        self.assertEqual(model.backbone.layer[0][1].input_args, ("hidden_edge_attr",))
+        self.assertEqual(
+            model.backbone.layer[0][1].output_args.keys(), {"hidden_edge_attr"}
+        )
+
+        self.assertEqual(
+            model.backbone.layer[1].transform[0].input_args,
+            ("hidden_x", "edge_index", "hidden_edge_attr"),
+        )
+        self.assertEqual(
+            model.backbone.layer[1].transform[0].output_args.keys(),
+            {"hidden_edge_attr"},
+        )
+        self.assertEqual(
+            model.backbone.layer[1].propagate[0].input_args,
+            ("hidden_x", "edge_index", "hidden_edge_attr"),
+        )
+        self.assertEqual(
+            model.backbone.layer[1].propagate[0].output_args.keys(), {"aggregate"}
+        )
+
+        self.assertEqual(model.backbone.layer[1].update[0].input_args, ("aggregate",))
+        self.assertEqual(
+            model.backbone.layer[1].update[0].output_args.keys(), {"hidden_x"}
+        )
+
+        inp = {}
+        inp["x"] = torch.randn(10, 5)
+        inp["edge_index"] = torch.randint(0, 10, (2, 20))
+        inp["edge_attr"] = torch.randn(20, 3)
+
+        out = model(inp)
+
+        self.assertEqual(len(out), 10)
+        for o in out:
+            self.assertEqual(o.shape, (10, 2))
