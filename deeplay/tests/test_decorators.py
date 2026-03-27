@@ -63,8 +63,6 @@ class TestModule(DeeplayModule):
 
 # module["encoder"]
 
-# print("after:", module.encoder.p)
-
 
 class DummyClass:
     def __init__(self):

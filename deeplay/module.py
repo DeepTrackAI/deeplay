@@ -723,6 +723,39 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
 
         self._modules[target] = replacement
 
+    @after_init
+    def schedule(self, **schedulers):
+        for attr, scheduler in schedulers.items():
+            setattr(self, attr, scheduler)
+
+    @after_init
+    def schedule_linear(
+        self,
+        attr: str,
+        start_value: float,
+        end_value: float,
+        n_steps: int,
+        on_epoch: bool = False,
+    ):
+        from deeplay.schedulers import LinearScheduler
+
+        setattr(self, attr, LinearScheduler(start_value, end_value, n_steps, on_epoch))
+
+    @after_init
+    def schedule_loglinear(
+        self,
+        attr: str,
+        start_value: float,
+        end_value: float,
+        n_steps: int,
+        on_epoch: bool = False,
+    ):
+        from deeplay.schedulers import LogLinearScheduler
+
+        setattr(
+            self, attr, LogLinearScheduler(start_value, end_value, n_steps, on_epoch)
+        )
+
     @stateful
     def configure(self, *args: Any, **kwargs: Any):
         """
@@ -1334,6 +1367,14 @@ class DeeplayModule(nn.Module, metaclass=ExtendedConstructorMeta):
                     # # root module should always be update to
                     # # ensure that logs are stored in the correct place
                     # value.set_root_module(self.root_module)
+
+    def __getattr__(self, name):
+        from deeplay.schedulers import BaseScheduler
+
+        x = super().__getattr__(name)
+        if self._has_built and isinstance(x, BaseScheduler):
+            return x.__get__(self, type(self))
+        return x
 
     @stateful
     def _set_submodule(self, name, module, tags):

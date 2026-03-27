@@ -124,9 +124,9 @@ class Application(DeeplayModule, L.LightningModule):
         )
 
         history = LogHistory()
-        progressbar = RichProgressBar()
+        aux_callbacks = [history]
 
-        callbacks = callbacks + [history, progressbar]
+        callbacks = callbacks + aux_callbacks
         trainer = dl.Trainer(max_epochs=max_epochs, callbacks=callbacks, **kwargs)
 
         train_dataloader = torch.utils.data.DataLoader(
@@ -243,11 +243,14 @@ class Application(DeeplayModule, L.LightningModule):
             ) from e
 
     def training_step(self, batch, batch_idx):
+
         x, y = self.train_preprocess(batch)
         y_hat = self(x)
         loss = self.compute_loss(y_hat, y)
         if not isinstance(loss, dict):
             loss = {"loss": loss}
+
+        assert "loss" in loss, "the output of compute_loss should contain a 'loss' key"
 
         for name, v in loss.items():
             self.log(
@@ -263,7 +266,7 @@ class Application(DeeplayModule, L.LightningModule):
             "train", y_hat, y, on_step=True, on_epoch=True, prog_bar=True, logger=True
         )
 
-        return sum(loss.values())
+        return loss["loss"]
 
     def validation_step(self, batch, batch_idx):
         x, y = self.val_preprocess(batch)
@@ -290,7 +293,7 @@ class Application(DeeplayModule, L.LightningModule):
             prog_bar=True,
             logger=True,
         )
-        return sum(loss.values())
+        return loss["loss"] if "loss" in loss else 0
 
     def test_step(self, batch, batch_idx):
         x, y = self.test_preprocess(batch)
@@ -318,7 +321,7 @@ class Application(DeeplayModule, L.LightningModule):
             logger=True,
         )
 
-        return sum(loss.values())
+        return loss["loss"] if "loss" in loss else 0
 
     def predict_step(self, batch, batch_idx, dataloader_idx=None):
         if isinstance(batch, (list, tuple)):
@@ -356,12 +359,16 @@ class Application(DeeplayModule, L.LightningModule):
             if module is self:
                 continue
             try:
-                if hasattr(module, "trainer") and module.trainer is not trainer:
+                if isinstance(module, L.LightningModule) or hasattr(module, "trainer"):
+
                     module.trainer = trainer
+
             except RuntimeError:
                 # hasattr can raise RuntimeError if the module is not attached to a trainer
                 if isinstance(module, L.LightningModule):
+                    print("Battaching trainer to", module)
                     module.trainer = trainer
+                    print("Battached trainer to", module)
 
     @staticmethod
     def clone_metrics(metrics: T) -> T:
