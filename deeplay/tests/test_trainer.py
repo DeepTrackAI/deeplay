@@ -111,6 +111,21 @@ class TestTrainer(unittest.TestCase):
         step_keys = set(trainer.history.step_history.keys())
         self.assertTrue("train_loss_step" in step_keys)
 
+    def test_fit_history_excludes_sanity_check(self):
+        trainer = Trainer(max_epochs=2, num_sanity_val_steps=2)
+        model = Regressor(nn.Linear(1, 1))
+        X = torch.rand(100, 1)
+        y = torch.rand(100, 1)
+        dataset = torch.utils.data.TensorDataset(X, y)
+        train_dataloader = DataLoader(dataset, batch_size=32)
+        val_dataloader = DataLoader(dataset, batch_size=32)
+
+        trainer.fit(model, train_dataloader, val_dataloader)
+
+        val_history = trainer.history.history["val_loss_epoch"]
+        self.assertEqual(val_history["epoch"], [0, 1])
+        self.assertNotIn(0, val_history["step"])
+
     def test_fit_disabled_history(self):
         trainer = Trainer(max_epochs=1)
         trainer.disable_history()

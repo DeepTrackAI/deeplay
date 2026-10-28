@@ -58,6 +58,8 @@ class LogHistory(L.Callback):
                 self._history.setdefault(key, []).append(self._logitem(trainer, value))
 
     def on_validation_epoch_end(self, trainer, *args, **kwargs) -> None:
+        if trainer.sanity_checking:
+            return
         for key, value in trainer.callback_metrics.items():
             if key.startswith("val") and key.endswith("_epoch"):
                 self._history.setdefault(key, []).append(self._logitem(trainer, value))
